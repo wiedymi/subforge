@@ -1,0 +1,29 @@
+{
+  "name": "subforge",
+  "version": "0.1.0",
+  "description": "High-performance TypeScript subtitle library. ASS-first format, others degrade gracefully.",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "test": "bun test",
+    "bench": "bun run tests/bench/parse.bench.ts && bun run tests/bench/serialize.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/core/index.ts",
+    "./ass": "./src/ass/index.ts",
+    "./srt": "./src/srt/index.ts",
+    "./vtt": "./src/vtt/index.ts"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "mitata": "^1.0.34"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
