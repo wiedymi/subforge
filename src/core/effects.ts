@@ -1,17 +1,42 @@
 import type { Effect } from './types.ts'
 
+/**
+ * Handler for parsing and serializing a specific effect type.
+ * @template E - The effect type this handler processes
+ */
 interface EffectHandler<E extends Effect = Effect> {
+  /** Effect type identifier */
   type: E['type']
+  /** Parse raw string into effect parameters */
   parse(raw: string): E['params'] | null
+  /** Serialize effect parameters to string */
   serialize(params: E['params']): string
 }
 
 const handlers = new Map<string, EffectHandler>()
 
+/**
+ * Registers a handler for parsing and serializing an effect type.
+ * @template E - The effect type to register
+ * @param handler - The effect handler implementation
+ * @example
+ * ```ts
+ * registerEffect({
+ *   type: 'blur',
+ *   parse: (raw) => ({ strength: parseFloat(raw) }),
+ *   serialize: (p) => String(p.strength)
+ * })
+ * ```
+ */
 export function registerEffect<E extends Effect>(handler: EffectHandler<E>): void {
   handlers.set(handler.type, handler as EffectHandler)
 }
 
+/**
+ * Retrieves the registered handler for an effect type.
+ * @param type - The effect type identifier
+ * @returns The effect handler, or undefined if not registered
+ */
 export function getEffectHandler(type: string): EffectHandler | undefined {
   return handlers.get(type)
 }
@@ -187,4 +212,22 @@ registerEffect({
     return { style: raw || undefined }
   },
   serialize: (p) => (p as { style?: string }).style ?? ''
+})
+
+registerEffect({
+  type: 'image',
+  parse: () => null,
+  serialize: () => ''
+})
+
+registerEffect({
+  type: 'vobsub',
+  parse: () => null,
+  serialize: () => ''
+})
+
+registerEffect({
+  type: 'pgs',
+  parse: () => null,
+  serialize: () => ''
 })

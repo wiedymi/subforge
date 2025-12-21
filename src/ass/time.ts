@@ -1,3 +1,20 @@
+/**
+ * Parses an ASS timestamp string into milliseconds.
+ *
+ * ASS timestamps use the format H:MM:SS.cc (centiseconds) or H:MM:SS.ccc (milliseconds),
+ * where hours can be any number of digits. This function uses optimized character code
+ * arithmetic for maximum performance.
+ *
+ * @param s - The timestamp string to parse (e.g., "0:01:23.45" or "1:23:45.678")
+ * @returns The time in milliseconds
+ * @throws {Error} If the timestamp format is invalid
+ *
+ * @example
+ * ```ts
+ * parseTime("0:01:23.45") // Returns 83450
+ * parseTime("1:23:45.678") // Returns 5025678
+ * ```
+ */
 export function parseTime(s: string): number {
   // Fast path: parse H:MM:SS.cc or H:MM:SS.ccc using charCode math
   // Format: H:MM:SS.cc (centiseconds) or H:MM:SS.mmm (milliseconds)
@@ -37,6 +54,21 @@ export function parseTime(s: string): number {
   return h * 3600000 + m * 60000 + ss * 1000 + ms
 }
 
+/**
+ * Formats a time in milliseconds to an ASS timestamp string.
+ *
+ * Converts milliseconds to the ASS timestamp format H:MM:SS.cc (centiseconds).
+ * Hours are not zero-padded, while minutes, seconds, and centiseconds are.
+ *
+ * @param ms - The time in milliseconds
+ * @returns The formatted timestamp string (e.g., "0:01:23.45")
+ *
+ * @example
+ * ```ts
+ * formatTime(83450) // Returns "0:01:23.45"
+ * formatTime(5025678) // Returns "1:23:45.67"
+ * ```
+ */
 export function formatTime(ms: number): string {
   const h = Math.floor(ms / 3600000)
   const m = Math.floor((ms % 3600000) / 60000)

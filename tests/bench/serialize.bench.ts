@@ -1,9 +1,12 @@
 import { bench, run, group } from 'mitata'
-import { toASS } from '../../src/ass/index.ts'
+import { parseASS, toASS } from '../../src/ass/index.ts'
 import { toSRT } from '../../src/srt/index.ts'
 import { toVTT } from '../../src/vtt/index.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 import type { SubtitleDocument } from '../../src/core/types.ts'
+
+const railgunOP = parseASS(await Bun.file('./tests/fixtures/ass/railgun_op.ass').text())
+const aot3p2OP = parseASS(await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text())
 
 function generateDocument(count: number): SubtitleDocument {
   const doc = createDocument()
@@ -20,9 +23,11 @@ const doc10k = generateDocument(10000)
 const doc100k = generateDocument(100000)
 
 group('ASS serialization', () => {
-  bench('1k events', () => toASS(doc1k))
-  bench('10k events', () => toASS(doc10k))
-  bench('100k events', () => toASS(doc100k))
+  bench('real: railgun_op (5.7k events)', () => toASS(railgunOP))
+  bench('real: aot3p2_op (49k events)', () => toASS(aot3p2OP))
+  bench('synthetic: 1k events', () => toASS(doc1k))
+  bench('synthetic: 10k events', () => toASS(doc10k))
+  bench('synthetic: 100k events', () => toASS(doc100k))
 })
 
 group('SRT serialization', () => {

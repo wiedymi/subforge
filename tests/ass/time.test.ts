@@ -45,3 +45,8 @@ test('roundtrip preserves value', () => {
   const original = 12345670
   expect(parseTime(formatTime(original))).toBe(original)
 })
+
+// Coverage: 3-digit milliseconds (line 34)
+test('parseTime handles 3-digit milliseconds', () => {
+  expect(parseTime('0:00:01.123')).toBe(1123)
+})

@@ -1,0 +1,20 @@
+<SAMI>
+<HEAD>
+<TITLE>Test Subtitle</TITLE>
+<STYLE TYPE="text/css">
+<!--
+P { margin-left: 8pt; margin-right: 8pt; margin-bottom: 2pt; margin-top: 2pt;
+    text-align: center; font-size: 20pt; font-family: Arial; font-weight: normal;
+    color: white; }
+.ENCC { Name: English; lang: en-US; }
+.KRCC { Name: Korean; lang: ko-KR; color: yellow; }
+-->
+</STYLE>
+</HEAD>
+<BODY>
+<SYNC Start=1000><P Class=ENCC>Hello</P>
+<SYNC Start=3000><P Class=ENCC>&nbsp;</P>
+<SYNC Start=5000><P Class=ENCC>World</P>
+<SYNC Start=8000><P Class=ENCC>&nbsp;</P>
+</BODY>
+</SAMI>

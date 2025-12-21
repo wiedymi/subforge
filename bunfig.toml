@@ -1,0 +1,3 @@
+[test]
+# Timeout per test (ms)
+timeout = 5000

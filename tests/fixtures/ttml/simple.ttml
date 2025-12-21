@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling">
+  <head>
+    <styling>
+      <style xml:id="s1" tts:fontFamily="Arial" tts:fontSize="20px" tts:color="#ffffff"/>
+      <style xml:id="s2" tts:fontFamily="Arial" tts:fontSize="24px" tts:color="#ffff00" tts:fontWeight="bold"/>
+    </styling>
+    <layout>
+      <region xml:id="r1" tts:origin="10% 80%" tts:extent="80% 20%"/>
+    </layout>
+  </head>
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:05.000" style="s1" region="r1">First subtitle</p>
+      <p begin="00:00:06.000" end="00:00:10.000" style="s1">Second <span tts:fontStyle="italic">subtitle</span></p>
+      <p begin="00:00:11.500" end="00:00:15.750" style="s2">Third subtitle with bold yellow text</p>
+    </div>
+  </body>
+</tt>

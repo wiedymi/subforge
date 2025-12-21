@@ -11,7 +11,9 @@ import {
   getKaraoke,
   getKaraokeOffset,
   scaleKaraoke,
+  retimeKaraoke,
   explodeKaraoke,
+  getActiveKaraokeSegment,
   getKaraokeProgress
 } from '../../src/core/ops.ts'
 import { createEvent, createKaraokeEvent } from '../../src/core/document.ts'
@@ -177,4 +179,71 @@ test('getKaraokeProgress returns 0.5 at midpoint', () => {
     { text: 'b', duration: 500 }
   ])
   expect(getKaraokeProgress(event.segments, 500)).toBe(0.5)
+})
+
+// Coverage: retimeKaraoke (lines 107-115)
+test('retimeKaraoke updates durations', () => {
+  const event = createKaraokeEvent(0, 1000, [
+    { text: 'a', duration: 500 },
+    { text: 'b', duration: 500 }
+  ])
+  retimeKaraoke(event.segments, [200, 800])
+  expect(getKaraoke(event.segments[0]!)!.params.duration).toBe(200)
+  expect(getKaraoke(event.segments[1]!)!.params.duration).toBe(800)
+})
+
+test('retimeKaraoke with fewer durations than segments', () => {
+  const event = createKaraokeEvent(0, 1000, [
+    { text: 'a', duration: 500 },
+    { text: 'b', duration: 300 },
+    { text: 'c', duration: 200 }
+  ])
+  retimeKaraoke(event.segments, [100, 200])
+  expect(getKaraoke(event.segments[0]!)!.params.duration).toBe(100)
+  expect(getKaraoke(event.segments[1]!)!.params.duration).toBe(200)
+  expect(getKaraoke(event.segments[2]!)!.params.duration).toBe(200) // unchanged
+})
+
+// Coverage: getActiveKaraokeSegment (lines 142-156)
+test('getActiveKaraokeSegment returns active segment', () => {
+  const event = createKaraokeEvent(0, 1000, [
+    { text: 'a', duration: 500 },
+    { text: 'b', duration: 500 }
+  ])
+  const active = getActiveKaraokeSegment(event.segments, 250)
+  expect(active).not.toBeNull()
+  expect(active!.text).toBe('a')
+})
+
+test('getActiveKaraokeSegment returns second segment', () => {
+  const event = createKaraokeEvent(0, 1000, [
+    { text: 'a', duration: 500 },
+    { text: 'b', duration: 500 }
+  ])
+  const active = getActiveKaraokeSegment(event.segments, 750)
+  expect(active).not.toBeNull()
+  expect(active!.text).toBe('b')
+})
+
+test('getActiveKaraokeSegment returns null past end', () => {
+  const event = createKaraokeEvent(0, 1000, [
+    { text: 'a', duration: 500 },
+    { text: 'b', duration: 500 }
+  ])
+  const active = getActiveKaraokeSegment(event.segments, 1500)
+  expect(active).toBeNull()
+})
+
+// Coverage: explodeKaraoke with no karaoke (line 121)
+test('explodeKaraoke returns original event when no karaoke', () => {
+  const event = createEvent(0, 1000, 'Hello')
+  const exploded = explodeKaraoke(event)
+  expect(exploded).toHaveLength(1)
+  expect(exploded[0]).toBe(event)
+})
+
+// Coverage: getKaraokeProgress with no durations (line 167)
+test('getKaraokeProgress returns 0 when no karaoke', () => {
+  const segments = [{ text: 'Hello', style: null, effects: [] }]
+  expect(getKaraokeProgress(segments, 500)).toBe(0)
 })

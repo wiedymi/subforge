@@ -79,3 +79,16 @@ test('toVTT serializes regions', () => {
   expect(output).toContain('REGION')
   expect(output).toContain('id:region1')
 })
+
+// Coverage: region with scroll (line 19-20)
+test('toVTT serializes regions with scroll', () => {
+  const doc = createDocument()
+  doc.regions = [
+    { id: 'region1', width: '40%', lines: 3, regionAnchor: '0%,100%', viewportAnchor: '0%,100%', scroll: 'up' }
+  ]
+  doc.events.push(createEvent(1000, 5000, 'Hello'))
+
+  const output = toVTT(doc)
+
+  expect(output).toContain('scroll:up')
+})

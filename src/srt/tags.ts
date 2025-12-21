@@ -1,5 +1,8 @@
 import type { TextSegment, InlineStyle, Effect } from '../core/types.ts'
 
+/**
+ * Internal state for tracking nested formatting tags during parsing.
+ */
 interface ParseState {
   bold: boolean
   italic: boolean
@@ -8,6 +11,27 @@ interface ParseState {
   color?: number
 }
 
+/**
+ * Parses SRT formatting tags into structured text segments.
+ *
+ * Supports HTML-like tags: <b>, <i>, <u>, <s>, and <font color="#RRGGBB">.
+ * Tags can be nested and are tracked using a state stack. Colors are
+ * converted from RGB hex to BGR integer format.
+ *
+ * @param raw - Raw text containing SRT formatting tags
+ * @returns Array of text segments with associated styles
+ *
+ * @example
+ * ```ts
+ * const segments = parseTags('<b>Bold</b> and <i>italic</i>');
+ * // Returns:
+ * // [
+ * //   { text: 'Bold', style: { bold: true }, effects: [] },
+ * //   { text: ' and ', style: null, effects: [] },
+ * //   { text: 'italic', style: { italic: true }, effects: [] }
+ * // ]
+ * ```
+ */
 export function parseTags(raw: string): TextSegment[] {
   const segments: TextSegment[] = []
   const stateStack: ParseState[] = [{ bold: false, italic: false, underline: false, strikeout: false }]
@@ -107,6 +131,26 @@ function buildStyle(state: ParseState): InlineStyle | null {
   return style
 }
 
+/**
+ * Serializes text segments into SRT-formatted text with tags.
+ *
+ * Converts structured text segments back into HTML-like tags for SRT format.
+ * Handles bold, italic, underline, strikeout, and color formatting.
+ * Colors are converted from BGR integer to RGB hex format.
+ *
+ * @param segments - Array of text segments with styling information
+ * @returns SRT-formatted text with HTML-like tags
+ *
+ * @example
+ * ```ts
+ * const segments = [
+ *   { text: 'Bold', style: { bold: true }, effects: [] },
+ *   { text: ' normal', style: null, effects: [] }
+ * ];
+ * const text = serializeTags(segments);
+ * // Returns: "<b>Bold</b> normal"
+ * ```
+ */
 export function serializeTags(segments: TextSegment[]): string {
   let result = ''
 
@@ -147,6 +191,21 @@ export function serializeTags(segments: TextSegment[]): string {
   return result
 }
 
+/**
+ * Removes all SRT formatting tags from text.
+ *
+ * Strips out all HTML-like tags, leaving only plain text.
+ * Useful for extracting clean text content.
+ *
+ * @param raw - Text containing SRT formatting tags
+ * @returns Plain text with all tags removed
+ *
+ * @example
+ * ```ts
+ * const plain = stripTags('<b>Bold</b> and <i>italic</i>');
+ * // Returns: "Bold and italic"
+ * ```
+ */
 export function stripTags(raw: string): string {
   return raw.replace(/<[^>]*>/g, '')
 }

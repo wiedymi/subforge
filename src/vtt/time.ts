@@ -1,3 +1,23 @@
+/**
+ * Parses a WebVTT timestamp string into milliseconds.
+ *
+ * WebVTT timestamps use dot (.) separator before milliseconds and support
+ * two formats: HH:MM:SS.mmm (12 chars) or MM:SS.mmm (9 chars).
+ * Uses optimized character code arithmetic for performance.
+ *
+ * @param s - Timestamp string in WebVTT format
+ * @returns Time in milliseconds
+ * @throws {Error} If the timestamp doesn't match HH:MM:SS.mmm or MM:SS.mmm format
+ *
+ * @example
+ * ```ts
+ * const ms1 = parseTime('01:23:45.678');
+ * console.log(ms1); // 5025678
+ *
+ * const ms2 = parseTime('23:45.678');
+ * console.log(ms2); // 1425678
+ * ```
+ */
 export function parseTime(s: string): number {
   const len = s.length
   // HH:MM:SS.mmm (12 chars) or MM:SS.mmm (9 chars)
@@ -19,6 +39,22 @@ export function parseTime(s: string): number {
   throw new Error(`Invalid VTT timestamp: ${s}`)
 }
 
+/**
+ * Formats milliseconds into a WebVTT timestamp string.
+ *
+ * Generates timestamps in WebVTT format: HH:MM:SS.mmm with zero-padding
+ * and dot separator before milliseconds. Always uses the full HH:MM:SS.mmm
+ * format even when hours are zero.
+ *
+ * @param ms - Time in milliseconds
+ * @returns Formatted timestamp string
+ *
+ * @example
+ * ```ts
+ * const timestamp = formatTime(5025678);
+ * console.log(timestamp); // "01:23:45.678"
+ * ```
+ */
 export function formatTime(ms: number): string {
   const h = Math.floor(ms / 3600000)
   const m = Math.floor((ms % 3600000) / 60000)

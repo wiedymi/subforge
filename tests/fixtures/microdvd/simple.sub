@@ -1,0 +1,8 @@
+{0}{100}First subtitle
+{150}{300}Second subtitle|with line break
+{350}{500}{y:i}Italic text
+{600}{800}{C:$ff0000}Blue colored text
+{900}{1100}{y:b}Bold text
+{1200}{1400}{y:bi}Bold and italic
+{1500}{1700}{f:Arial}Custom font
+{1800}{2000}{s:24}Large text

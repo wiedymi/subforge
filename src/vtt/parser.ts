@@ -63,16 +63,6 @@ class VTTParser {
     return { document: this.doc, errors: this.errors, warnings: [] }
   }
 
-  private peekLine(): string {
-    let nlPos = this.src.indexOf('\n', this.pos)
-    if (nlPos === -1) nlPos = this.len
-
-    let end = nlPos
-    if (end > this.pos && this.src.charCodeAt(end - 1) === 13) end--
-
-    return this.src.substring(this.pos, end).trim()
-  }
-
   private readLine(): string {
     const start = this.pos
     let nlPos = this.src.indexOf('\n', this.pos)
@@ -315,12 +305,59 @@ class VTTParser {
   }
 }
 
+/**
+ * Parses a WebVTT subtitle file into a SubtitleDocument.
+ *
+ * WebVTT (Web Video Text Tracks) is a modern subtitle format designed for HTML5.
+ * Supports cues with timestamps, REGION blocks for positioning, STYLE blocks
+ * for CSS styling, and NOTE blocks for comments. Timestamps use dot (.) separator
+ * for milliseconds and support both HH:MM:SS.mmm and MM:SS.mmm formats.
+ *
+ * @param input - The WebVTT file content as a string
+ * @returns A parsed subtitle document with regions if defined
+ * @throws {SubforgeError} If the input is missing the WEBVTT header or contains invalid syntax
+ *
+ * @example
+ * ```ts
+ * const vtt = `WEBVTT
+ *
+ * 00:00:01.000 --> 00:00:03.000
+ * Hello, world!
+ *
+ * 00:00:04.000 --> 00:00:06.000
+ * <b>Bold text</b>`;
+ *
+ * const doc = parseVTT(vtt);
+ * console.log(doc.events.length); // 2
+ * ```
+ */
 export function parseVTT(input: string): SubtitleDocument {
   const parser = new VTTParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
 }
 
+/**
+ * Parses a WebVTT subtitle file with detailed error reporting.
+ *
+ * Unlike parseVTT, this function returns a ParseResult object containing
+ * the document, errors, and warnings. Useful when you need to handle
+ * malformed files gracefully.
+ *
+ * @param input - The WebVTT file content as a string
+ * @param opts - Parsing options controlling error handling and strictness
+ * @returns A parse result containing the document and any errors/warnings
+ *
+ * @example
+ * ```ts
+ * const result = parseVTTResult(vtt, { onError: 'collect' });
+ * if (result.errors.length > 0) {
+ *   console.log('Found errors:', result.errors);
+ * }
+ * console.log(result.document.events);
+ * console.log(result.document.regions);
+ * ```
+ */
 export function parseVTTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const parser = new VTTParser(input, opts)
   return parser.parse()

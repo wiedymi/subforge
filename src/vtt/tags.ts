@@ -1,11 +1,36 @@
 import type { TextSegment, InlineStyle, Effect } from '../core/types.ts'
 
+/**
+ * Internal state for tracking nested formatting tags during parsing.
+ */
 interface ParseState {
   bold: boolean
   italic: boolean
   underline: boolean
 }
 
+/**
+ * Parses WebVTT formatting tags into structured text segments.
+ *
+ * Supports WebVTT-specific tags: <b>, <i>, <u>, <v> (voice), <c> (class),
+ * and <lang>. Tags can be nested and are tracked using a state stack.
+ * Voice and class tags are parsed but their attributes are not stored in
+ * the current implementation.
+ *
+ * @param raw - Raw text containing WebVTT formatting tags
+ * @returns Array of text segments with associated styles
+ *
+ * @example
+ * ```ts
+ * const segments = parseTags('<b>Bold</b> and <i>italic</i>');
+ * // Returns:
+ * // [
+ * //   { text: 'Bold', style: { bold: true }, effects: [] },
+ * //   { text: ' and ', style: null, effects: [] },
+ * //   { text: 'italic', style: { italic: true }, effects: [] }
+ * // ]
+ * ```
+ */
 export function parseTags(raw: string): TextSegment[] {
   const segments: TextSegment[] = []
   const stateStack: ParseState[] = [{ bold: false, italic: false, underline: false }]
@@ -98,6 +123,27 @@ function buildStyle(state: ParseState): InlineStyle | null {
   return style
 }
 
+/**
+ * Serializes text segments into WebVTT-formatted text with tags.
+ *
+ * Converts structured text segments back into WebVTT tags.
+ * Currently only handles bold, italic, and underline formatting.
+ * Other WebVTT-specific tags like <v>, <c>, and <lang> are not
+ * generated in serialization.
+ *
+ * @param segments - Array of text segments with styling information
+ * @returns WebVTT-formatted text with tags
+ *
+ * @example
+ * ```ts
+ * const segments = [
+ *   { text: 'Bold', style: { bold: true }, effects: [] },
+ *   { text: ' normal', style: null, effects: [] }
+ * ];
+ * const text = serializeTags(segments);
+ * // Returns: "<b>Bold</b> normal"
+ * ```
+ */
 export function serializeTags(segments: TextSegment[]): string {
   let result = ''
 
@@ -125,6 +171,21 @@ export function serializeTags(segments: TextSegment[]): string {
   return result
 }
 
+/**
+ * Removes all WebVTT formatting tags from text.
+ *
+ * Strips out all WebVTT tags, leaving only plain text.
+ * Useful for extracting clean text content.
+ *
+ * @param raw - Text containing WebVTT formatting tags
+ * @returns Plain text with all tags removed
+ *
+ * @example
+ * ```ts
+ * const plain = stripTags('<b>Bold</b> and <v Speaker>voiced</v>');
+ * // Returns: "Bold and voiced"
+ * ```
+ */
 export function stripTags(raw: string): string {
   return raw.replace(/<[^>]*>/g, '')
 }

@@ -1,0 +1,9 @@
+$CaptionMAX 2.0
+$VideoStandard PAL
+$CharacterSet ISO_8859_1
+
+00:00:01:00	00:00:05:00
+First subtitle text
+
+00:00:06:00	00:00:10:00
+Second subtitle text

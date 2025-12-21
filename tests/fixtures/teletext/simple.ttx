@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simple Teletext XML representation for testing -->
+<!-- This is a simplified format since raw binary Teletext is complex -->
+<teletext>
+  <page number="888" subpage="0">
+    <row number="1">
+      <![CDATA[Hello World]]>
+    </row>
+    <row number="2">
+      <![CDATA[This is a subtitle]]>
+    </row>
+  </page>
+  <page number="888" subpage="1">
+    <row number="1">
+      <![CDATA[Second subtitle]]>
+    </row>
+    <row number="2">
+      <![CDATA[On page 888]]>
+    </row>
+  </page>
+</teletext>

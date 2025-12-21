@@ -3,6 +3,26 @@ import { formatTime } from './time.ts'
 import { formatColor } from './color.ts'
 import { serializeTags } from './tags.ts'
 
+/**
+ * Serializes a SubtitleDocument into ASS (Advanced SubStation Alpha) format.
+ *
+ * This function converts a subtitle document back into the ASS text format,
+ * including all sections: Script Info, V4+ Styles, Events, Fonts, and Graphics.
+ * The output is compatible with subtitle renderers and editors that support ASS.
+ *
+ * @param doc - The subtitle document to serialize
+ * @returns The complete ASS file content as a string
+ *
+ * @example
+ * ```ts
+ * const doc = parseASS(assContent)
+ * // Modify the document...
+ * doc.events[0].text = "Modified text"
+ * // Serialize back to ASS
+ * const newAssContent = toASS(doc)
+ * await Bun.write('output.ass', newAssContent)
+ * ```
+ */
 export function toASS(doc: SubtitleDocument): string {
   let result = '[Script Info]\n'
   if (doc.info.title) result += 'Title: ' + doc.info.title + '\n'

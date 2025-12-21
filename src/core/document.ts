@@ -2,14 +2,31 @@ import type { SubtitleDocument, SubtitleEvent, Style, TextSegment, InlineStyle }
 
 let idCounter = 0
 
-// Shared empty array for events without segments (avoids allocation per event)
-// Cast to mutable to satisfy type checker, but treat as immutable
+/**
+ * Shared empty array for events without segments.
+ * Avoids allocation per event.
+ */
 export const EMPTY_SEGMENTS: TextSegment[] = []
 
+/**
+ * Generates a unique sequential ID for events.
+ * @returns New unique ID
+ */
 export function generateId(): number {
   return ++idCounter
 }
 
+/**
+ * Creates a new subtitle document with default values.
+ * @param init - Optional partial document to override defaults
+ * @returns New subtitle document
+ * @example
+ * ```ts
+ * const doc = createDocument({
+ *   info: { title: 'My Subtitles' }
+ * })
+ * ```
+ */
 export function createDocument(init?: Partial<SubtitleDocument>): SubtitleDocument {
   return {
     info: {
@@ -29,6 +46,15 @@ export function createDocument(init?: Partial<SubtitleDocument>): SubtitleDocume
   }
 }
 
+/**
+ * Creates a default style with standard settings.
+ * @returns Default style object
+ * @example
+ * ```ts
+ * const style = createDefaultStyle()
+ * style.fontSize = 60 // Customize as needed
+ * ```
+ */
 export function createDefaultStyle(): Style {
   return {
     name: 'Default',
@@ -57,6 +83,21 @@ export function createDefaultStyle(): Style {
   }
 }
 
+/**
+ * Creates a new subtitle event with timing and text.
+ * @param start - Start time in milliseconds
+ * @param end - End time in milliseconds
+ * @param text - Subtitle text content
+ * @param opts - Optional properties to override defaults
+ * @returns New subtitle event
+ * @example
+ * ```ts
+ * const event = createEvent(1000, 3000, 'Hello, world!', {
+ *   style: 'Title',
+ *   layer: 1
+ * })
+ * ```
+ */
 export function createEvent(
   start: number,
   end: number,
@@ -81,6 +122,22 @@ export function createEvent(
   }
 }
 
+/**
+ * Creates a karaoke event with syllable timing.
+ * @param start - Event start time in milliseconds
+ * @param end - Event end time in milliseconds
+ * @param syllables - Array of syllables with durations and optional styles
+ * @param opts - Optional properties to override defaults
+ * @returns New karaoke event with timed segments
+ * @example
+ * ```ts
+ * const karaoke = createKaraokeEvent(0, 3000, [
+ *   { text: 'Hel', duration: 500 },
+ *   { text: 'lo ', duration: 300 },
+ *   { text: 'world', duration: 700 }
+ * ])
+ * ```
+ */
 export function createKaraokeEvent(
   start: number,
   end: number,
@@ -111,6 +168,16 @@ export function createKaraokeEvent(
   }
 }
 
+/**
+ * Creates a deep clone of a subtitle document.
+ * @param doc - Document to clone
+ * @returns Cloned document
+ * @example
+ * ```ts
+ * const backup = cloneDocument(originalDoc)
+ * // Modify backup without affecting original
+ * ```
+ */
 export function cloneDocument(doc: SubtitleDocument): SubtitleDocument {
   return {
     info: { ...doc.info },
@@ -123,6 +190,16 @@ export function cloneDocument(doc: SubtitleDocument): SubtitleDocument {
   }
 }
 
+/**
+ * Creates a deep clone of a subtitle event with a new ID.
+ * @param event - Event to clone
+ * @returns Cloned event with new unique ID
+ * @example
+ * ```ts
+ * const duplicate = cloneEvent(originalEvent)
+ * duplicate.start += 5000 // Offset the duplicate
+ * ```
+ */
 export function cloneEvent(event: SubtitleEvent): SubtitleEvent {
   return {
     ...event,

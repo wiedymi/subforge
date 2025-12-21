@@ -60,20 +60,6 @@ class SRTParser {
     }
   }
 
-  private readLine(): string {
-    const start = this.pos
-    let nlPos = this.src.indexOf('\n', this.pos)
-    if (nlPos === -1) nlPos = this.len
-
-    let end = nlPos
-    if (end > start && this.src.charCodeAt(end - 1) === 13) end--
-
-    this.pos = nlPos < this.len ? nlPos + 1 : this.len
-    this.lineNum++
-
-    return this.src.substring(start, end)
-  }
-
   private isDigit(c: number): boolean {
     return c >= 48 && c <= 57
   }
@@ -206,12 +192,56 @@ class SRTParser {
   }
 }
 
+/**
+ * Parses an SRT subtitle file into a SubtitleDocument.
+ *
+ * SRT (SubRip Text) is a simple subtitle format with sequential numbering,
+ * timestamps, and plain text with basic formatting tags (<b>, <i>, <u>, <s>, <font>).
+ *
+ * @param input - The SRT file content as a string
+ * @returns A parsed subtitle document
+ * @throws {SubforgeError} If the input contains invalid syntax or timestamps
+ *
+ * @example
+ * ```ts
+ * const srt = `1
+ * 00:00:01,000 --> 00:00:03,000
+ * Hello, world!
+ *
+ * 2
+ * 00:00:04,000 --> 00:00:06,000
+ * <b>Bold text</b>`;
+ *
+ * const doc = parseSRT(srt);
+ * console.log(doc.events.length); // 2
+ * ```
+ */
 export function parseSRT(input: string): SubtitleDocument {
   const parser = new SRTParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
 }
 
+/**
+ * Parses an SRT subtitle file with detailed error reporting.
+ *
+ * Unlike parseSRT, this function returns a ParseResult object containing
+ * the document, errors, and warnings. Useful when you need to handle
+ * malformed files gracefully.
+ *
+ * @param input - The SRT file content as a string
+ * @param opts - Parsing options controlling error handling and strictness
+ * @returns A parse result containing the document and any errors/warnings
+ *
+ * @example
+ * ```ts
+ * const result = parseSRTResult(srt, { onError: 'collect' });
+ * if (result.errors.length > 0) {
+ *   console.log('Found errors:', result.errors);
+ * }
+ * console.log(result.document.events);
+ * ```
+ */
 export function parseSRTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const parser = new SRTParser(input, opts)
   return parser.parse()

@@ -1,3 +1,28 @@
+/**
+ * Core module for subtitle processing.
+ *
+ * Provides type definitions, document manipulation, format conversion,
+ * and utility functions for working with subtitle files.
+ *
+ * @module core
+ *
+ * @example
+ * ```ts
+ * import { createDocument, createEvent, convert } from '@subforge/core'
+ *
+ * // Create a new subtitle document
+ * const doc = createDocument()
+ *
+ * // Add events
+ * doc.events.push(createEvent(0, 3000, 'Hello, world!'))
+ * doc.events.push(createEvent(3000, 6000, 'Welcome to Subforge'))
+ *
+ * // Convert to SRT
+ * const { output } = convert(doc, 'srt')
+ * console.log(output)
+ * ```
+ */
+
 // Types
 export type {
   SubtitleDocument,
@@ -38,7 +63,10 @@ export type {
   ParseWarning,
   ErrorCode,
 } from './errors.ts'
-export { SubforgeError, detectEncoding } from './errors.ts'
+export { SubforgeError } from './errors.ts'
+
+// Encoding
+export { detectEncoding, decode, encode } from './encoding.ts'
 
 // Color
 export { rgba, fromRGBA, withAlpha, blend, lighten, darken, Colors } from './color.ts'

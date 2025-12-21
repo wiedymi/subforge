@@ -1,3 +1,20 @@
+/**
+ * Parses an SRT timestamp string into milliseconds.
+ *
+ * SRT timestamps use the format HH:MM:SS,mmm where the comma separates
+ * seconds from milliseconds. Uses optimized character code arithmetic
+ * for performance.
+ *
+ * @param s - Timestamp string in SRT format (must be exactly 12 characters)
+ * @returns Time in milliseconds
+ * @throws {Error} If the timestamp is not exactly 12 characters
+ *
+ * @example
+ * ```ts
+ * const ms = parseTime('01:23:45,678');
+ * console.log(ms); // 5025678
+ * ```
+ */
 export function parseTime(s: string): number {
   // Fast path: HH:MM:SS,mmm (exactly 12 chars)
   // Use direct charCode math instead of parseInt/slice
@@ -11,6 +28,21 @@ export function parseTime(s: string): number {
   return h * 3600000 + m * 60000 + ss * 1000 + ms
 }
 
+/**
+ * Formats milliseconds into an SRT timestamp string.
+ *
+ * Generates timestamps in SRT format: HH:MM:SS,mmm with zero-padding
+ * and comma separator before milliseconds.
+ *
+ * @param ms - Time in milliseconds
+ * @returns Formatted timestamp string
+ *
+ * @example
+ * ```ts
+ * const timestamp = formatTime(5025678);
+ * console.log(timestamp); // "01:23:45,678"
+ * ```
+ */
 export function formatTime(ms: number): string {
   const h = Math.floor(ms / 3600000)
   const m = Math.floor((ms % 3600000) / 60000)

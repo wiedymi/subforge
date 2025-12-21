@@ -99,3 +99,45 @@ test('toASS serializes dirty events with segments', () => {
   expect(output).toContain('\\b1')
   expect(output).toContain('bold')
 })
+
+// Coverage: fonts section (lines 52-64)
+test('toASS serializes fonts section', () => {
+  const doc = createDocument()
+  doc.fonts = [
+    { name: 'TestFont.ttf', data: 'QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODk=' },
+    { name: 'AnotherFont.otf', data: 'QUJD' }
+  ]
+  doc.events.push(createEvent(1000, 5000, 'Hello'))
+
+  const output = toASS(doc)
+
+  expect(output).toContain('[Fonts]')
+  expect(output).toContain('fontname: TestFont.ttf')
+  expect(output).toContain('fontname: AnotherFont.otf')
+})
+
+// Coverage: graphics section (lines 68-80)
+test('toASS serializes graphics section', () => {
+  const doc = createDocument()
+  doc.graphics = [
+    { name: 'image.png', data: 'QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODk=' },
+    { name: 'logo.jpg', data: 'QUJD' }
+  ]
+  doc.events.push(createEvent(1000, 5000, 'Hello'))
+
+  const output = toASS(doc)
+
+  expect(output).toContain('[Graphics]')
+  expect(output).toContain('filename: image.png')
+  expect(output).toContain('filename: logo.jpg')
+})
+
+// Coverage: author field (line 9)
+test('toASS serializes author field', () => {
+  const doc = createDocument({ info: { author: 'Test Author', playResX: 1920, playResY: 1080, scaleBorderAndShadow: true, wrapStyle: 0 } })
+  doc.events.push(createEvent(1000, 5000, 'Hello'))
+
+  const output = toASS(doc)
+
+  expect(output).toContain('Original Author: Test Author')
+})

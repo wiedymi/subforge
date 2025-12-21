@@ -283,6 +283,7 @@ class ASSParser {
           : this.parseDialogueLine(line.substring(start + 9), format)
         if (event) {
           this.doc.events[this.doc.events.length] = event
+          this.eventIndex++
         }
       }
       // Check for Comment: (67=C, 99=c)
@@ -571,12 +572,52 @@ class ASSParser {
   }
 }
 
+/**
+ * Parses an ASS (Advanced SubStation Alpha) subtitle file into a SubtitleDocument.
+ *
+ * This function handles the complete ASS format including script info, styles, events,
+ * and embedded fonts/graphics. It uses optimized parsing with SIMD-accelerated string
+ * operations for maximum performance.
+ *
+ * @param input - The raw ASS file content as a string
+ * @returns A parsed SubtitleDocument containing all subtitle data
+ * @throws {SubforgeError} If parsing fails due to invalid format or syntax errors
+ *
+ * @example
+ * ```ts
+ * const assContent = await Bun.file('subtitle.ass').text()
+ * const doc = parseASS(assContent)
+ * console.log(doc.events.length) // Number of dialogue lines
+ * ```
+ */
 export function parseASS(input: string): SubtitleDocument {
   const parser = new ASSParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
 }
 
+/**
+ * Parses an ASS subtitle file with detailed error handling options.
+ *
+ * This variant returns a ParseResult that includes the document, errors, and warnings,
+ * allowing for fine-grained control over error handling and validation.
+ *
+ * @param input - The raw ASS file content as a string
+ * @param opts - Optional parsing configuration
+ * @param opts.onError - Error handling strategy: 'throw' (default) or 'collect'
+ * @param opts.strict - Enable strict validation mode
+ * @param opts.preserveOrder - Preserve original event ordering
+ * @returns A ParseResult containing the document and any errors/warnings
+ *
+ * @example
+ * ```ts
+ * const result = parseASSResult(assContent, { onError: 'collect' })
+ * if (result.errors.length > 0) {
+ *   console.error('Parsing errors:', result.errors)
+ * }
+ * console.log('Parsed document:', result.document)
+ * ```
+ */
 export function parseASSResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const parser = new ASSParser(input, opts)
   return parser.parse()

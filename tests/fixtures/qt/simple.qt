@@ -1,0 +1,18 @@
+{QTtext} {font:Helvetica}
+{plain} {size:12} {textColor: 65535, 65535, 65535}
+{backColor: 0, 0, 0}
+{justify:center}
+{timeScale:1000}
+{width:320} {height:60}
+{timeStamps:absolute}
+
+[00:00:01.000]
+First subtitle text
+
+[00:00:05.000]
+Second subtitle text
+
+[00:00:10.000]
+Third subtitle text
+
+[00:00:15.000]

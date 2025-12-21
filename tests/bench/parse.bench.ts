@@ -4,6 +4,8 @@ import { parseSRT } from '../../src/srt/index.ts'
 import { parseVTT } from '../../src/vtt/index.ts'
 
 const realASS = await Bun.file('./tests/fixtures/ass/benchmark.ass').text()
+const railgunOP = await Bun.file('./tests/fixtures/ass/railgun_op.ass').text()
+const aot3p2OP = await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text()
 
 function generateASS(count: number): string {
   const lines = [
@@ -102,10 +104,12 @@ const vtt10k = generateVTT(10000)
 const vtt100k = generateVTT(100000)
 
 group('ASS parsing', () => {
-  bench('real file (18k lines)', () => parseASS(realASS))
-  bench('1k events', () => parseASS(ass1k))
-  bench('10k events', () => parseASS(ass10k))
-  bench('100k events', () => parseASS(ass100k))
+  bench('real: benchmark.ass (18k lines)', () => parseASS(realASS))
+  bench('real: railgun_op.ass (5.7k lines)', () => parseASS(railgunOP))
+  bench('real: aot3p2_op.ass (49k lines)', () => parseASS(aot3p2OP))
+  bench('synthetic: 1k events', () => parseASS(ass1k))
+  bench('synthetic: 10k events', () => parseASS(ass10k))
+  bench('synthetic: 100k events', () => parseASS(ass100k))
 })
 
 group('SRT parsing', () => {
