@@ -269,7 +269,7 @@ export function generateCAP(count: number): string {
       const f = Math.floor((ms % 1000) / (1000 / 30))
       return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${f.toString().padStart(2, '0')}`
     }
-    lines[lines.length] = `${formatTime(start)} ${formatTime(end)}`
+    lines[lines.length] = `${formatTime(start)}\t${formatTime(end)}`
     lines[lines.length] = `Line number ${i + 1}`
     lines[lines.length] = ''
   }

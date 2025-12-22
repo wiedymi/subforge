@@ -342,6 +342,12 @@ export function decodeCEA608(b1: number, b2: number): CEA608Command | null {
   return null
 }
 
+// Reverse lookup map: character -> CEA-608 code (built once)
+const CHAR_TO_CODE: Map<string, number> = new Map()
+for (const [codeStr, char] of Object.entries(SPECIAL_CHARS)) {
+  CHAR_TO_CODE.set(char, parseInt(codeStr))
+}
+
 /**
  * Encodes text string into CEA-608 byte pairs.
  *
@@ -363,36 +369,34 @@ export function decodeCEA608(b1: number, b2: number): CEA608Command | null {
  */
 export function encodeCEA608Text(text: string): number[] {
   const bytes: number[] = []
+  const len = text.length
 
-  for (let i = 0; i < text.length; i++) {
+  for (let i = 0; i < len; i++) {
     const char = text[i]!
-    const code = char.charCodeAt(0)
+    const charCode = char.charCodeAt(0)
 
-    // Find in special characters
-    let found = false
-    for (const [byteCode, specialChar] of Object.entries(SPECIAL_CHARS)) {
-      if (specialChar === char) {
-        const code = parseInt(byteCode)
-        bytes.push((code >> 8) & 0xff, code & 0xff)
-        found = true
-        break
-      }
+    // Check special characters via O(1) map lookup
+    const specialCode = CHAR_TO_CODE.get(char)
+    if (specialCode !== undefined) {
+      bytes[bytes.length] = (specialCode >> 8) & 0xff
+      bytes[bytes.length] = specialCode & 0xff
+      continue
     }
 
-    if (!found) {
-      // Basic ASCII
-      if (code >= 0x20 && code <= 0x7f) {
-        // Pair characters when possible
-        if (i + 1 < text.length) {
-          const nextCode = text.charCodeAt(i + 1)
-          if (nextCode >= 0x20 && nextCode <= 0x7f) {
-            bytes.push(code, nextCode)
-            i++
-            continue
-          }
+    // Basic ASCII
+    if (charCode >= 0x20 && charCode <= 0x7f) {
+      // Pair characters when possible
+      if (i + 1 < len) {
+        const nextCode = text.charCodeAt(i + 1)
+        if (nextCode >= 0x20 && nextCode <= 0x7f) {
+          bytes[bytes.length] = charCode
+          bytes[bytes.length] = nextCode
+          i++
+          continue
         }
-        bytes.push(code, 0x00)
       }
+      bytes[bytes.length] = charCode
+      bytes[bytes.length] = 0x00
     }
   }
 

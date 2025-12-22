@@ -1,7 +1,21 @@
 import type { SubtitleDocument } from '../core/types.ts'
-import { encodeCEA608Text, getControlCode } from './cea608.ts'
+import { encodeCEA608Text, CONTROL_CODES } from './cea608.ts'
 
 const FRAME_RATE = 29.97
+
+// Pre-computed hex digits for fast lookup
+const HEX_CHARS = '0123456789abcdef'
+
+// Pre-computed control codes as hex strings
+const RCL_HEX = formatHexPairStatic((CONTROL_CODES.RCL >> 8) & 0xff, CONTROL_CODES.RCL & 0xff)
+const EOC_HEX = formatHexPairStatic((CONTROL_CODES.EOC >> 8) & 0xff, CONTROL_CODES.EOC & 0xff)
+
+/**
+ * Formats two bytes as a 4-digit hexadecimal pair for SCC encoding.
+ */
+function formatHexPairStatic(b1: number, b2: number): string {
+  return HEX_CHARS[(b1 >> 4) & 0xf] + HEX_CHARS[b1 & 0xf] + HEX_CHARS[(b2 >> 4) & 0xf] + HEX_CHARS[b2 & 0xf]
+}
 
 /**
  * Formats milliseconds to SCC drop-frame timecode format (HH:MM:SS;FF).
@@ -23,18 +37,6 @@ function formatTimecode(ms: number): string {
 
   // Use semicolon for drop-frame (29.97 fps)
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')};${String(frames).padStart(2, '0')}`
-}
-
-/**
- * Formats two bytes as a 4-digit hexadecimal pair for SCC encoding.
- *
- * @param b1 - First byte (high byte)
- * @param b2 - Second byte (low byte)
- * @returns 4-character hexadecimal string (lowercase, zero-padded)
- */
-function formatHexPair(b1: number, b2: number): string {
-  const value = (b1 << 8) | b2
-  return value.toString(16).padStart(4, '0')
 }
 
 /**
@@ -60,10 +62,16 @@ function formatHexPair(b1: number, b2: number): string {
  * ```
  */
 export function toSCC(doc: SubtitleDocument): string {
-  let result = 'Scenarist_SCC V1.0\n\n'
-
   const events = doc.events
   const len = events.length
+
+  // Handle empty document
+  if (len === 0) {
+    return 'Scenarist_SCC V1.0\n\n'
+  }
+
+  // Pre-allocate output array (2 lines per event + header)
+  const lines: string[] = ['Scenarist_SCC V1.0', '']
 
   for (let i = 0; i < len; i++) {
     const event = events[i]!
@@ -72,29 +80,26 @@ export function toSCC(doc: SubtitleDocument): string {
     // Start caption at event start time
     const startTime = formatTimecode(event.start)
 
-    // Build CEA-608 commands
-    const hexPairs: string[] = []
-
-    // Resume caption loading (RCL) - duplicate for emphasis per SCC convention
-    const [rcl1, rcl2] = getControlCode('RCL')
-    hexPairs.push(formatHexPair(rcl1, rcl2))
-    hexPairs.push(formatHexPair(rcl1, rcl2))
+    // Build hex pairs string directly
+    let hexData = RCL_HEX + ' ' + RCL_HEX
 
     // Add text characters
     const textBytes = encodeCEA608Text(text)
-    for (let j = 0; j < textBytes.length; j += 2) {
-      const b1 = textBytes[j] ?? 0
+    const bytesLen = textBytes.length
+    for (let j = 0; j < bytesLen; j += 2) {
+      const b1 = textBytes[j]!
       const b2 = textBytes[j + 1] ?? 0
-      hexPairs.push(formatHexPair(b1, b2))
+      hexData += ' ' + HEX_CHARS[(b1 >> 4) & 0xf] + HEX_CHARS[b1 & 0xf] + HEX_CHARS[(b2 >> 4) & 0xf] + HEX_CHARS[b2 & 0xf]
     }
 
-    result += `${startTime}\t${hexPairs.join(' ')}\n\n`
+    lines[lines.length] = startTime + '\t' + hexData
+    lines[lines.length] = ''
 
     // End caption at event end time
     const endTime = formatTimecode(event.end)
-    const [eoc1, eoc2] = getControlCode('EOC')
-    result += `${endTime}\t${formatHexPair(eoc1, eoc2)} ${formatHexPair(eoc1, eoc2)}\n\n`
+    lines[lines.length] = endTime + '\t' + EOC_HEX + ' ' + EOC_HEX
+    lines[lines.length] = ''
   }
 
-  return result
+  return lines.join('\n')
 }
