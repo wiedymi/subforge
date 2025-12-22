@@ -1,111 +1,97 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## Build & Test Commands
 
-## APIs
-
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+```bash
+bun install          # Install dependencies
+bun test             # Run all tests
+bun test tests/ass   # Run tests for a specific format
+bun test --watch     # Run tests in watch mode
+bun run bench        # Run all benchmarks
+bun run tests/bench/parse.bench.ts  # Run a specific benchmark
 ```
 
-## Frontend
+## Architecture
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+Subforge is a high-performance TypeScript subtitle library supporting 20+ formats. ASS (Advanced SubStation Alpha) is the internal superset format - all other formats map to/from it with explicit feature loss tracking.
 
-Server:
+### Core Principle
+- **Core modules** work with numbers only (time in `ms`, colors in `ABGR` format)
+- **Format modules** handle string parsing/serialization (e.g., `"0:00:00.00"` <-> ms)
+- Core never imports format modules. Formats import core.
 
-```ts#index.ts
-import index from "./index.html"
+### Directory Structure
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+```
+src/
+├── core/           # Shared types, operations, utilities
+│   ├── types.ts    # SubtitleDocument, SubtitleEvent, Style, TextSegment, Effect
+│   ├── ops.ts      # Timing shifts, scaling, sorting, filtering, karaoke ops
+│   ├── query.ts    # findByStyle, findByActor, findOverlapping, etc.
+│   ├── convert.ts  # Format conversion with loss reporting
+│   ├── color.ts    # ABGR color utilities (rgba, blend, lighten, darken)
+│   ├── time.ts     # Duration formatting, overlap detection
+│   └── document.ts # createDocument, createEvent, cloneDocument
+├── ass/            # ASS format (full-featured reference)
+├── srt/            # SubRip format
+├── vtt/            # WebVTT format
+├── ttml/           # TTML/DFXP/SMPTE-TT (XML-based)
+├── stl/            # EBU-STL (binary) + Spruce STL (text)
+├── scc/            # Scenarist Closed Caption (CEA-608)
+├── pgs/            # Presentation Graphic Stream (Blu-ray bitmaps)
+├── dvb/            # DVB subtitles (binary bitmaps)
+├── vobsub/         # DVD subtitles (.idx/.sub)
+└── [others]/       # lrc, sbv, cap, sami, microdvd, qt, pac, realtext, teletext
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Key Types
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
+```ts
+interface SubtitleDocument {
+  info: ScriptInfo
+  styles: Map<string, Style>
+  events: SubtitleEvent[]
+  comments: Comment[]
 }
 
-root.render(<Frontend />);
+interface SubtitleEvent {
+  id: string
+  start: number           // milliseconds
+  end: number             // milliseconds
+  text: string            // Raw text with tags
+  segments: TextSegment[] // Parsed (lazy populated)
+  dirty: boolean          // True if segments were modified
+  style: string           // Reference to style name
+  layer: number
+  actor: string
+}
 ```
 
-Then, run index.ts
+### Lossless Roundtrip
 
-```sh
-bun --hot ./index.ts
-```
+Events keep original `text` string. `segments` are lazily parsed only when accessed. When serializing, if `dirty` is false, the original text is used unchanged.
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+### Parser Pattern
+
+Each format follows this pattern:
+- `parse<Format>(input: string): SubtitleDocument` - throws on error
+- `parse<Format>Result(input: string, opts?: ParseOptions): ParseResult` - collects errors
+- `to<Format>(doc: SubtitleDocument, opts?): string` - serialize
+
+### Performance Patterns
+
+When writing performance-critical code:
+- Use `indexOf()` instead of character-by-character scanning
+- Use `substring()` instead of `slice()` (~2x faster)
+- Use `arr[arr.length] = item` instead of `push()`
+- Inline hot-path functions (avoid function call overhead in tight loops)
+- Avoid intermediate substring allocations - search directly in source string
+
+## Bun Environment
+
+- Use `bun <file>` instead of `node <file>`
+- Use `bun test` instead of jest/vitest
+- Use `Bun.file()` for file I/O
+- Bun auto-loads `.env` files

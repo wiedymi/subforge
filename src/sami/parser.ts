@@ -4,15 +4,9 @@ import { SubforgeError } from '../core/errors.ts'
 import { createDocument, generateId, createDefaultStyle } from '../core/document.ts'
 import { parseCSS, styleFromClass, type SAMIClass } from './css.ts'
 
-/**
- * Represents a SAMI synchronization point
- */
 interface SyncPoint {
-  /** Start time in milliseconds */
   start: number
-  /** Subtitle text content */
   text: string
-  /** CSS class name reference */
   className?: string
 }
 
@@ -43,27 +37,31 @@ class SAMIParser {
   }
 
   parse(): ParseResult {
-    // Extract CSS styles from <STYLE> block
+    // Extract CSS styles from <STYLE> block (single pass)
     this.extractStyles()
 
-    // Parse SYNC points
-    const syncPoints = this.extractSyncPoints()
-
-    // Convert sync points to events
-    this.convertToEvents(syncPoints)
+    // Parse SYNC points (single pass, no regex)
+    this.parseSyncPoints()
 
     return { document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private extractStyles(): void {
-    const styleMatch = this.src.match(/<STYLE[^>]*>(.*?)<\/STYLE>/is)
-    if (!styleMatch) return
+    // Find <STYLE> block using indexOf (faster than regex)
+    const styleStart = this.src.indexOf('<STYLE')
+    if (styleStart === -1) return
 
-    const cssBlock = styleMatch[1]!
+    const styleEnd = this.src.indexOf('</STYLE>', styleStart)
+    if (styleEnd === -1) return
+
+    const cssBlock = this.src.substring(styleStart, styleEnd + 8)
     this.classes = parseCSS(cssBlock)
 
     // Create styles from classes
-    for (const [className, classObj] of this.classes) {
+    const classEntries = Array.from(this.classes.entries())
+    const classLen = classEntries.length
+    for (let i = 0; i < classLen; i++) {
+      const [className, classObj] = classEntries[i]
       const baseStyle = createDefaultStyle()
       const styleProps = styleFromClass(classObj, baseStyle)
 
@@ -77,90 +75,155 @@ class SAMIParser {
     }
   }
 
-  private extractSyncPoints(): SyncPoint[] {
-    const syncPoints: SyncPoint[] = []
+  private parseSyncPoints(): void {
+    // Single-pass parsing using indexOf (case-insensitive for SYNC)
+    let searchPos = 0
+    const srcUpper = this.src.toUpperCase()
 
-    // Find all <SYNC Start=ms> tags
-    const syncRegex = /<SYNC\s+Start\s*=\s*(\d+)\s*>/gi
-    let match: RegExpExecArray | null
+    while (searchPos < this.len) {
+      // Find next <SYNC (case insensitive)
+      const syncPos = srcUpper.indexOf('<SYNC', searchPos)
+      if (syncPos === -1) break
 
-    while ((match = syncRegex.exec(this.src)) !== null) {
-      const start = parseInt(match[1]!)
-      const syncPos = match.index + match[0].length
-
-      // Extract text until next <SYNC> or </BODY>
-      const nextSync = this.src.indexOf('<SYNC', syncPos)
-      const bodyEnd = this.src.indexOf('</BODY>', syncPos)
-
-      let endPos = this.len
-      if (nextSync !== -1 && (bodyEnd === -1 || nextSync < bodyEnd)) {
-        endPos = nextSync
-      } else if (bodyEnd !== -1) {
-        endPos = bodyEnd
+      // Find Start= attribute (case insensitive)
+      const startAttrPos = srcUpper.indexOf('START', syncPos)
+      if (startAttrPos === -1 || startAttrPos > syncPos + 50) {
+        searchPos = syncPos + 5
+        continue
       }
 
-      const content = this.src.slice(syncPos, endPos)
+      // Find the = sign
+      const eqPos = this.src.indexOf('=', startAttrPos)
+      if (eqPos === -1 || eqPos > startAttrPos + 10) {
+        searchPos = syncPos + 5
+        continue
+      }
 
-      // Parse <P Class=xxx>text</P>
-      const pMatch = content.match(/<P\s+Class\s*=\s*([A-Za-z0-9_-]+)\s*>(.*?)(?:<\/P>|<P|$)/is)
+      // Parse the number
+      let numStart = eqPos + 1
+      while (numStart < this.len && (this.src.charCodeAt(numStart) === 32 || this.src.charCodeAt(numStart) === 9)) {
+        numStart++
+      }
 
-      if (pMatch) {
-        const className = pMatch[1]!.toUpperCase()
-        const text = pMatch[2]!.trim()
+      let numEnd = numStart
+      while (numEnd < this.len) {
+        const c = this.src.charCodeAt(numEnd)
+        if (c < 48 || c > 57) break // Not a digit
+        numEnd++
+      }
 
-        syncPoints.push({
-          start,
-          text,
-          className
-        })
-      } else {
-        // Try without class
-        const simplePMatch = content.match(/<P[^>]*>(.*?)(?:<\/P>|<P|$)/is)
-        if (simplePMatch) {
-          const text = simplePMatch[1]!.trim()
-          syncPoints.push({
-            start,
-            text
-          })
+      const timeMs = parseInt(this.src.substring(numStart, numEnd), 10)
+
+      // Find end of SYNC tag
+      const syncTagEnd = this.src.indexOf('>', syncPos)
+      if (syncTagEnd === -1) break
+
+      // Find <P or <p tag (case insensitive)
+      let pStart = syncTagEnd + 1
+      while (pStart < this.len && this.src.charCodeAt(pStart) <= 32) pStart++
+
+      const char1 = this.src.charCodeAt(pStart)
+      const char2 = this.src.charCodeAt(pStart + 1)
+      if (char1 !== 60 || (char2 !== 80 && char2 !== 112)) { // <P or <p
+        searchPos = syncTagEnd + 1
+        continue
+      }
+
+      // Find Class attribute (case insensitive)
+      const classPos = srcUpper.indexOf('CLASS', pStart)
+      let className: string | undefined
+      if (classPos !== -1 && classPos < pStart + 100) {
+        const classEq = this.src.indexOf('=', classPos)
+        if (classEq !== -1) {
+          let classStart = classEq + 1
+          while (classStart < this.len && (this.src.charCodeAt(classStart) === 32 || this.src.charCodeAt(classStart) === 9)) {
+            classStart++
+          }
+
+          let classEnd = classStart
+          while (classEnd < this.len) {
+            const c = this.src.charCodeAt(classEnd)
+            if (c === 32 || c === 9 || c === 62 || c === 47) break
+            classEnd++
+          }
+
+          className = this.src.substring(classStart, classEnd).toUpperCase()
         }
       }
-    }
 
-    return syncPoints
-  }
+      // Find end of P opening tag
+      const pTagEnd = this.src.indexOf('>', pStart)
+      if (pTagEnd === -1) break
 
-  private convertToEvents(syncPoints: SyncPoint[]): void {
-    for (let i = 0; i < syncPoints.length; i++) {
-      const sync = syncPoints[i]!
-      const nextSync = syncPoints[i + 1]
+      // Extract text until next <SYNC or </BODY>
+      const nextSync = this.src.indexOf('<SYNC', pTagEnd + 1)
+      const bodyEnd = this.src.indexOf('</BODY>', pTagEnd + 1)
 
-      // Skip if text is &nbsp; (clear marker)
-      if (sync.text === '&nbsp;' || sync.text === '') continue
-
-      const start = sync.start
-      const end = nextSync ? nextSync.start : start + 5000 // Default 5s if no next
-
-      // Parse inline HTML tags
-      const segments = this.parseTags(sync.text)
-      const text = this.stripTags(sync.text)
-
-      const event: SubtitleEvent = {
-        id: generateId(),
-        start,
-        end,
-        layer: 0,
-        style: sync.className || 'Default',
-        actor: '',
-        marginL: 0,
-        marginR: 0,
-        marginV: 0,
-        effect: '',
-        text,
-        segments,
-        dirty: segments.length > 0
+      let contentEnd = this.len
+      if (nextSync !== -1 && (bodyEnd === -1 || nextSync < bodyEnd)) {
+        contentEnd = nextSync
+      } else if (bodyEnd !== -1) {
+        contentEnd = bodyEnd
       }
 
-      this.doc.events.push(event)
+      // Find </P> tag
+      const pClose = this.src.indexOf('</P>', pTagEnd)
+      if (pClose !== -1 && pClose < contentEnd) {
+        contentEnd = pClose
+      }
+
+      const text = this.src.substring(pTagEnd + 1, contentEnd).trim()
+
+      // Skip empty markers
+      if (text !== '&nbsp;' && text !== '') {
+        // Find next SYNC for end time
+        const nextSyncForEnd = srcUpper.indexOf('<SYNC', pTagEnd + 1)
+        let endTime = timeMs + 5000
+
+        if (nextSyncForEnd !== -1) {
+          const nextStartPos = srcUpper.indexOf('START', nextSyncForEnd)
+          if (nextStartPos !== -1) {
+            const nextEq = this.src.indexOf('=', nextStartPos)
+            if (nextEq !== -1) {
+              let nextNumStart = nextEq + 1
+              while (nextNumStart < this.len && (this.src.charCodeAt(nextNumStart) === 32 || this.src.charCodeAt(nextNumStart) === 9)) {
+                nextNumStart++
+              }
+              let nextNumEnd = nextNumStart
+              while (nextNumEnd < this.len) {
+                const c = this.src.charCodeAt(nextNumEnd)
+                if (c < 48 || c > 57) break
+                nextNumEnd++
+              }
+              endTime = parseInt(this.src.substring(nextNumStart, nextNumEnd), 10)
+            }
+          }
+        }
+
+        // Parse inline HTML tags if present
+        const segments = text.includes('<') ? this.parseTags(text) : []
+        const plainText = this.stripTags(text)
+
+        const event: SubtitleEvent = {
+          id: generateId(),
+          start: timeMs,
+          end: endTime,
+          layer: 0,
+          style: className || 'Default',
+          actor: '',
+          marginL: 0,
+          marginR: 0,
+          marginV: 0,
+          effect: '',
+          text: plainText,
+          segments,
+          dirty: segments.length > 0
+        }
+
+        this.doc.events.push(event)
+      }
+
+      searchPos = syncTagEnd + 1
     }
   }
 
@@ -175,9 +238,10 @@ class SAMIParser {
 
     let textStart = 0
     let i = 0
+    const rawLen = raw.length
 
-    while (i < raw.length) {
-      if (raw[i] === '<') {
+    while (i < rawLen) {
+      if (raw.charCodeAt(i) === 60) { // <
         const closeIdx = raw.indexOf('>', i)
         if (closeIdx === -1) {
           i++
@@ -205,7 +269,7 @@ class SAMIParser {
       }
     }
 
-    if (textStart < raw.length) {
+    if (textStart < rawLen) {
       const state = stateStack[stateStack.length - 1]!
       const style = Object.keys(state).length > 0 ? { ...state } : null
       const text = this.decodeHTML(raw.slice(textStart))
@@ -240,34 +304,75 @@ class SAMIParser {
     } else if (tagLower === '/s') {
       if (stateStack.length > 1) stateStack.pop()
     } else if (tagLower.startsWith('font')) {
-      const colorMatch = tag.match(/color\s*=\s*["']?#?([0-9a-f]{6})["']?/i)
-      if (colorMatch) {
-        const hex = colorMatch[1]!
-        const r = parseInt(hex.slice(0, 2), 16)
-        const g = parseInt(hex.slice(2, 4), 16)
-        const b = parseInt(hex.slice(4, 6), 16)
-        const color = ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF)
-        stateStack.push({ ...currentState, primaryColor: color })
-      } else {
-        stateStack.push({ ...currentState })
+      // Use indexOf instead of regex for color
+      const colorIdx = tag.indexOf('color')
+      if (colorIdx !== -1) {
+        const colorStart = tag.indexOf('"', colorIdx)
+        if (colorStart !== -1) {
+          const colorEnd = tag.indexOf('"', colorStart + 1)
+          if (colorEnd !== -1) {
+            const colorValue = tag.substring(colorStart + 1, colorEnd)
+            const color = this.parseColorFast(colorValue)
+            stateStack.push({ ...currentState, primaryColor: color })
+            return
+          }
+        }
       }
+      stateStack.push({ ...currentState })
     } else if (tagLower === '/font') {
       if (stateStack.length > 1) stateStack.pop()
     }
   }
 
+  private parseColorFast(value: string): number {
+    // Fast hex color parsing
+    if (value.charCodeAt(0) === 35) { // #
+      const hex = value.substring(1)
+      const hexLen = hex.length
+      if (hexLen === 6) {
+        const r = parseInt(hex.substring(0, 2), 16)
+        const g = parseInt(hex.substring(2, 4), 16)
+        const b = parseInt(hex.substring(4, 6), 16)
+        return ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF)
+      }
+    }
+    return 0x00FFFFFF
+  }
+
   private decodeHTML(text: string): string {
+    // Fast HTML entity decoding (only common entities)
+    if (!text.includes('&')) return text
+
     return text
       .replace(/&nbsp;/g, ' ')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
-      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
   }
 
   private stripTags(raw: string): string {
-    return this.decodeHTML(raw.replace(/<[^>]*>/g, ''))
+    if (!raw.includes('<')) return this.decodeHTML(raw)
+
+    let result = ''
+    let i = 0
+    const rawLen = raw.length
+
+    while (i < rawLen) {
+      if (raw.charCodeAt(i) === 60) { // <
+        const closeIdx = raw.indexOf('>', i)
+        if (closeIdx === -1) {
+          result += raw.substring(i)
+          break
+        }
+        i = closeIdx + 1
+      } else {
+        result += raw.charAt(i)
+        i++
+      }
+    }
+
+    return this.decodeHTML(result)
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
@@ -278,47 +383,12 @@ class SAMIParser {
   }
 }
 
-/**
- * Parse SAMI (Synchronized Accessible Media Interchange) format subtitle file
- *
- * @param input - SAMI file content as string
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
- *
- * @example
- * ```ts
- * const sami = `<SAMI>
- * <HEAD><STYLE TYPE="text/css"><!--
- * P { font-size: 20pt; color: white; }
- * --></STYLE></HEAD>
- * <BODY>
- * <SYNC Start=1000><P Class=ENCC>Hello world</P>
- * <SYNC Start=3000><P Class=ENCC>&nbsp;</P>
- * </BODY></SAMI>`
- * const doc = parseSAMI(sami)
- * ```
- */
 export function parseSAMI(input: string): SubtitleDocument {
   const parser = new SAMIParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
 }
 
-/**
- * Parse SAMI format with detailed error reporting
- *
- * @param input - SAMI file content as string
- * @param opts - Parsing options
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseSAMIResult(samiContent, { onError: 'collect' })
- * if (result.errors.length > 0) {
- *   console.error('Parsing errors:', result.errors)
- * }
- * ```
- */
 export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const parser = new SAMIParser(input, opts)
   return parser.parse()
