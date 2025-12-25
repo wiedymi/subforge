@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseRealText, parseRealTextResult } from '../../src/realtext/parser.ts'
+import { parseRealText, parseRealTextResult } from '../../src/formats/xml/realtext/parser.ts'
 
 const simpleRealText = `<window duration="00:00:30.00" wordwrap="true" bgcolor="black">
 <time begin="00:00:01.00"/>

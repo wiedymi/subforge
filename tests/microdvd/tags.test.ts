@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTags, serializeTags, stripTags } from '../../src/microdvd/index.ts'
+import { parseTags, serializeTags, stripTags } from '../../src/formats/text/microdvd/index.ts'
 
 test('parseTags - plain text', () => {
   const segments = parseTags('Plain text')

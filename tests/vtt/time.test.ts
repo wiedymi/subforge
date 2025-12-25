@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTime, formatTime } from '../../src/vtt/time.ts'
+import { parseTime, formatTime } from '../../src/formats/text/vtt/time.ts'
 
 test('parseTime parses full VTT timestamp', () => {
   expect(parseTime('00:00:01.500')).toBe(1500)

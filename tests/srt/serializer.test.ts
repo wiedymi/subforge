@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSRT } from '../../src/srt/parser.ts'
-import { toSRT } from '../../src/srt/serializer.ts'
+import { parseSRT } from '../../src/formats/text/srt/parser.ts'
+import { toSRT } from '../../src/formats/text/srt/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 test('toSRT serializes basic document', () => {

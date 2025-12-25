@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseEBUSTL, parseEBUSTLResult } from '../../../src/stl/ebu/parser.ts'
+import { parseEBUSTL, parseEBUSTLResult } from '../../../src/formats/binary/stl/ebu/parser.ts'
 
 describe('EBU-STL Parser', () => {
   test('parse minimal valid EBU-STL file', () => {

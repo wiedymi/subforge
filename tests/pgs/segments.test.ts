@@ -11,7 +11,7 @@ import {
   rgbaToYcbcr,
   buildPalette,
   SegmentType,
-} from '../../src/pgs/segments.ts'
+} from '../../src/formats/binary/pgs/segments.ts'
 
 describe('PGS Segments', () => {
   test('parseSegmentHeader - valid header', () => {

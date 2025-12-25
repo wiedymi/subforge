@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTags, serializeTags, stripTags } from '../../src/ass/tags.ts'
+import { parseTags, serializeTags, stripTags } from '../../src/formats/text/ass/tags.ts'
 
 test('parseTags plain text', () => {
   const segments = parseTags('Hello World')

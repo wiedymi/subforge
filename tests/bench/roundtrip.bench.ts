@@ -14,12 +14,12 @@ import {
 } from './_utils.ts'
 
 // Core formats with full roundtrip support
-import { parseASS, toASS } from '../../src/ass/index.ts'
-import { parseSRT, toSRT } from '../../src/srt/index.ts'
-import { parseVTT, toVTT } from '../../src/vtt/index.ts'
-import { parseTTML, toTTML } from '../../src/ttml/index.ts'
-import { parseSBV, toSBV } from '../../src/sbv/index.ts'
-import { parseLRC, toLRC } from '../../src/lrc/index.ts'
+import { parseASS, toASS } from '../../src/formats/text/ass/index.ts'
+import { parseSRT, toSRT } from '../../src/formats/text/srt/index.ts'
+import { parseVTT, toVTT } from '../../src/formats/text/vtt/index.ts'
+import { parseTTML, toTTML } from '../../src/formats/xml/ttml/index.ts'
+import { parseSBV, toSBV } from '../../src/formats/text/sbv/index.ts'
+import { parseLRC, toLRC } from '../../src/formats/text/lrc/index.ts'
 
 // ============================================================================
 // Load Real Fixtures

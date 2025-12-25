@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseQT, parseQTResult } from '../../src/qt/parser.ts'
+import { parseQT, parseQTResult } from '../../src/formats/xml/qt/parser.ts'
 
 const simpleQT = `{QTtext} {font:Helvetica}
 {plain} {size:12} {textColor: 65535, 65535, 65535}

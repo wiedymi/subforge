@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSSA } from '../../src/ssa/parser.ts'
-import { toSSA } from '../../src/ssa/serializer.ts'
+import { parseSSA } from '../../src/formats/text/ssa/parser.ts'
+import { toSSA } from '../../src/formats/text/ssa/serializer.ts'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 

@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseDVB, toDVB } from '../../src/dvb/index.ts'
+import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 
 test('parseDVB handles fixture file', () => {
   const fixturePath = join(import.meta.dir, '../fixtures/dvb/simple.dvb')

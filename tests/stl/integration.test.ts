@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test'
-import { parseEBUSTL, toEBUSTL } from '../../src/stl/index.ts'
-import { parseSpruceSTL, toSpruceSTL } from '../../src/stl/index.ts'
-import { parseSRT, toSRT } from '../../src/srt/index.ts'
+import { parseEBUSTL, toEBUSTL } from '../../src/formats/binary/stl/index.ts'
+import { parseSpruceSTL, toSpruceSTL } from '../../src/formats/binary/stl/index.ts'
+import { parseSRT, toSRT } from '../../src/formats/text/srt/index.ts'
 
 describe('STL Integration', () => {
   test('convert SRT to EBU-STL and back', () => {

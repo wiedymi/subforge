@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseColor, formatColor, parseAlpha, formatAlpha } from '../../src/ass/color.ts'
+import { parseColor, formatColor, parseAlpha, formatAlpha } from '../../src/formats/text/ass/color.ts'
 
 test('parseColor parses 8-digit color', () => {
   expect(parseColor('&H00FFFFFF&')).toBe(0x00FFFFFF)

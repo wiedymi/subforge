@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTeletext, parseTeletextResult } from '../../src/teletext/index.ts'
+import { parseTeletext, parseTeletextResult } from '../../src/formats/broadcast/teletext/index.ts'
 
 describe('Teletext Parser', () => {
   test('parses empty teletext data', () => {

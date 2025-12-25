@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTime, formatTime, parseDuration } from '../../src/ttml/time.ts'
+import { parseTime, formatTime, parseDuration } from '../../src/formats/xml/ttml/time.ts'
 
 describe('TTML Time Parsing', () => {
   describe('parseTime', () => {

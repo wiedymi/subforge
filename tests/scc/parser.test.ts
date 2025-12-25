@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseSCC, parseSCCResult } from '../../src/scc/parser.ts'
+import { parseSCC, parseSCCResult } from '../../src/formats/broadcast/scc/parser.ts'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 

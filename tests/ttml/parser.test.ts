@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTTML, parseTTMLResult } from '../../src/ttml/parser.ts'
+import { parseTTML, parseTTMLResult } from '../../src/formats/xml/ttml/parser.ts'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 

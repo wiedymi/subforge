@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parsePGS, toPGS } from '../../src/pgs/index.ts'
+import { parsePGS, toPGS } from '../../src/formats/binary/pgs/index.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 import type { ImageEffect, PGSEffect } from '../../src/core/types.ts'
 

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parsePAC, parsePACResult } from '../../src/pac/parser.ts'
+import { parsePAC, parsePACResult } from '../../src/formats/binary/pac/parser.ts'
 
 // Helper to create a simple PAC file in memory
 function createSimplePAC(): Uint8Array {

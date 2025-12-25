@@ -11,8 +11,8 @@ import {
   SIZES,
 } from './_utils.ts'
 
-import { parseSCC, toSCC, decodeCEA608, encodeCEA608Text } from '../../src/scc/index.ts'
-import { parseTeletext, toTeletext } from '../../src/teletext/index.ts'
+import { parseSCC, toSCC, decodeCEA608, encodeCEA608Text } from '../../src/formats/broadcast/scc/index.ts'
+import { parseTeletext, toTeletext } from '../../src/formats/broadcast/teletext/index.ts'
 
 // ============================================================================
 // Load Fixtures

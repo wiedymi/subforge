@@ -12,12 +12,12 @@ import {
 } from './_utils.ts'
 
 // Binary parsers
-import { parseEBUSTL, toEBUSTL } from '../../src/stl/index.ts'
-import { parseSpruceSTL, toSpruceSTL } from '../../src/stl/index.ts'
-import { parsePGS, toPGS } from '../../src/pgs/index.ts'
-import { parseDVB, toDVB } from '../../src/dvb/index.ts'
-import { parseVobSub, toVobSub } from '../../src/vobsub/index.ts'
-import { parsePAC, toPAC } from '../../src/pac/index.ts'
+import { parseEBUSTL, toEBUSTL } from '../../src/formats/binary/stl/index.ts'
+import { parseSpruceSTL, toSpruceSTL } from '../../src/formats/binary/stl/index.ts'
+import { parsePGS, toPGS } from '../../src/formats/binary/pgs/index.ts'
+import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
+import { parseVobSub, toVobSub } from '../../src/formats/binary/vobsub/index.ts'
+import { parsePAC, toPAC } from '../../src/formats/binary/pac/index.ts'
 
 // ============================================================================
 // Load Fixtures

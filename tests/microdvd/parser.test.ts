@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseMicroDVD, parseMicroDVDResult } from '../../src/microdvd/index.ts'
+import { parseMicroDVD, parseMicroDVDResult } from '../../src/formats/text/microdvd/index.ts'
 
 test('parseMicroDVD - basic subtitle', () => {
   const input = '{0}{100}First subtitle'

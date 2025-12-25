@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseVTT, parseVTTResult } from '../../src/vtt/parser.ts'
+import { parseVTT, parseVTTResult } from '../../src/formats/text/vtt/parser.ts'
 
 const simpleVTT = `WEBVTT
 

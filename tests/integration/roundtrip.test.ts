@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
-import { parseASS, toASS } from '../../src/ass/index.ts'
-import { parseSRT, toSRT } from '../../src/srt/index.ts'
-import { parseVTT, toVTT } from '../../src/vtt/index.ts'
+import { parseASS, toASS } from '../../src/formats/text/ass/index.ts'
+import { parseSRT, toSRT } from '../../src/formats/text/srt/index.ts'
+import { parseVTT, toVTT } from '../../src/formats/text/vtt/index.ts'
 import { convert } from '../../src/core/convert.ts'
 import { createDocument, createEvent, createDefaultStyle } from '../../src/core/document.ts'
 

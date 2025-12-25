@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toRealText } from '../../src/realtext/serializer.ts'
+import { toRealText } from '../../src/formats/xml/realtext/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 import type { SubtitleDocument, SubtitleEvent } from '../../src/core/types.ts'
 

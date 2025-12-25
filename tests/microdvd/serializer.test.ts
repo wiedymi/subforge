@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseMicroDVD, toMicroDVD } from '../../src/microdvd/index.ts'
+import { parseMicroDVD, toMicroDVD } from '../../src/formats/text/microdvd/index.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 
 test('toMicroDVD - basic subtitle', () => {

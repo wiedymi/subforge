@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSBV } from '../../src/sbv/parser.ts'
-import { toSBV } from '../../src/sbv/serializer.ts'
+import { parseSBV } from '../../src/formats/text/sbv/parser.ts'
+import { toSBV } from '../../src/formats/text/sbv/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 test('toSBV serializes basic document', () => {

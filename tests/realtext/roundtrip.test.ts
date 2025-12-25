@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseRealText } from '../../src/realtext/parser.ts'
-import { toRealText } from '../../src/realtext/serializer.ts'
+import { parseRealText } from '../../src/formats/xml/realtext/parser.ts'
+import { toRealText } from '../../src/formats/xml/realtext/serializer.ts'
 
 test('roundtrip preserves basic structure', () => {
   const original = `<window duration="00:00:10.00" wordwrap="true" bgcolor="black">

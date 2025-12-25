@@ -1,8 +1,8 @@
 import { test, expect, describe } from 'bun:test'
-import { parseEBUSTL } from '../../src/stl/ebu/parser.ts'
-import { toEBUSTL } from '../../src/stl/ebu/serializer.ts'
-import { parseSpruceSTL } from '../../src/stl/spruce/parser.ts'
-import { toSpruceSTL } from '../../src/stl/spruce/serializer.ts'
+import { parseEBUSTL } from '../../src/formats/binary/stl/ebu/parser.ts'
+import { toEBUSTL } from '../../src/formats/binary/stl/ebu/serializer.ts'
+import { parseSpruceSTL } from '../../src/formats/binary/stl/spruce/parser.ts'
+import { toSpruceSTL } from '../../src/formats/binary/stl/spruce/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 import type { SubtitleEvent } from '../../src/core/types.ts'
 

@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseASS } from '../../src/ass/parser.ts'
-import { toASS } from '../../src/ass/serializer.ts'
+import { parseASS } from '../../src/formats/text/ass/parser.ts'
+import { toASS } from '../../src/formats/text/ass/serializer.ts'
 import { createDocument, createEvent, createDefaultStyle } from '../../src/core/document.ts'
 
 test('toASS serializes basic document', () => {

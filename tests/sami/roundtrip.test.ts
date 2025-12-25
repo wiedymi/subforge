@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSAMI } from '../../src/sami/parser.ts'
-import { toSAMI } from '../../src/sami/serializer.ts'
+import { parseSAMI } from '../../src/formats/xml/sami/parser.ts'
+import { toSAMI } from '../../src/formats/xml/sami/serializer.ts'
 import { readFileSync } from 'node:fs'
 
 test('roundtrip simple document', () => {

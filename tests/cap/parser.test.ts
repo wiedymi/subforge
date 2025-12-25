@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseCAP, parseCAPResult } from '../../src/cap/parser.ts'
+import { parseCAP, parseCAPResult } from '../../src/formats/broadcast/cap/parser.ts'
 
 const simpleCAP = `$CaptionMAX 2.0
 $VideoStandard PAL

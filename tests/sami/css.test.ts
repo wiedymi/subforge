@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseCSS, generateCSS, styleFromClass } from '../../src/sami/css.ts'
+import { parseCSS, generateCSS, styleFromClass } from '../../src/formats/xml/sami/css.ts'
 import { createDefaultStyle } from '../../src/core/document.ts'
 
 test('parseCSS basic class', () => {

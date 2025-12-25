@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSCC } from '../../src/scc/parser.ts'
-import { toSCC } from '../../src/scc/serializer.ts'
+import { parseSCC } from '../../src/formats/broadcast/scc/parser.ts'
+import { toSCC } from '../../src/formats/broadcast/scc/serializer.ts'
 
 const simpleSCC = `Scenarist_SCC V1.0
 

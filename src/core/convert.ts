@@ -1,10 +1,10 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment, Effect } from './types.ts'
-import { toASS } from '../ass/serializer.ts'
-import { toSRT } from '../srt/serializer.ts'
-import { toVTT } from '../vtt/serializer.ts'
-import { serializeTags as serializeASSSegments } from '../ass/tags.ts'
-import { serializeTags as serializeSRTSegments } from '../srt/tags.ts'
-import { serializeTags as serializeVTTSegments } from '../vtt/tags.ts'
+import { toASS } from '../formats/text/ass/serializer.ts'
+import { toSRT } from '../formats/text/srt/serializer.ts'
+import { toVTT } from '../formats/text/vtt/serializer.ts'
+import { serializeTags as serializeASSSegments } from '../formats/text/ass/tags.ts'
+import { serializeTags as serializeSRTSegments } from '../formats/text/srt/tags.ts'
+import { serializeTags as serializeVTTSegments } from '../formats/text/vtt/tags.ts'
 
 /**
  * Options for converting between subtitle formats.

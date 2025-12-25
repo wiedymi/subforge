@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toCAP } from '../../src/cap/serializer.ts'
+import { toCAP } from '../../src/formats/broadcast/cap/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 import type { SubtitleDocument } from '../../src/core/types.ts'
 

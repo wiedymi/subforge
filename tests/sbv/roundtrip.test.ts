@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSBV } from '../../src/sbv/parser.ts'
-import { toSBV } from '../../src/sbv/serializer.ts'
+import { parseSBV } from '../../src/formats/text/sbv/parser.ts'
+import { toSBV } from '../../src/formats/text/sbv/serializer.ts'
 
 test('roundtrip simple file', () => {
   const original = `0:00:01.000,0:00:05.000

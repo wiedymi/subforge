@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseDVB, toDVB } from '../../src/dvb/index.ts'
+import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 import type { ImageEffect } from '../../src/core/types.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 

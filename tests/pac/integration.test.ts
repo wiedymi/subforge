@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parsePAC, toPAC } from '../../src/pac/index.ts'
+import { parsePAC, toPAC } from '../../src/formats/binary/pac/index.ts'
 import { createDocument } from '../../src/core/document.ts'
 
 test('PAC integration: create document, serialize, and parse', () => {

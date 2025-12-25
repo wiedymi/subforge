@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTeletext, toTeletext } from '../../src/teletext/index.ts'
+import { parseTeletext, toTeletext } from '../../src/formats/broadcast/teletext/index.ts'
 import { createDocument } from '../../src/core/document.ts'
 
 describe('Teletext Roundtrip', () => {

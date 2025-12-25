@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseVobSub, toVobSub, parseVobSubResult } from '../../src/vobsub/index.ts'
+import { parseVobSub, toVobSub, parseVobSubResult } from '../../src/formats/binary/vobsub/index.ts'
 import type { SubtitleDocument, ImageEffect, VobSubEffect } from '../../src/core/types.ts'
 
 test('parseVobSubResult parses empty VobSub', () => {

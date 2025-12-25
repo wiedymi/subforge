@@ -23,17 +23,17 @@ import {
 } from './_utils.ts'
 
 // Parsers
-import { parseASS, toASS } from '../../src/ass/index.ts'
-import { parseSSA, toSSA } from '../../src/ssa/index.ts'
-import { parseSRT, toSRT } from '../../src/srt/index.ts'
-import { parseVTT, toVTT } from '../../src/vtt/index.ts'
-import { parseSBV, toSBV } from '../../src/sbv/index.ts'
-import { parseLRC, toLRC } from '../../src/lrc/index.ts'
-import { parseMicroDVD, toMicroDVD } from '../../src/microdvd/index.ts'
-import { parseSAMI, toSAMI } from '../../src/sami/index.ts'
-import { parseCAP, toCAP } from '../../src/cap/index.ts'
-import { parseQT, toQT } from '../../src/qt/index.ts'
-import { parseRealText, toRealText } from '../../src/realtext/index.ts'
+import { parseASS, toASS } from '../../src/formats/text/ass/index.ts'
+import { parseSSA, toSSA } from '../../src/formats/text/ssa/index.ts'
+import { parseSRT, toSRT } from '../../src/formats/text/srt/index.ts'
+import { parseVTT, toVTT } from '../../src/formats/text/vtt/index.ts'
+import { parseSBV, toSBV } from '../../src/formats/text/sbv/index.ts'
+import { parseLRC, toLRC } from '../../src/formats/text/lrc/index.ts'
+import { parseMicroDVD, toMicroDVD } from '../../src/formats/text/microdvd/index.ts'
+import { parseSAMI, toSAMI } from '../../src/formats/xml/sami/index.ts'
+import { parseCAP, toCAP } from '../../src/formats/broadcast/cap/index.ts'
+import { parseQT, toQT } from '../../src/formats/xml/qt/index.ts'
+import { parseRealText, toRealText } from '../../src/formats/xml/realtext/index.ts'
 
 // ============================================================================
 // Load Fixtures

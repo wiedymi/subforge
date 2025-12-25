@@ -10,25 +10,25 @@ import {
   parseTags as parseASSTags,
   stripTags as stripASSTags,
   serializeTags as serializeASSTags,
-} from '../../src/ass/tags.ts'
-import { parseColor, formatColor } from '../../src/ass/color.ts'
-import { parseTime as parseASSTime, formatTime as formatASSTime } from '../../src/ass/time.ts'
+} from '../../src/formats/text/ass/tags.ts'
+import { parseColor, formatColor } from '../../src/formats/text/ass/color.ts'
+import { parseTime as parseASSTime, formatTime as formatASSTime } from '../../src/formats/text/ass/time.ts'
 
 // SRT tag utilities
 import {
   parseTags as parseSRTTags,
   stripTags as stripSRTTags,
   serializeTags as serializeSRTTags,
-} from '../../src/srt/tags.ts'
-import { parseTime as parseSRTTime, formatTime as formatSRTTime } from '../../src/srt/time.ts'
+} from '../../src/formats/text/srt/tags.ts'
+import { parseTime as parseSRTTime, formatTime as formatSRTTime } from '../../src/formats/text/srt/time.ts'
 
 // VTT tag utilities
 import {
   parseTags as parseVTTTags,
   stripTags as stripVTTTags,
   serializeTags as serializeVTTTags,
-} from '../../src/vtt/tags.ts'
-import { parseTime as parseVTTTime, formatTime as formatVTTTime } from '../../src/vtt/time.ts'
+} from '../../src/formats/text/vtt/tags.ts'
+import { parseTime as parseVTTTime, formatTime as formatVTTTime } from '../../src/formats/text/vtt/time.ts'
 
 // ============================================================================
 // ASS Tag Samples

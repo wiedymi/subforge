@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parsePGS } from '../../src/pgs/parser.ts'
-import { toPGS } from '../../src/pgs/serializer.ts'
+import { parsePGS } from '../../src/formats/binary/pgs/parser.ts'
+import { toPGS } from '../../src/formats/binary/pgs/serializer.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 import type { SubtitleDocument, ImageEffect, PGSEffect } from '../../src/core/types.ts'
 

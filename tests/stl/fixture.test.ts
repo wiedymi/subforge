@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseEBUSTL } from '../../src/stl/ebu/parser.ts'
+import { parseEBUSTL } from '../../src/formats/binary/stl/ebu/parser.ts'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 

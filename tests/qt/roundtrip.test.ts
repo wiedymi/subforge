@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseQT } from '../../src/qt/parser.ts'
-import { toQT } from '../../src/qt/serializer.ts'
+import { parseQT } from '../../src/formats/xml/qt/parser.ts'
+import { toQT } from '../../src/formats/xml/qt/serializer.ts'
 
 test('roundtrip preserves basic subtitle data', () => {
   const original = `{QTtext} {font:Helvetica}

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseDVB, parseDVBResult } from '../../src/dvb/parser.ts'
+import { parseDVB, parseDVBResult } from '../../src/formats/binary/dvb/parser.ts'
 
 // Create a simple DVB subtitle with minimal segments
 function createSimpleDVB(): Uint8Array {

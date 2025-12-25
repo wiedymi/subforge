@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parseASS } from '../../src/ass/parser.ts'
-import { toASS } from '../../src/ass/serializer.ts'
+import { parseASS } from '../../src/formats/text/ass/parser.ts'
+import { toASS } from '../../src/formats/text/ass/serializer.ts'
 
 const railgunOP = await Bun.file('./tests/fixtures/ass/railgun_op.ass').text()
 const aot3p2OP = await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text()

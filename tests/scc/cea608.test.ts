@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { decodeCEA608, encodeCEA608Text, getControlCode, CONTROL_CODES } from '../../src/scc/cea608.ts'
+import { decodeCEA608, encodeCEA608Text, getControlCode, CONTROL_CODES } from '../../src/formats/broadcast/scc/cea608.ts'
 
 test('decodeCEA608 decodes basic ASCII characters', () => {
   const cmd = decodeCEA608(0x48, 0x65) // 'He'

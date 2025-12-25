@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTTML } from '../../src/ttml/parser.ts'
-import { toTTML } from '../../src/ttml/serializer.ts'
+import { parseTTML } from '../../src/formats/xml/ttml/parser.ts'
+import { toTTML } from '../../src/formats/xml/ttml/serializer.ts'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 

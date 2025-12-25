@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTime, formatTime } from '../../src/ass/time.ts'
+import { parseTime, formatTime } from '../../src/formats/text/ass/time.ts'
 
 test('parseTime parses simple timestamp', () => {
   expect(parseTime('0:00:01.50')).toBe(1500)

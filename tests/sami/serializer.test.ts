@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toSAMI } from '../../src/sami/serializer.ts'
+import { toSAMI } from '../../src/formats/xml/sami/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 test('toSAMI basic structure', () => {

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseMicroDVD, toMicroDVD } from '../../src/microdvd/index.ts'
+import { parseMicroDVD, toMicroDVD } from '../../src/formats/text/microdvd/index.ts'
 
 test('roundtrip - basic subtitles', () => {
   const input = `{0}{100}First subtitle

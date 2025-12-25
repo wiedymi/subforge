@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parsePGS } from '../../src/pgs/parser.ts'
-import { toPGS } from '../../src/pgs/serializer.ts'
+import { parsePGS } from '../../src/formats/binary/pgs/parser.ts'
+import { toPGS } from '../../src/formats/binary/pgs/serializer.ts'
 import { readFileSync } from 'fs'
 
 describe('PGS Fixture', () => {

@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { parseSpruceSTL, parseSpruceSTLResult } from '../../../src/stl/spruce/parser.ts'
+import { parseSpruceSTL, parseSpruceSTLResult } from '../../../src/formats/binary/stl/spruce/parser.ts'
 
 describe('Spruce STL Parser', () => {
   test('parse single subtitle', () => {

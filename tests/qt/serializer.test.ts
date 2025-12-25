@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toQT } from '../../src/qt/serializer.ts'
+import { toQT } from '../../src/formats/xml/qt/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 test('toQT generates basic file', () => {

@@ -2,12 +2,12 @@
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { createDocument, createEvent } from '../../src/core/document.ts'
-import { toSSA } from '../../src/ssa/index.ts'
-import { toSBV } from '../../src/sbv/index.ts'
-import { toLRC } from '../../src/lrc/index.ts'
-import { toMicroDVD } from '../../src/microdvd/index.ts'
-import { toSAMI } from '../../src/sami/index.ts'
-import { toCAP } from '../../src/cap/index.ts'
+import { toSSA } from '../../src/formats/text/ssa/index.ts'
+import { toSBV } from '../../src/formats/text/sbv/index.ts'
+import { toLRC } from '../../src/formats/text/lrc/index.ts'
+import { toMicroDVD } from '../../src/formats/text/microdvd/index.ts'
+import { toSAMI } from '../../src/formats/xml/sami/index.ts'
+import { toCAP } from '../../src/formats/broadcast/cap/index.ts'
 
 const EVENT_COUNT = 10_000
 

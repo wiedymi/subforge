@@ -1,8 +1,8 @@
 import { test, expect, describe } from 'bun:test'
 import { convert } from '../../src/core/convert.ts'
-import { parseASS } from '../../src/ass/parser.ts'
-import { parseSRT } from '../../src/srt/parser.ts'
-import { parseVTT } from '../../src/vtt/parser.ts'
+import { parseASS } from '../../src/formats/text/ass/parser.ts'
+import { parseSRT } from '../../src/formats/text/srt/parser.ts'
+import { parseVTT } from '../../src/formats/text/vtt/parser.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 const railgunOP = parseASS(await Bun.file('./tests/fixtures/ass/railgun_op.ass').text())

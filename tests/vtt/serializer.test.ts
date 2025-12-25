@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseVTT } from '../../src/vtt/parser.ts'
-import { toVTT } from '../../src/vtt/serializer.ts'
+import { parseVTT } from '../../src/formats/text/vtt/parser.ts'
+import { toVTT } from '../../src/formats/text/vtt/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
 test('toVTT serializes basic document', () => {

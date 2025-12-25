@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parsePAC } from '../../src/pac/parser.ts'
-import { toPAC } from '../../src/pac/serializer.ts'
+import { parsePAC } from '../../src/formats/binary/pac/parser.ts'
+import { toPAC } from '../../src/formats/binary/pac/serializer.ts'
 
 test('roundtrip: simple subtitle', () => {
   const buffer = new Uint8Array(100)

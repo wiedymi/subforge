@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseASS, parseASSResult } from '../../src/ass/parser.ts'
+import { parseASS, parseASSResult } from '../../src/formats/text/ass/parser.ts'
 
 const simpleASS = `[Script Info]
 Title: Test

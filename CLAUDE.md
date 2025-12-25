@@ -26,24 +26,38 @@ Subforge is a high-performance TypeScript subtitle library supporting 20+ format
 
 ```
 src/
-├── core/           # Shared types, operations, utilities
-│   ├── types.ts    # SubtitleDocument, SubtitleEvent, Style, TextSegment, Effect
-│   ├── ops.ts      # Timing shifts, scaling, sorting, filtering, karaoke ops
-│   ├── query.ts    # findByStyle, findByActor, findOverlapping, etc.
-│   ├── convert.ts  # Format conversion with loss reporting
-│   ├── color.ts    # ABGR color utilities (rgba, blend, lighten, darken)
-│   ├── time.ts     # Duration formatting, overlap detection
-│   └── document.ts # createDocument, createEvent, cloneDocument
-├── ass/            # ASS format (full-featured reference)
-├── srt/            # SubRip format
-├── vtt/            # WebVTT format
-├── ttml/           # TTML/DFXP/SMPTE-TT (XML-based)
-├── stl/            # EBU-STL (binary) + Spruce STL (text)
-├── scc/            # Scenarist Closed Caption (CEA-608)
-├── pgs/            # Presentation Graphic Stream (Blu-ray bitmaps)
-├── dvb/            # DVB subtitles (binary bitmaps)
-├── vobsub/         # DVD subtitles (.idx/.sub)
-└── [others]/       # lrc, sbv, cap, sami, microdvd, qt, pac, realtext, teletext
+├── core/               # Shared types, operations, utilities
+│   ├── types.ts        # SubtitleDocument, SubtitleEvent, Style, TextSegment, Effect
+│   ├── ops.ts          # Timing shifts, scaling, sorting, filtering, karaoke ops
+│   ├── query.ts        # findByStyle, findByActor, findOverlapping, etc.
+│   ├── convert.ts      # Format conversion with loss reporting
+│   ├── color.ts        # ABGR color utilities (rgba, blend, lighten, darken)
+│   ├── time.ts         # Duration formatting, overlap detection
+│   └── document.ts     # createDocument, createEvent, cloneDocument
+├── formats/
+│   ├── text/           # Text-based formats
+│   │   ├── ass/        # ASS format (full-featured reference)
+│   │   ├── ssa/        # SSA format (predecessor to ASS)
+│   │   ├── srt/        # SubRip format
+│   │   ├── vtt/        # WebVTT format
+│   │   ├── sbv/        # YouTube SBV format
+│   │   ├── lrc/        # LRC lyrics format
+│   │   └── microdvd/   # MicroDVD frame-based format
+│   ├── xml/            # XML-based formats
+│   │   ├── ttml/       # TTML/DFXP/SMPTE-TT
+│   │   ├── sami/       # Microsoft SAMI format
+│   │   ├── realtext/   # RealPlayer format
+│   │   └── qt/         # QuickTime Text format
+│   ├── binary/         # Binary formats
+│   │   ├── stl/        # EBU-STL + Spruce STL
+│   │   ├── pgs/        # Blu-ray PGS bitmaps
+│   │   ├── dvb/        # DVB subtitles
+│   │   ├── vobsub/     # DVD subtitles (.idx/.sub)
+│   │   └── pac/        # PAC (Cavena) format
+│   └── broadcast/      # Broadcast/caption formats
+│       ├── scc/        # Scenarist Closed Caption (CEA-608)
+│       ├── cap/        # Cheetah CAP format
+│       └── teletext/   # Teletext format
 ```
 
 ### Key Types

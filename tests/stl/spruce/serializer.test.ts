@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { toSpruceSTL } from '../../../src/stl/spruce/serializer.ts'
+import { toSpruceSTL } from '../../../src/formats/binary/stl/spruce/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../src/core/document.ts'
 import type { SubtitleEvent } from '../../../src/core/types.ts'
 

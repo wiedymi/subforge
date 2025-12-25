@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { toEBUSTL } from '../../../src/stl/ebu/serializer.ts'
+import { toEBUSTL } from '../../../src/formats/binary/stl/ebu/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../src/core/document.ts'
 import type { SubtitleEvent } from '../../../src/core/types.ts'
 

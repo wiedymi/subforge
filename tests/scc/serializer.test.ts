@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toSCC } from '../../src/scc/serializer.ts'
+import { toSCC } from '../../src/formats/broadcast/scc/serializer.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 import type { SubtitleDocument, SubtitleEvent } from '../../src/core/types.ts'
 

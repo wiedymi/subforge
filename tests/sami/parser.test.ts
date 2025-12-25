@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseSAMI, parseSAMIResult } from '../../src/sami/parser.ts'
+import { parseSAMI, parseSAMIResult } from '../../src/formats/xml/sami/parser.ts'
 import { readFileSync } from 'node:fs'
 
 test('parseSAMI basic structure', () => {

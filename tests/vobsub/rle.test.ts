@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { decodeRLE, encodeRLE } from '../../src/vobsub/rle.ts'
+import { decodeRLE, encodeRLE } from '../../src/formats/binary/vobsub/rle.ts'
 
 test('decodeRLE handles simple bitmap', () => {
   // Create a simple 4x4 bitmap with RLE encoding

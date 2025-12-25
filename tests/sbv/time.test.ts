@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTime, formatTime } from '../../src/sbv/time.ts'
+import { parseTime, formatTime } from '../../src/formats/text/sbv/time.ts'
 
 test('parseTime parses SBV timestamp with single digit hour', () => {
   expect(parseTime('0:00:01.500')).toBe(1500)

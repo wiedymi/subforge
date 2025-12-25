@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseSSA, parseSSAResult } from '../../src/ssa/parser.ts'
+import { parseSSA, parseSSAResult } from '../../src/formats/text/ssa/parser.ts'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 

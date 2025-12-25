@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseLRC } from '../../src/lrc/parser.ts'
-import { toLRC } from '../../src/lrc/serializer.ts'
+import { parseLRC } from '../../src/formats/text/lrc/parser.ts'
+import { toLRC } from '../../src/formats/text/lrc/serializer.ts'
 
 test('roundtrip simple LRC', () => {
   const original = `[ar:Artist Name]

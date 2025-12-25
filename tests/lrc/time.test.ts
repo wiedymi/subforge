@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseTime, formatTime } from '../../src/lrc/time.ts'
+import { parseTime, formatTime } from '../../src/formats/text/lrc/time.ts'
 
 test('parseTime parses centiseconds format', () => {
   expect(parseTime('00:12.34')).toBe(12340)

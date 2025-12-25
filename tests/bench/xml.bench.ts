@@ -11,9 +11,9 @@ import {
   SIZES,
 } from './_utils.ts'
 
-import { parseTTML, toTTML } from '../../src/ttml/index.ts'
-import { parseDFXP, toDFXP } from '../../src/ttml/index.ts'
-import { parseSMPTETT, toSMPTETT } from '../../src/ttml/index.ts'
+import { parseTTML, toTTML } from '../../src/formats/xml/ttml/index.ts'
+import { parseDFXP, toDFXP } from '../../src/formats/xml/ttml/index.ts'
+import { parseSMPTETT, toSMPTETT } from '../../src/formats/xml/ttml/index.ts'
 
 // ============================================================================
 // Load Fixtures

@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parsePGS, parsePGSResult } from '../../src/pgs/parser.ts'
-import { SegmentType } from '../../src/pgs/segments.ts'
+import { parsePGS, parsePGSResult } from '../../src/formats/binary/pgs/parser.ts'
+import { SegmentType } from '../../src/formats/binary/pgs/segments.ts'
 
 describe('PGS Parser', () => {
   test('parsePGS - empty data', () => {

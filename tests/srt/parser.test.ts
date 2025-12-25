@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseSRT, parseSRTResult } from '../../src/srt/parser.ts'
+import { parseSRT, parseSRTResult } from '../../src/formats/text/srt/parser.ts'
 
 const simpleSRT = `1
 00:00:01,000 --> 00:00:05,000

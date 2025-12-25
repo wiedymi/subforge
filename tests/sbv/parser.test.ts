@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseSBV, parseSBVResult } from '../../src/sbv/parser.ts'
+import { parseSBV, parseSBVResult } from '../../src/formats/text/sbv/parser.ts'
 
 const simpleSBV = `0:00:01.000,0:00:05.000
 Hello world

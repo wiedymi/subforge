@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseIdx, serializeIdx, parseTime, formatTime, formatColor, type VobSubIndex } from '../../src/vobsub/parser.ts'
+import { parseIdx, serializeIdx, parseTime, formatTime, formatColor, type VobSubIndex } from '../../src/formats/binary/vobsub/parser.ts'
 
 test('parseTime converts VobSub time format to milliseconds', () => {
   expect(parseTime('00:00:01:000')).toBe(1000)

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { parseLRC, parseLRCResult } from '../../src/lrc/parser.ts'
+import { parseLRC, parseLRCResult } from '../../src/formats/text/lrc/parser.ts'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 

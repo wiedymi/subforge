@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { toLRC } from '../../src/lrc/serializer.ts'
+import { toLRC } from '../../src/formats/text/lrc/serializer.ts'
 import { createDocument, createEvent, createKaraokeEvent } from '../../src/core/document.ts'
 
 test('toLRC outputs basic format', () => {
