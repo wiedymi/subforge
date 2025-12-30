@@ -255,6 +255,7 @@ class SSAParser {
 
   private parseEvents(): void {
     let format: string[] = []
+    let isStandardFormat = false
 
     while (!this.lexer.isEOF()) {
       const line = this.lexer.readLine()
@@ -280,11 +281,18 @@ class SSAParser {
       if ((firstChar === 70 || firstChar === 102) && this.startsWithCI(line, start, 'format:')) {
         format = line.substring(start + 7).split(',').map(s => s.trim().toLowerCase())
         this.eventFieldIndexes = this.buildEventFieldIndexes(format)
+        isStandardFormat = format.length === 10 &&
+          format[0] === 'marked' &&
+          format[1] === 'start' &&
+          format[2] === 'end' &&
+          format[9] === 'text'
         continue
       }
 
       if ((firstChar === 68 || firstChar === 100) && this.startsWithCI(line, start, 'dialogue:')) {
-        const event = this.parseDialogueLineFast(line, start + 9, format)
+        const event = isStandardFormat
+          ? this.parseDialogueStandard(line, start + 9)
+          : this.parseDialogueLineFast(line, start + 9, format)
         if (event) {
           this.doc.events[this.doc.events.length] = event
           this.eventIndex++
@@ -299,7 +307,9 @@ class SSAParser {
       }
       else if ((firstChar === 77 || firstChar === 109) && this.startsWithCI(line, start, 'marked:')) {
         // SSA v4 has Marked field - treat as dialogue
-        const event = this.parseDialogueLineFast(line, start + 7, format)
+        const event = isStandardFormat
+          ? this.parseDialogueStandard(line, start + 7)
+          : this.parseDialogueLineFast(line, start + 7, format)
         if (event) {
           this.doc.events[this.doc.events.length] = event
           this.eventIndex++
@@ -394,6 +404,155 @@ class SSAParser {
     }
 
     return event
+  }
+
+  private parseDialogueStandard(line: string, dataStart: number): SubtitleEvent | null {
+    const c1 = line.indexOf(',', dataStart)
+    if (c1 === -1) return null
+    const c2 = line.indexOf(',', c1 + 1)
+    const c3 = line.indexOf(',', c2 + 1)
+    const c4 = line.indexOf(',', c3 + 1)
+    const c5 = line.indexOf(',', c4 + 1)
+    const c6 = line.indexOf(',', c5 + 1)
+    const c7 = line.indexOf(',', c6 + 1)
+    const c8 = line.indexOf(',', c7 + 1)
+    const c9 = line.indexOf(',', c8 + 1)
+    if (c2 === -1 || c3 === -1 || c4 === -1 || c5 === -1 || c6 === -1 || c7 === -1 || c8 === -1 || c9 === -1) {
+      return null
+    }
+
+    let start = this.parseTimeRangeFast(line, c1 + 1, c2)
+    if (start < 0) {
+      start = this.parseTimeRange(line, c1 + 1, c2)
+      if (start < 0) {
+        this.addError('INVALID_TIMESTAMP', 'Invalid start time')
+        return null
+      }
+    }
+
+    let end = this.parseTimeRangeFast(line, c2 + 1, c3)
+    if (end < 0) {
+      end = this.parseTimeRange(line, c2 + 1, c3)
+      if (end < 0) {
+        this.addError('INVALID_TIMESTAMP', 'Invalid end time')
+        return null
+      }
+    }
+
+    const event: SubtitleEvent = {
+      id: generateId(),
+      start,
+      end,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: this.parseIntRangeFast(line, c5 + 1, c6),
+      marginR: this.parseIntRangeFast(line, c6 + 1, c7),
+      marginV: this.parseIntRangeFast(line, c7 + 1, c8),
+      effect: '',
+      text: '',
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+
+    // Style
+    let sStart = c3 + 1
+    let sEnd = c4
+    if (line.charCodeAt(sStart) <= 32 || line.charCodeAt(sEnd - 1) <= 32) {
+      while (sStart < sEnd && line.charCodeAt(sStart) <= 32) sStart++
+      while (sEnd > sStart && line.charCodeAt(sEnd - 1) <= 32) sEnd--
+    }
+    if (sEnd > sStart) event.style = line.substring(sStart, sEnd)
+
+    // Actor/Name
+    let aStart = c4 + 1
+    let aEnd = c5
+    if (line.charCodeAt(aStart) <= 32 || line.charCodeAt(aEnd - 1) <= 32) {
+      while (aStart < aEnd && line.charCodeAt(aStart) <= 32) aStart++
+      while (aEnd > aStart && line.charCodeAt(aEnd - 1) <= 32) aEnd--
+    }
+    if (aEnd > aStart) event.actor = line.substring(aStart, aEnd)
+
+    // Effect
+    let eStart = c8 + 1
+    let eEnd = c9
+    if (line.charCodeAt(eStart) <= 32 || line.charCodeAt(eEnd - 1) <= 32) {
+      while (eStart < eEnd && line.charCodeAt(eStart) <= 32) eStart++
+      while (eEnd > eStart && line.charCodeAt(eEnd - 1) <= 32) eEnd--
+    }
+    if (eEnd > eStart) event.effect = line.substring(eStart, eEnd)
+
+    // Text
+    let tStart = c9 + 1
+    let tEnd = line.length
+    if (line.charCodeAt(tStart) <= 32 || line.charCodeAt(tEnd - 1) <= 32) {
+      while (tStart < tEnd && line.charCodeAt(tStart) <= 32) tStart++
+      while (tEnd > tStart && line.charCodeAt(tEnd - 1) <= 32) tEnd--
+    }
+    if (tEnd > tStart) event.text = line.substring(tStart, tEnd)
+
+    return event
+  }
+
+  private parseTimeRangeFast(s: string, start: number, end: number): number {
+    if (start >= end) return -1
+    if (s.charCodeAt(start) <= 32 || s.charCodeAt(end - 1) <= 32) return -1
+
+    const colon1 = s.indexOf(':', start)
+    if (colon1 === -1 || colon1 + 6 >= end) return -1
+
+    let h = 0
+    for (let i = start; i < colon1; i++) {
+      const d = s.charCodeAt(i) - 48
+      if (d < 0 || d > 9) return -1
+      h = h * 10 + d
+    }
+
+    const m1 = s.charCodeAt(colon1 + 1) - 48
+    const m2 = s.charCodeAt(colon1 + 2) - 48
+    if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return -1
+    if (s.charCodeAt(colon1 + 3) !== 58) return -1
+    const s1 = s.charCodeAt(colon1 + 4) - 48
+    const s2 = s.charCodeAt(colon1 + 5) - 48
+    if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return -1
+    if (s.charCodeAt(colon1 + 6) !== 46) return -1
+
+    const fracStart = colon1 + 7
+    const fracLen = end - fracStart
+    if (fracLen < 1) return -1
+    const d1 = s.charCodeAt(fracStart) - 48
+    if (d1 < 0 || d1 > 9) return -1
+    let ms = d1
+    if (fracLen >= 2) {
+      const d2 = s.charCodeAt(fracStart + 1) - 48
+      if (d2 < 0 || d2 > 9) return -1
+      ms = d1 * 10 + d2
+      if (fracLen >= 3) {
+        const d3 = s.charCodeAt(fracStart + 2) - 48
+        if (d3 < 0 || d3 > 9) return -1
+        ms = d1 * 100 + d2 * 10 + d3
+      } else {
+        ms *= 10
+      }
+    } else {
+      ms *= 100
+    }
+
+    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + ms
+  }
+
+  private parseIntRangeFast(s: string, start: number, end: number): number {
+    if (start >= end) return 0
+    if (s.charCodeAt(start) <= 32 || s.charCodeAt(end - 1) <= 32) {
+      return this.parseIntRange(s, start, end)
+    }
+    let val = 0
+    for (let i = start; i < end; i++) {
+      const d = s.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      val = val * 10 + d
+    }
+    return val
   }
 
   private buildEventFieldIndexes(format: string[]): EventFieldIndexes {

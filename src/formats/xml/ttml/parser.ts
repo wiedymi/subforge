@@ -315,15 +315,7 @@ function parsePAttrRanges(src: string, start: number, end: number): AttrRanges {
 
 function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
   if (input.indexOf('<p begin="') === -1) return false
-  if (input.indexOf('<P') !== -1) return false
-  if (
-    input.indexOf('<span') !== -1 || input.indexOf('<br') !== -1 ||
-    input.indexOf('<styling') !== -1 || input.indexOf('<layout') !== -1 ||
-    input.indexOf('<region') !== -1 || input.indexOf('<style') !== -1 ||
-    input.indexOf('tts:') !== -1
-  ) {
-    return false
-  }
+  if (TTML_FAST_FORBIDDEN.test(input)) return false
 
   const openSeq = '<p begin="'
   const endSeq = ' end="'
@@ -385,6 +377,8 @@ function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
   if (eventCount !== events.length) events.length = eventCount
   return found
 }
+
+const TTML_FAST_FORBIDDEN = /<(?:span|br|styling|layout|region|style)\b|tts:/i
 
 function parseTTMLFast(input: string, doc: SubtitleDocument): boolean {
   if (input.indexOf('<p') === -1 && input.indexOf('<P') === -1) return false

@@ -153,16 +153,26 @@ class RealTextParser {
       const beginEnd = src.indexOf('"', beginStart)
       if (beginEnd === -1 || beginEnd > timeTagEnd) return false
 
-      const time = parseRealTextTimeRange(src, beginStart, beginEnd)
+      let time: number | null
+      if (beginEnd - beginStart === 11) {
+        time = parseRealTextTimeFixed(src, beginStart)
+      } else {
+        time = parseRealTextTimeRange(src, beginStart, beginEnd)
+      }
       if (time === null) return false
 
       const textStart = timeTagEnd + 1
       const clearPos = src.indexOf(clearToken, textStart)
       if (clearPos === -1 || clearPos > windowClose) return false
 
-      const range = trimRange(src, textStart, clearPos)
-      if (range.end > range.start) {
-        const text = src.substring(range.start, range.end)
+      let tStart = textStart
+      let tEnd = clearPos
+      if (src.charCodeAt(tStart) <= 32 || src.charCodeAt(tEnd - 1) <= 32) {
+        while (tStart < tEnd && src.charCodeAt(tStart) <= 32) tStart++
+        while (tEnd > tStart && src.charCodeAt(tEnd - 1) <= 32) tEnd--
+      }
+      if (tEnd > tStart) {
+        const text = src.substring(tStart, tEnd)
         if (text.indexOf('<') !== -1 || text.indexOf('&') !== -1) return false
         this.addEvent(time, text)
       }
@@ -456,6 +466,32 @@ function indexOfAttrCaseInsensitive(src: string, attr: string, start: number, en
     pos = eq + 1
   }
   return -1
+}
+
+function parseRealTextTimeFixed(src: string, start: number): number | null {
+  if (src.charCodeAt(start + 2) !== 58 || src.charCodeAt(start + 5) !== 58 || src.charCodeAt(start + 8) !== 46) {
+    return null
+  }
+  const h1 = src.charCodeAt(start) - 48
+  const h2 = src.charCodeAt(start + 1) - 48
+  const m1 = src.charCodeAt(start + 3) - 48
+  const m2 = src.charCodeAt(start + 4) - 48
+  const s1 = src.charCodeAt(start + 6) - 48
+  const s2 = src.charCodeAt(start + 7) - 48
+  const c1 = src.charCodeAt(start + 9) - 48
+  const c2 = src.charCodeAt(start + 10) - 48
+  if (
+    h1 < 0 || h1 > 9 || h2 < 0 || h2 > 9 ||
+    m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+    s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+    c1 < 0 || c1 > 9 || c2 < 0 || c2 > 9
+  ) return null
+
+  const hours = h1 * 10 + h2
+  const minutes = m1 * 10 + m2
+  const seconds = s1 * 10 + s2
+  const centis = c1 * 10 + c2
+  return hours * 3600000 + minutes * 60000 + seconds * 1000 + centis * 10
 }
 
 function matchTagName(src: string, start: number, end: number): number {

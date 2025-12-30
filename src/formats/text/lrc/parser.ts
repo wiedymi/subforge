@@ -38,6 +38,8 @@ class LRCParser {
   private lineNum = 1
   private metadata: LRCMetadata = {}
   private offset = 0
+  private lastEvent: SubtitleEvent | null = null
+  private ordered = true
 
   constructor(input: string, opts: Partial<ParseOptions> = {}) {
     let start = 0
@@ -184,7 +186,7 @@ class LRCParser {
         m1 >= 0 && m1 <= 9 && m2 >= 0 && m2 <= 9 &&
         s1 >= 0 && s1 <= 9 && s2 >= 0 && s2 <= 9 &&
         c1 >= 0 && c1 <= 9 && c2 >= 0 && c2 <= 9 &&
-        line.indexOf('[', 1) === -1
+        line.charCodeAt(10) !== 91
       ) {
         const timestamp = (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (c1 * 10 + c2) * 10
         let textStart = 10
@@ -206,7 +208,7 @@ class LRCParser {
             ? timestamp + lastEffect.params.duration
             : timestamp + 5000
 
-          this.doc.events.push({
+          const event: SubtitleEvent = {
             id: generateId(),
             start: timestamp,
             end: endTime,
@@ -220,9 +222,10 @@ class LRCParser {
             text: '',
             segments,
             dirty: true
-          })
+          }
+          this.appendEvent(event)
         } else {
-          this.doc.events.push({
+          const event: SubtitleEvent = {
             id: generateId(),
             start: timestamp,
             end: timestamp + 5000,
@@ -236,7 +239,8 @@ class LRCParser {
             text,
             segments: EMPTY_SEGMENTS,
             dirty: false
-          })
+          }
+          this.appendEvent(event)
         }
         return
       }
@@ -328,7 +332,7 @@ class LRCParser {
               dirty: false
             }
           }
-          this.doc.events.push(event)
+          this.appendEvent(event)
         }
       } else {
         let event: SubtitleEvent
@@ -373,7 +377,7 @@ class LRCParser {
             dirty: false
           }
         }
-        this.doc.events.push(event)
+        this.appendEvent(event)
       }
     } catch (err) {
       this.addError('INVALID_TIMESTAMP', `Failed to parse line: ${err}`, line)
@@ -434,6 +438,23 @@ class LRCParser {
     return segments
   }
 
+  isOrdered(): boolean {
+    return this.ordered
+  }
+
+  private appendEvent(event: SubtitleEvent): void {
+    if (this.lastEvent) {
+      if (this.ordered && event.start >= this.lastEvent.start && this.lastEvent.segments.length === 0 && this.lastEvent.end > event.start) {
+        this.lastEvent.end = event.start
+      } else if (event.start < this.lastEvent.start) {
+        this.ordered = false
+      }
+    }
+
+    this.doc.events[this.doc.events.length] = event
+    this.lastEvent = event
+  }
+
   private addError(code: ErrorCode, message: string, raw?: string): void {
     if (this.opts.onError === 'throw') {
       throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
@@ -484,8 +505,18 @@ function parseTimeInline(text: string, start: number, end: number): number | nul
 }
 
 // Post-process to set proper end times
-function fixEndTimes(doc: SubtitleDocument): void {
-  const events = doc.events.sort((a, b) => a.start - b.start)
+function fixEndTimes(doc: SubtitleDocument, assumeSorted: boolean = false): void {
+  let events = doc.events
+  if (!assumeSorted && events.length > 1) {
+    let sorted = true
+    for (let i = 1; i < events.length; i++) {
+      if (events[i - 1]!.start > events[i]!.start) {
+        sorted = false
+        break
+      }
+    }
+    if (!sorted) events = events.sort((a, b) => a.start - b.start)
+  }
   for (let i = 0; i < events.length - 1; i++) {
     const current = events[i]!
     const next = events[i + 1]!
@@ -493,6 +524,147 @@ function fixEndTimes(doc: SubtitleDocument): void {
       current.end = next.start
     }
   }
+}
+
+function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
+  if (input.indexOf('<') !== -1) return false
+
+  let pos = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) pos = 1
+
+  let metaTitle: string | undefined
+  let metaAuthor: string | undefined
+  let metaBy: string | undefined
+  let metaArtist: string | undefined
+
+  const events = doc.events
+  let eventCount = events.length
+
+  while (pos < len) {
+    // Skip whitespace and empty lines
+    while (pos < len) {
+      const c = input.charCodeAt(pos)
+      if (c === 10) {
+        pos++
+      } else if (c === 13) {
+        pos++
+        if (pos < len && input.charCodeAt(pos) === 10) pos++
+      } else if (c === 32 || c === 9) {
+        pos++
+      } else {
+        break
+      }
+    }
+    if (pos >= len) break
+
+    if (input.charCodeAt(pos) !== 91) { // '['
+      const nextNl = input.indexOf('\n', pos)
+      pos = nextNl === -1 ? len : nextNl + 1
+      continue
+    }
+
+    if (pos + 9 < len && input.charCodeAt(pos + 9) === 93) {
+      const m1 = input.charCodeAt(pos + 1) - 48
+      const m2 = input.charCodeAt(pos + 2) - 48
+      if (input.charCodeAt(pos + 3) !== 58) return false
+      const s1 = input.charCodeAt(pos + 4) - 48
+      const s2 = input.charCodeAt(pos + 5) - 48
+      if (input.charCodeAt(pos + 6) !== 46) return false
+      const c1 = input.charCodeAt(pos + 7) - 48
+      const c2 = input.charCodeAt(pos + 8) - 48
+
+      if (
+        m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+        s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+        c1 < 0 || c1 > 9 || c2 < 0 || c2 > 9
+      ) {
+        return false
+      }
+
+      const timestamp = (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (c1 * 10 + c2) * 10
+
+      const textStart = pos + 10
+      let lineEnd = input.indexOf('\n', textStart)
+      if (lineEnd === -1) lineEnd = len
+      if (lineEnd > textStart && input.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+      if (textStart < lineEnd && input.charCodeAt(textStart) === 91) return false
+
+      let tStart = textStart
+      let tEnd = lineEnd
+      if (tStart < tEnd && (input.charCodeAt(tStart) <= 32 || input.charCodeAt(tEnd - 1) <= 32)) {
+        while (tStart < tEnd && input.charCodeAt(tStart) <= 32) tStart++
+        while (tEnd > tStart && input.charCodeAt(tEnd - 1) <= 32) tEnd--
+      }
+
+      const text = tEnd > tStart ? input.substring(tStart, tEnd) : ''
+      events[eventCount++] = {
+        id: generateId(),
+        start: timestamp,
+        end: timestamp + 5000,
+        layer: 0,
+        style: 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      }
+
+      pos = lineEnd
+      continue
+    }
+
+    const close = input.indexOf(']', pos + 1)
+    if (close === -1) return false
+    const colon = input.indexOf(':', pos + 1)
+    if (colon === -1 || colon > close) {
+      const nextNl = input.indexOf('\n', close + 1)
+      pos = nextNl === -1 ? len : nextNl + 1
+      continue
+    }
+
+    let digitsOnly = true
+    for (let i = pos + 1; i < colon; i++) {
+      const d = input.charCodeAt(i) - 48
+      if (d < 0 || d > 9) {
+        digitsOnly = false
+        break
+      }
+    }
+    if (digitsOnly) return false
+
+    const key = input.substring(pos + 1, colon).trim().toLowerCase()
+    const value = input.substring(colon + 1, close).trim()
+    switch (key) {
+      case 'ti':
+        metaTitle = value
+        break
+      case 'au':
+        metaAuthor = value
+        break
+      case 'by':
+        metaBy = value
+        break
+      case 'ar':
+        metaArtist = value
+        break
+    }
+
+    const nextNl = input.indexOf('\n', close + 1)
+    pos = nextNl === -1 ? len : nextNl + 1
+  }
+
+  if (metaTitle) doc.info.title = metaTitle
+  if (metaAuthor || metaBy || metaArtist) doc.info.author = metaAuthor || metaBy || metaArtist
+
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
 }
 
 /**
@@ -517,9 +689,14 @@ function fixEndTimes(doc: SubtitleDocument): void {
  * ```
  */
 export function parseLRC(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseLRCFastSimple(input, fastDoc)) {
+    fixEndTimes(fastDoc, true)
+    return fastDoc
+  }
   const parser = new LRCParser(input, { onError: 'throw' })
   const result = parser.parse()
-  fixEndTimes(result.document)
+  if (!parser.isOrdered()) fixEndTimes(result.document)
   return result.document
 }
 
@@ -545,8 +722,13 @@ export function parseLRC(input: string): SubtitleDocument {
  * ```
  */
 export function parseLRCResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseLRCFastSimple(input, fastDoc)) {
+    fixEndTimes(fastDoc, true)
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new LRCParser(input, opts)
   const result = parser.parse()
-  fixEndTimes(result.document)
+  if (!parser.isOrdered()) fixEndTimes(result.document)
   return result
 }
