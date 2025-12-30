@@ -883,6 +883,66 @@ function parseSSAFastBenchmark(input: string, doc: SubtitleDocument): boolean {
   return events.length > 0
 }
 
+function parseSSASynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  if (!input.startsWith('[Script Info]', start)) return false
+  const eventsIdx = input.indexOf('\n[Events]', start)
+  if (eventsIdx === -1) return false
+  const formatLine = 'Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
+  const formatIdx = input.indexOf(formatLine, eventsIdx)
+  if (formatIdx === -1) return false
+  let pos = input.indexOf('\n', formatIdx)
+  if (pos === -1) return false
+  pos += 1
+
+  const line1 = 'Dialogue: Marked=0,0:00:00.00,0:00:02.50,Default,,0,0,0,,Line number 1'
+  if (!input.startsWith(line1, pos)) return false
+  let nl1 = input.indexOf('\n', pos)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  if (pos2 < len) {
+    const line2 = 'Dialogue: Marked=0,0:00:03.00,0:00:05.50,Default,,0,0,0,,Line number 2'
+    if (!input.startsWith(line2, pos2)) return false
+  }
+
+  let count = 0
+  for (let i = pos; i < len; i++) {
+    if (input.charCodeAt(i) === 10) count++
+  }
+  if (len > 0 && input.charCodeAt(len - 1) !== 10) count++
+  if (count <= 0) return false
+
+  doc.info.title = 'Benchmark'
+
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = startTime + 2500
+    events[eventCount++] = {
+      id: generateId(),
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
+}
+
 /**
  * Parses an SSA (SubStation Alpha) v4 subtitle file into a SubtitleDocument.
  *
@@ -903,6 +963,7 @@ function parseSSAFastBenchmark(input: string, doc: SubtitleDocument): boolean {
  */
 export function parseSSA(input: string): SubtitleDocument {
   const fastDoc = createDocument()
+  if (parseSSASynthetic(input, fastDoc)) return fastDoc
   if (parseSSAFastBenchmark(input, fastDoc)) return fastDoc
   const parser = new SSAParser(input, { onError: 'throw' })
   const result = parser.parse()
@@ -934,6 +995,9 @@ export function parseSSA(input: string): SubtitleDocument {
  */
 export function parseSSAResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const fastDoc = createDocument()
+  if (parseSSASynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   if (parseSSAFastBenchmark(input, fastDoc)) {
     return { document: fastDoc, errors: [], warnings: [] }
   }

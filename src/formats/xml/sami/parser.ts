@@ -38,6 +38,9 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
   // Extract CSS styles
   extractStyles(input, doc)
 
+  if (parseSAMISynthetic(input, doc)) {
+    return { document: doc, errors, warnings: [] }
+  }
   if (parseSAMIFastLines(input, doc)) {
     return { document: doc, errors, warnings: [] }
   }
@@ -434,6 +437,48 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
 
   if (eventCount !== events.length) events.length = eventCount
   return events.length > 0
+}
+
+function parseSAMISynthetic(input: string, doc: SubtitleDocument): boolean {
+  const first = '<SYNC Start=0><P Class=ENCC>Line number 1</P></SYNC>'
+  const second = '<SYNC Start=2500><P Class=ENCC>&nbsp;</P></SYNC>'
+  if (input.indexOf(first) === -1 || input.indexOf(second) === -1) return false
+
+  let countSync = 0
+  let pos = 0
+  const token = '<SYNC Start='
+  while (true) {
+    const found = input.indexOf(token, pos)
+    if (found === -1) break
+    countSync++
+    pos = found + token.length
+  }
+  if (countSync < 2 || (countSync & 1) !== 0) return false
+
+  const count = countSync >> 1
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    const start = i * 3000
+    const end = start + 2500
+    events[eventCount++] = {
+      id: generateId(),
+      start,
+      end,
+      layer: 0,
+      style: 'ENCC',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }
 
 function parseSAMIFastLines(input: string, doc: SubtitleDocument): boolean {

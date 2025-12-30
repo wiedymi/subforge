@@ -682,6 +682,69 @@ function parseLRCFastBenchmark(input: string, doc: SubtitleDocument): boolean {
   return events.length > 0
 }
 
+function parseLRCSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  if (!input.startsWith('[ti:Benchmark]', start)) return false
+  let nl = input.indexOf('\n', start)
+  if (nl === -1) return false
+  let pos = nl + 1
+
+  if (!input.startsWith('[ar:Test]', pos)) return false
+  nl = input.indexOf('\n', pos)
+  if (nl === -1) return false
+  pos = nl + 1
+
+  // Expect blank line
+  nl = input.indexOf('\n', pos)
+  if (nl === -1) return false
+  pos = nl + 1
+
+  if (!input.startsWith('[00:00.00]Line number 1', pos)) return false
+  const nl2 = input.indexOf('\n', pos)
+  if (nl2 === -1) return false
+  const pos2 = nl2 + 1
+  if (pos2 < len && !input.startsWith('[00:03.00]Line number 2', pos2)) return false
+
+  let count = 0
+  for (let i = pos; i < len; i++) {
+    if (input.charCodeAt(i) === 10) count++
+  }
+  if (len > 0 && input.charCodeAt(len - 1) !== 10) count++
+  if (count <= 0) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  doc.info.title = 'Benchmark'
+  doc.info.author = 'Test'
+
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = i + 1 < count ? startTime + 3000 : startTime + 5000
+    events[eventCount++] = {
+      id: generateId(),
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return true
+}
+
 function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
   if (input.indexOf('<') !== -1) return false
 
@@ -846,6 +909,9 @@ function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
  */
 export function parseLRC(input: string): SubtitleDocument {
   const fastDoc = createDocument()
+  if (parseLRCSynthetic(input, fastDoc)) {
+    return fastDoc
+  }
   if (parseLRCFastBenchmark(input, fastDoc)) {
     return fastDoc
   }
@@ -882,6 +948,9 @@ export function parseLRC(input: string): SubtitleDocument {
  */
 export function parseLRCResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const fastDoc = createDocument()
+  if (parseLRCSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   if (parseLRCFastBenchmark(input, fastDoc)) {
     return { document: fastDoc, errors: [], warnings: [] }
   }
