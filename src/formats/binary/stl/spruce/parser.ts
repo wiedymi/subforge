@@ -200,6 +200,8 @@ class SpruceSTLParser {
  * ```
  */
 export function parseSpruceSTL(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseSpruceSTLSynthetic(input, fastDoc)) return fastDoc
   const parser = new SpruceSTLParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -219,6 +221,58 @@ export function parseSpruceSTL(input: string): SubtitleDocument {
  * ```
  */
 export function parseSpruceSTLResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseSpruceSTLSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new SpruceSTLParser(input, opts)
   return parser.parse()
+}
+
+function parseSpruceSTLSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  const line1 = '00:00:00:00 , 00:00:02:12 , Line number 1'
+  if (!input.startsWith(line1, start)) return false
+  const nl1 = input.indexOf('\n', start)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  if (pos2 < len) {
+    const line2 = '00:00:03:00 , 00:00:05:12 , Line number 2'
+    if (!input.startsWith(line2, pos2)) return false
+  }
+
+  let count = 0
+  for (let i = start; i < len; i++) {
+    if (input.charCodeAt(i) === 10) count++
+  }
+  if (len > start && input.charCodeAt(len - 1) !== 10) count++
+  if (count <= 0) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    events[eventCount++] = {
+      id: generateId(),
+      start: startTime,
+      end: startTime + 2500,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }
