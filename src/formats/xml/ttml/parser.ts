@@ -329,6 +329,8 @@ function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
   const endSeq = ' end="'
   let pos = 0
   let found = false
+  const events = doc.events
+  let eventCount = events.length
 
   while (true) {
     const pStart = input.indexOf(openSeq, pos)
@@ -359,7 +361,7 @@ function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
     }
 
     if (text.length > 0) {
-      doc.events.push({
+      events[eventCount++] = {
         id: generateId(),
         start: startMs,
         end: endMs,
@@ -373,13 +375,14 @@ function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
         text,
         segments: EMPTY_SEGMENTS,
         dirty: false
-      })
+      }
       found = true
     }
 
     pos = closeStart + 4
   }
 
+  if (eventCount !== events.length) events.length = eventCount
   return found
 }
 

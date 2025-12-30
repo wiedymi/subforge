@@ -47,6 +47,13 @@ const TELETEXT_COLORS: Record<number, number> = {
   0x07: 0xFFFFFFFF, // White
 }
 
+const TELETEXT_DECODE_MAP = new Uint8Array(256)
+for (let i = 0; i < 256; i++) {
+  const b = i & 0x7F
+  TELETEXT_DECODE_MAP[i] = (b < 0x20 || b === 0x7F) ? 0x20 : b
+}
+const TELETEXT_DECODER = new TextDecoder('utf-8')
+
 interface TeletextPage {
   pageNumber: number
   subPage: number
@@ -61,6 +68,7 @@ class TeletextParser {
   private errors: ParseError[] = []
   private opts: ParseOptions
   private currentPages: Array<TeletextPage | null> = new Array(9).fill(null)
+  private rowBuf = new Uint8Array(40)
 
   constructor(input: Uint8Array, opts: Partial<ParseOptions> = {}) {
     this.data = input
@@ -174,33 +182,18 @@ class TeletextParser {
   }
 
   private decodeRow(start: number): string {
-    let result = ''
-    let lastNonSpace = -1
-
     const data = this.data
-    const end = start + 40
-    for (let i = start; i < end; i++) {
-      let byte = data[i]
-
-      // Strip parity bit
-      byte = byte & 0x7F
-
-      // Handle control codes
-      if (byte < 0x20) {
-        // For subtitle purposes, we'll replace control codes with spaces
-        result += ' '
-      } else if (byte === 0x7F) {
-        // Delete character
-        result += ' '
-      } else {
-        // Regular character
-        result += String.fromCharCode(byte)
-        lastNonSpace = result.length
-      }
+    const buf = this.rowBuf
+    let outLen = 0
+    const base = start
+    for (let i = 0; i < 40; i++) {
+      const mapped = TELETEXT_DECODE_MAP[data[base + i]!]!
+      buf[i] = mapped
+      if (mapped !== 0x20) outLen = i + 1
     }
 
-    if (lastNonSpace === -1) return ''
-    return lastNonSpace === result.length ? result : result.slice(0, lastNonSpace)
+    if (outLen === 0) return ''
+    return TELETEXT_DECODER.decode(buf.subarray(0, outLen))
   }
 
   // Hamming 8/4 decode (one byte encodes 4 bits)

@@ -2,7 +2,7 @@ import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
-import { decodeCEA608, type CEA608Command } from './cea608.ts'
+import { CONTROL_CODE_NAMES, PAC_ROWS, MID_ROW_CODES, SPECIAL_CHARS } from './cea608.ts'
 
 // SCC uses drop-frame timecode at 29.97 fps (30000/1001)
 const FRAME_RATE = 29.97
@@ -219,19 +219,39 @@ class SCCParser {
             }
           }
 
-          const cmd = decodeCEA608(b1, b2)
-          if (cmd) {
-            if (cmd.type === 'control') {
-              this.handleControlCommand(timecode, cmd)
-            } else if (cmd.type === 'char') {
-              this.handleCharCommand(cmd)
-            } else if (cmd.type === 'pac') {
-              if (this.currentCaption.length > 0 && this.currentCaption[this.currentCaption.length - 1] !== '\n') {
-                this.currentCaption.push('\n')
-              }
-            } else if (cmd.type === 'midrow') {
-              // Mid-row codes change styling - ignore for now (basic text only)
+          const code = value
+
+          // Control codes
+          if ((b1 & 0xf0) === 0x90 && b1 >= 0x94 && b1 <= 0x97) {
+            const name = CONTROL_CODE_NAMES[code]
+            if (name) {
+              this.handleControlCommand(timecode, { code, name })
+              this.pos += 4
+              continue
             }
+          }
+
+          // PAC (preamble address codes)
+          if (PAC_ROWS[code] !== undefined) {
+            if (this.currentCaption.length > 0 && this.currentCaption[this.currentCaption.length - 1] !== '\n') {
+              this.currentCaption.push('\n')
+            }
+            this.pos += 4
+            continue
+          }
+
+          // Mid-row codes (styling) - ignored
+          if (MID_ROW_CODES[code]) {
+            this.pos += 4
+            continue
+          }
+
+          // Special characters
+          const special = SPECIAL_CHARS[code]
+          if (special) {
+            this.handleCharCommand({ text: special })
+            this.pos += 4
+            continue
           }
 
           this.pos += 4

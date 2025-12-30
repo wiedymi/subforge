@@ -172,6 +172,76 @@ class LRCParser {
       }
     }
 
+    // Fast path: single [MM:SS.xx] line
+    if (firstClose === 9 && line.charCodeAt(0) === 91 && line.charCodeAt(3) === 58 && line.charCodeAt(6) === 46) {
+      const m1 = line.charCodeAt(1) - 48
+      const m2 = line.charCodeAt(2) - 48
+      const s1 = line.charCodeAt(4) - 48
+      const s2 = line.charCodeAt(5) - 48
+      const c1 = line.charCodeAt(7) - 48
+      const c2 = line.charCodeAt(8) - 48
+      if (
+        m1 >= 0 && m1 <= 9 && m2 >= 0 && m2 <= 9 &&
+        s1 >= 0 && s1 <= 9 && s2 >= 0 && s2 <= 9 &&
+        c1 >= 0 && c1 <= 9 && c2 >= 0 && c2 <= 9 &&
+        line.indexOf('[', 1) === -1
+      ) {
+        const timestamp = (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (c1 * 10 + c2) * 10
+        let textStart = 10
+        let textEnd = line.length
+        while (textStart < textEnd && line.charCodeAt(textStart) <= 32) textStart++
+        while (textEnd > textStart && line.charCodeAt(textEnd - 1) <= 32) textEnd--
+        const text = line.substring(textStart, textEnd)
+
+        let segments = EMPTY_SEGMENTS
+        if (text.indexOf('<') !== -1) {
+          const parsed = this.parseEnhancedLRC(text, timestamp)
+          if (parsed.length > 0) segments = parsed
+        }
+
+        if (segments.length > 0) {
+          const lastSegment = segments[segments.length - 1]!
+          const lastEffect = lastSegment.effects.find(e => e.type === 'karaoke')
+          const endTime = lastEffect && lastEffect.type === 'karaoke'
+            ? timestamp + lastEffect.params.duration
+            : timestamp + 5000
+
+          this.doc.events.push({
+            id: generateId(),
+            start: timestamp,
+            end: endTime,
+            layer: 0,
+            style: 'Default',
+            actor: '',
+            marginL: 0,
+            marginR: 0,
+            marginV: 0,
+            effect: '',
+            text: '',
+            segments,
+            dirty: true
+          })
+        } else {
+          this.doc.events.push({
+            id: generateId(),
+            start: timestamp,
+            end: timestamp + 5000,
+            layer: 0,
+            style: 'Default',
+            actor: '',
+            marginL: 0,
+            marginR: 0,
+            marginV: 0,
+            effect: '',
+            text,
+            segments: EMPTY_SEGMENTS,
+            dirty: false
+          })
+        }
+        return
+      }
+    }
+
     // Parse timestamp line(s)
     try {
       let firstTimestamp = -1

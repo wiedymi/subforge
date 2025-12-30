@@ -39,7 +39,7 @@ export const CONTROL_CODES = {
   TO3: 0x9723, // Tab offset 3 columns
 } as const
 
-const CONTROL_CODE_NAMES: { [code: number]: string } = {}
+export const CONTROL_CODE_NAMES: { [code: number]: string } = {}
 for (const [name, value] of Object.entries(CONTROL_CODES)) {
   CONTROL_CODE_NAMES[value] = name
 }

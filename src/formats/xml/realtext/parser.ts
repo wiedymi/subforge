@@ -131,33 +131,33 @@ class RealTextParser {
   }
 
   private parseSimpleTimeClear(src: string): boolean {
-    const windowStart = indexOfTagCaseInsensitive(src, '<window', 0)
+    const windowStart = src.indexOf('<window')
     if (windowStart === -1) return false
     const windowOpenEnd = src.indexOf('>', windowStart)
     if (windowOpenEnd === -1) return false
-    const windowClose = indexOfTagCaseInsensitive(src, '</window>', windowOpenEnd)
+    const windowClose = src.indexOf('</window>', windowOpenEnd)
     if (windowClose === -1) return false
 
     let pos = windowOpenEnd + 1
+    const timeToken = '<time'
+    const clearToken = '<clear'
     while (pos < windowClose) {
-      const timePos = indexOfTagCaseInsensitive(src, '<time', pos)
+      const timePos = src.indexOf(timeToken, pos)
       if (timePos === -1 || timePos >= windowClose) break
       const timeTagEnd = src.indexOf('>', timePos)
       if (timeTagEnd === -1 || timeTagEnd >= windowClose) return false
 
-      const beginIdx = indexOfAttrCaseInsensitive(src, 'begin', timePos, timeTagEnd)
-      if (beginIdx === -1) return false
-      const quote = src.charCodeAt(beginIdx)
-      if (quote !== 34 && quote !== 39) return false
-      const beginStart = beginIdx + 1
-      const beginEnd = src.indexOf(String.fromCharCode(quote), beginStart)
+      const beginAttr = src.indexOf('begin="', timePos)
+      if (beginAttr === -1 || beginAttr > timeTagEnd) return false
+      const beginStart = beginAttr + 7
+      const beginEnd = src.indexOf('"', beginStart)
       if (beginEnd === -1 || beginEnd > timeTagEnd) return false
 
       const time = parseRealTextTimeRange(src, beginStart, beginEnd)
       if (time === null) return false
 
       const textStart = timeTagEnd + 1
-      const clearPos = indexOfTagCaseInsensitive(src, '<clear', textStart)
+      const clearPos = src.indexOf(clearToken, textStart)
       if (clearPos === -1 || clearPos > windowClose) return false
 
       const range = trimRange(src, textStart, clearPos)
@@ -167,7 +167,7 @@ class RealTextParser {
         this.addEvent(time, text)
       }
 
-      pos = clearPos + 6
+      pos = clearPos + clearToken.length
     }
 
     return this.doc.events.length > 0

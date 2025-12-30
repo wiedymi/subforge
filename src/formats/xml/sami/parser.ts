@@ -287,6 +287,8 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
   let prevTime = -1
   let prevText = ''
   let prevClass: string | undefined
+  const events = doc.events
+  let eventCount = events.length
 
   while (pos !== -1) {
     let numStart = pos + token.length
@@ -334,7 +336,7 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
     if (textEnd === -1) return false
 
     if (prevTime >= 0 && prevText) {
-      doc.events[doc.events.length] = {
+      events[eventCount++] = {
         id: generateId(),
         start: prevTime,
         end: time,
@@ -366,7 +368,7 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
   }
 
   if (prevTime >= 0 && prevText) {
-    doc.events[doc.events.length] = {
+    events[eventCount++] = {
       id: generateId(),
       start: prevTime,
       end: prevTime + 5000,
@@ -383,7 +385,8 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
     }
   }
 
-  return doc.events.length > 0
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
 }
 
 function extractTrimmedText(src: string, start: number, end: number): string {
@@ -414,7 +417,24 @@ function indexOfTagCaseInsensitive(src: string, tag: string, start: number): num
 }
 
 function extractStyles(src: string, doc: SubtitleDocument): void {
-  const styleStart = indexOfTagCaseInsensitive(src, '<style', 0)
+  let styleStart = src.indexOf('<STYLE')
+  if (styleStart !== -1) {
+    const styleEndUpper = src.indexOf('</STYLE>', styleStart)
+    if (styleEndUpper !== -1) {
+      const cssBlock = src.substring(styleStart, styleEndUpper + 8)
+      const classes = parseCSS(cssBlock)
+
+      for (const [className, classObj] of classes) {
+        const baseStyle = createDefaultStyle()
+        const styleProps = styleFromClass(classObj, baseStyle)
+        const style: Style = { ...baseStyle, ...styleProps, name: className }
+        doc.styles.set(className, style)
+      }
+      return
+    }
+  }
+
+  styleStart = indexOfTagCaseInsensitive(src, '<style', 0)
   if (styleStart === -1) return
 
   const styleEnd = indexOfTagCaseInsensitive(src, '</style>', styleStart)
