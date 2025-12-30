@@ -64,15 +64,17 @@ class RealTextParser {
         inWindow = true
       } else if (token.type === 'close' && token.name === 'window') {
         // Add final subtitle if exists
-        if (hasContent && currentText.trim()) {
-          this.addEvent(currentTime, currentText.trim())
+        if (hasContent) {
+          const trimmed = trimStringFast(currentText)
+          if (trimmed) this.addEvent(currentTime, trimmed)
         }
         break
       } else if (inWindow) {
         if (token.type === 'open' && token.name === 'time') {
           // Save previous subtitle if exists
-          if (hasContent && currentText.trim()) {
-            this.addEvent(currentTime, currentText.trim())
+          if (hasContent) {
+            const trimmed = trimStringFast(currentText)
+            if (trimmed) this.addEvent(currentTime, trimmed)
           }
 
           // Get new time
@@ -83,8 +85,9 @@ class RealTextParser {
           hasContent = false
         } else if (token.type === 'open' && token.name === 'clear') {
           // clear tag marks end of current subtitle
-          if (hasContent && currentText.trim()) {
-            this.addEvent(currentTime, currentText.trim())
+          if (hasContent) {
+            const trimmed = trimStringFast(currentText)
+            if (trimmed) this.addEvent(currentTime, trimmed)
           }
           currentText = ''
           hasContent = false
@@ -186,8 +189,9 @@ class RealTextParser {
           if (begin) {
             const nextTime = parseRealTextTimeRange(src, begin.start, begin.end)
             if (nextTime !== null) {
-              if (hasContent && currentText.trim()) {
-                this.addEvent(currentTime, currentText.trim())
+              if (hasContent) {
+                const trimmed = trimStringFast(currentText)
+                if (trimmed) this.addEvent(currentTime, trimmed)
               }
               currentTime = nextTime
               currentText = ''
@@ -195,8 +199,9 @@ class RealTextParser {
             }
           }
         } else if (tag === 2) {
-          if (hasContent && currentText.trim()) {
-            this.addEvent(currentTime, currentText.trim())
+          if (hasContent) {
+            const trimmed = trimStringFast(currentText)
+            if (trimmed) this.addEvent(currentTime, trimmed)
           }
           currentText = ''
           hasContent = false
@@ -222,8 +227,9 @@ class RealTextParser {
       pos = gt + 1
     }
 
-    if (hasContent && currentText.trim()) {
-      this.addEvent(currentTime, currentText.trim())
+    if (hasContent) {
+      const trimmed = trimStringFast(currentText)
+      if (trimmed) this.addEvent(currentTime, trimmed)
     }
 
     return true
@@ -352,6 +358,16 @@ function hasNonWhitespace(text: string): boolean {
     if (text.charCodeAt(i) > 32) return true
   }
   return false
+}
+
+function trimStringFast(text: string): string {
+  let start = 0
+  let end = text.length
+  while (start < end && text.charCodeAt(start) <= 32) start++
+  while (end > start && text.charCodeAt(end - 1) <= 32) end--
+  if (start === 0 && end === text.length) return text
+  if (end <= start) return ''
+  return text.substring(start, end)
 }
 
 function matchTagName(src: string, start: number, end: number): number {

@@ -317,7 +317,8 @@ class QTParser {
   }
 
   private parseText(): string {
-    const lines: string[] = []
+    let text = ''
+    let lineCount = 0
 
     while (this.pos < this.len) {
       this.skipWhitespace()
@@ -342,9 +343,15 @@ class QTParser {
         this.pos++
       }
 
-      const line = this.src.substring(lineStart, lineEnd).trim()
-      if (line.length > 0) {
-        lines.push(line)
+      let start = lineStart
+      let end = lineEnd
+      while (start < end && this.src.charCodeAt(start) <= 32) start++
+      while (end > start && this.src.charCodeAt(end - 1) <= 32) end--
+      if (end > start) {
+        const line = this.src.substring(start, end)
+        if (lineCount === 0) text = line
+        else text += '\n' + line
+        lineCount++
       }
 
       // Skip newline
@@ -363,7 +370,7 @@ class QTParser {
       }
     }
 
-    return lines.join('\n')
+    return text
   }
 
   private skipWhitespace(): void {

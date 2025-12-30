@@ -199,11 +199,19 @@ class LRCParser {
 
       if (tsCount === 0) return
 
-      const text = line.substring(pos).trim()
+      let textStart = pos
+      let textEnd = line.length
+      while (textStart < textEnd && line.charCodeAt(textStart) <= 32) textStart++
+      while (textEnd > textStart && line.charCodeAt(textEnd - 1) <= 32) textEnd--
+      const text = line.substring(textStart, textEnd)
 
       // Check for enhanced LRC (word timing)
       const lineStart = timestamps ? timestamps[0]! : firstTimestamp
-      const segments = this.parseEnhancedLRC(text, lineStart)
+      let segments = EMPTY_SEGMENTS
+      if (text.indexOf('<') !== -1) {
+        const parsed = this.parseEnhancedLRC(text, lineStart)
+        if (parsed.length > 0) segments = parsed
+      }
 
       // Create events for each timestamp (same lyrics can appear at multiple times)
       if (timestamps) {

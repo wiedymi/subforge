@@ -167,10 +167,7 @@ class SpruceSTLParser {
     const ff = f1 * 10 + f2
 
     // Assume 25 fps for frame conversion
-    const frameRate = 25
-    const frameMs = 1000 / frameRate
-
-    return (hh * 3600000) + (mm * 60000) + (ss * 1000) + Math.floor(ff * frameMs)
+    return (hh * 3600000) + (mm * 60000) + (ss * 1000) + (ff * 40)
   }
 
   private addError(code: 'INVALID_FORMAT' | 'INVALID_TIMESTAMP', message: string): void {

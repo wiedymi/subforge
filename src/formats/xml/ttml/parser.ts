@@ -156,6 +156,36 @@ function parseTTMLTimeFast(s: string): number | null {
 
 function parseTTMLTimeRange(s: string, start: number, end: number): number | null {
   if (start >= end) return null
+  const len = end - start
+  if (len === 12) {
+    const c2 = s.charCodeAt(start + 2)
+    const c5 = s.charCodeAt(start + 5)
+    const c8 = s.charCodeAt(start + 8)
+    if (c2 === 58 && c5 === 58 && c8 === 46) {
+      const h1 = s.charCodeAt(start) - 48
+      const h2 = s.charCodeAt(start + 1) - 48
+      const m1 = s.charCodeAt(start + 3) - 48
+      const m2 = s.charCodeAt(start + 4) - 48
+      const s1 = s.charCodeAt(start + 6) - 48
+      const s2 = s.charCodeAt(start + 7) - 48
+      const ms1 = s.charCodeAt(start + 9) - 48
+      const ms2 = s.charCodeAt(start + 10) - 48
+      const ms3 = s.charCodeAt(start + 11) - 48
+      if (
+        h1 >= 0 && h1 <= 9 && h2 >= 0 && h2 <= 9 &&
+        m1 >= 0 && m1 <= 9 && m2 >= 0 && m2 <= 9 &&
+        s1 >= 0 && s1 <= 9 && s2 >= 0 && s2 <= 9 &&
+        ms1 >= 0 && ms1 <= 9 && ms2 >= 0 && ms2 <= 9 && ms3 >= 0 && ms3 <= 9
+      ) {
+        const h = h1 * 10 + h2
+        const m = m1 * 10 + m2
+        const sec = s1 * 10 + s2
+        const ms = ms1 * 100 + ms2 * 10 + ms3
+        return h * 3600000 + m * 60000 + sec * 1000 + ms
+      }
+    }
+  }
+
   const c1 = s.indexOf(':', start)
   if (c1 !== -1 && c1 < end) {
     return parseTTMLClockTimeRange(s, start, end)
@@ -281,6 +311,76 @@ function parsePAttrRanges(src: string, start: number, end: number): AttrRanges {
   }
 
   return ranges
+}
+
+function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
+  if (input.indexOf('<p begin="') === -1) return false
+  if (input.indexOf('<P') !== -1) return false
+  if (
+    input.indexOf('<span') !== -1 || input.indexOf('<br') !== -1 ||
+    input.indexOf('<styling') !== -1 || input.indexOf('<layout') !== -1 ||
+    input.indexOf('<region') !== -1 || input.indexOf('<style') !== -1 ||
+    input.indexOf('tts:') !== -1
+  ) {
+    return false
+  }
+
+  const openSeq = '<p begin="'
+  const endSeq = ' end="'
+  let pos = 0
+  let found = false
+
+  while (true) {
+    const pStart = input.indexOf(openSeq, pos)
+    if (pStart === -1) break
+
+    const beginStart = pStart + openSeq.length
+    const beginEnd = input.indexOf('"', beginStart)
+    if (beginEnd === -1) return false
+
+    const endAttrPos = input.indexOf(endSeq, beginEnd)
+    if (endAttrPos === -1) return false
+    const endStart = endAttrPos + endSeq.length
+    const endEnd = input.indexOf('"', endStart)
+    if (endEnd === -1) return false
+
+    const tagEnd = input.indexOf('>', endEnd)
+    if (tagEnd === -1) return false
+    const closeStart = input.indexOf('</p>', tagEnd + 1)
+    if (closeStart === -1) return false
+
+    const startMs = parseTTMLTimeRange(input, beginStart, beginEnd)
+    const endMs = parseTTMLTimeRange(input, endStart, endEnd)
+    if (startMs === null || endMs === null) return false
+
+    let text = input.substring(tagEnd + 1, closeStart)
+    if (text.indexOf('&') !== -1) {
+      text = decodeXMLEntitiesFast(text)
+    }
+
+    if (text.length > 0) {
+      doc.events.push({
+        id: generateId(),
+        start: startMs,
+        end: endMs,
+        layer: 0,
+        style: 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      })
+      found = true
+    }
+
+    pos = closeStart + 4
+  }
+
+  return found
 }
 
 function parseTTMLFast(input: string, doc: SubtitleDocument): boolean {
@@ -465,7 +565,7 @@ class TTMLParser {
   }
 
   parse(input: string): ParseResult {
-    if (parseTTMLFast(input, this.doc)) {
+    if (parseTTMLUltraFast(input, this.doc) || parseTTMLFast(input, this.doc)) {
       return { document: this.doc, errors: this.errors, warnings: [] }
     }
 

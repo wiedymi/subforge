@@ -206,6 +206,19 @@ class SCCParser {
           const b1 = (value >> 8) & 0xff
           const b2 = value & 0xff
 
+          if (b1 >= 0x20 && b1 <= 0x7f) {
+            if (b2 >= 0x20 && b2 <= 0x7f) {
+              this.currentCaption.push(String.fromCharCode(b1, b2))
+              this.pos += 4
+              continue
+            }
+            if (b2 === 0x00) {
+              this.currentCaption.push(String.fromCharCode(b1))
+              this.pos += 4
+              continue
+            }
+          }
+
           const cmd = decodeCEA608(b1, b2)
           if (cmd) {
             if (cmd.type === 'control') {

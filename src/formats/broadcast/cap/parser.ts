@@ -23,6 +23,7 @@ class CAPParser {
   private lineNum = 1
   private header: CAPHeader = {}
   private fps = 25 // Default to PAL
+  private frameMs = 40
 
   constructor(input: string, opts: Partial<ParseOptions> = {}) {
     // Handle BOM
@@ -87,6 +88,7 @@ class CAPParser {
         // Handle video standard to determine fps
         if (normalizedKey === 'videostandard') {
           this.fps = videoStandardToFps(value)
+          this.frameMs = 1000 / this.fps
         }
       }
     }
@@ -243,8 +245,7 @@ class CAPParser {
     if (f1 < 0 || f1 > 9 || f2 < 0 || f2 > 9) return -1
 
     const frames = f1 * 10 + f2
-    const frameMs = (frames / this.fps) * 1000
-    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + frameMs
+    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (frames * this.frameMs)
   }
 
   getHeader(): CAPHeader {

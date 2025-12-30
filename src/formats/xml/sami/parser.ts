@@ -7,7 +7,6 @@ import { parseCSS, styleFromClass, type SAMIClass } from './css.ts'
 interface SyncPoint {
   time: number
   pTagEnd: number
-  contentEnd: number
   className: string | undefined
 }
 
@@ -39,84 +38,89 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
   // Extract CSS styles
   extractStyles(input, doc)
 
-  // Pass 1: Find all SYNC positions (fast scan)
-  const syncPositions = findAllSyncs(input, start, len)
-  const syncCount = syncPositions.length
+  let pos = start
+  let prev: SyncPoint | null = null
 
-  if (syncCount === 0) {
-    return { document: doc, errors, warnings: [] }
-  }
+  while (pos < len) {
+    const syncPos = findNextSync(input, pos, len)
+    if (syncPos === -1) break
 
-  // Pass 2: Parse each SYNC point knowing where the next one is
-  const syncDataList: Array<SyncPoint | null> = new Array(syncCount)
-  for (let i = 0; i < syncCount; i++) {
-    const syncPos = syncPositions[i]
-    const nextSyncPos = i + 1 < syncCount ? syncPositions[i + 1] : len
-    syncDataList[i] = parseSyncPoint(input, syncPos, nextSyncPos, len)
-  }
-
-  for (let i = 0; i < syncCount; i++) {
-    const syncData = syncDataList[i]
-    if (!syncData) continue
-
-    const { time, pTagEnd, contentEnd, className } = syncData
-
-    // Extract text content (manual trim to avoid extra allocations)
-    let textStart = pTagEnd
-    let textEnd = contentEnd
-    while (textStart < textEnd && input.charCodeAt(textStart) <= 32) textStart++
-    while (textEnd > textStart && input.charCodeAt(textEnd - 1) <= 32) textEnd--
-    if (textEnd <= textStart) continue
-    const text = input.substring(textStart, textEnd)
-
-    // Skip empty markers
-    if (text === '&nbsp;' || text === '') continue
-
-    // Calculate end time from next SYNC
-    let endTime = time + 5000
-    if (i + 1 < syncCount) {
-      const nextData = syncDataList[i + 1]
-      if (nextData) endTime = nextData.time
+    const current = parseSyncHeader(input, syncPos, len)
+    if (!current) {
+      pos = syncPos + 5
+      continue
     }
 
-    // Parse inline HTML tags if present
-    const hasTag = text.indexOf('<') !== -1
-    const segments = hasTag ? parseTags(text) : []
-    const plainText = hasTag ? stripTags(text) : decodeHTML(text)
+    if (prev) {
+      const contentEnd = findContentEnd(input, prev.pTagEnd, syncPos)
+      const text = extractTrimmedText(input, prev.pTagEnd, contentEnd)
 
-    const event: SubtitleEvent = {
-      id: generateId(),
-      start: time,
-      end: endTime,
-      layer: 0,
-      style: className || 'Default',
-      actor: '',
-      marginL: 0,
-      marginR: 0,
-      marginV: 0,
-      effect: '',
-      text: plainText,
-      segments,
-      dirty: segments.length > 0
+      if (text && text !== '&nbsp;') {
+        const hasTag = text.indexOf('<') !== -1
+        const segments = hasTag ? parseTags(text) : []
+        const plainText = hasTag ? stripTags(text) : decodeHTML(text)
+
+        doc.events[doc.events.length] = {
+          id: generateId(),
+          start: prev.time,
+          end: current.time,
+          layer: 0,
+          style: prev.className || 'Default',
+          actor: '',
+          marginL: 0,
+          marginR: 0,
+          marginV: 0,
+          effect: '',
+          text: plainText,
+          segments,
+          dirty: segments.length > 0
+        }
+      }
     }
 
-    doc.events[doc.events.length] = event
+    prev = current
+    pos = syncPos + 5
+  }
+
+  if (prev) {
+    const contentEnd = findContentEnd(input, prev.pTagEnd, len)
+    const text = extractTrimmedText(input, prev.pTagEnd, contentEnd)
+    if (text && text !== '&nbsp;') {
+      const hasTag = text.indexOf('<') !== -1
+      const segments = hasTag ? parseTags(text) : []
+      const plainText = hasTag ? stripTags(text) : decodeHTML(text)
+
+      doc.events[doc.events.length] = {
+        id: generateId(),
+        start: prev.time,
+        end: prev.time + 5000,
+        layer: 0,
+        style: prev.className || 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text: plainText,
+        segments,
+        dirty: segments.length > 0
+      }
+    }
   }
 
   return { document: doc, errors, warnings: [] }
 }
 
 /**
- * Single pass to find all <SYNC positions
+ * Find next <SYNC position
  */
-function findAllSyncs(src: string, start: number, len: number): number[] {
-  const positions: number[] = []
+function findNextSync(src: string, start: number, len: number): number {
   let pos = start
 
   while (pos < len) {
     // Find < character
     const ltPos = src.indexOf('<', pos)
-    if (ltPos === -1) break
+    if (ltPos === -1) return -1
 
     // Check if it's SYNC (case insensitive)
     if (ltPos + 5 <= len) {
@@ -130,20 +134,20 @@ function findAllSyncs(src: string, start: number, len: number): number[] {
           (c2 === 89 || c2 === 121) &&
           (c3 === 78 || c3 === 110) &&
           (c4 === 67 || c4 === 99)) {
-        positions[positions.length] = ltPos
+        return ltPos
       }
     }
 
     pos = ltPos + 1
   }
 
-  return positions
+  return -1
 }
 
 /**
- * Parse a single SYNC point
+ * Parse SYNC header info (time, class, p tag end)
  */
-function parseSyncPoint(src: string, syncPos: number, nextSyncPos: number, len: number): SyncPoint | null {
+function parseSyncHeader(src: string, syncPos: number, len: number): SyncPoint | null {
   // Find Start= attribute
   const searchEnd = Math.min(syncPos + 50, len)
   let startPos = -1
@@ -248,27 +252,36 @@ function parseSyncPoint(src: string, syncPos: number, nextSyncPos: number, len: 
   const pTagEnd = src.indexOf('>', pStart)
   if (pTagEnd === -1) return null
 
-  // Content ends at next SYNC or </P> (whichever comes first)
-  // Simple scan for </P> in the bounded region (much faster than indexOf to end)
-  let contentEnd = nextSyncPos
-
-  // Quick scan for </P> - only check within bounds
-  for (let i = pTagEnd + 1; i < nextSyncPos - 3; i++) {
-    if (src.charCodeAt(i) === 60 && // <
-        src.charCodeAt(i + 1) === 47 && // /
-        (src.charCodeAt(i + 2) === 80 || src.charCodeAt(i + 2) === 112) && // P/p
-        src.charCodeAt(i + 3) === 62) { // >
-      contentEnd = i
-      break
-    }
-  }
-
   return {
     time,
     pTagEnd: pTagEnd + 1,
-    contentEnd,
     className
   }
+}
+
+function findContentEnd(src: string, start: number, end: number): number {
+  let pos = start
+  while (pos < end) {
+    const lt = src.indexOf('<', pos)
+    if (lt === -1 || lt + 3 >= end) return end
+    if (src.charCodeAt(lt + 1) === 47) { // /
+      const c = src.charCodeAt(lt + 2)
+      if ((c === 80 || c === 112) && src.charCodeAt(lt + 3) === 62) {
+        return lt
+      }
+    }
+    pos = lt + 1
+  }
+  return end
+}
+
+function extractTrimmedText(src: string, start: number, end: number): string {
+  let textStart = start
+  let textEnd = end
+  while (textStart < textEnd && src.charCodeAt(textStart) <= 32) textStart++
+  while (textEnd > textStart && src.charCodeAt(textEnd - 1) <= 32) textEnd--
+  if (textEnd <= textStart) return ''
+  return src.substring(textStart, textEnd)
 }
 
 function indexOfTagCaseInsensitive(src: string, tag: string, start: number): number {

@@ -50,13 +50,8 @@ const TELETEXT_COLORS: Record<number, number> = {
 interface TeletextPage {
   pageNumber: number
   subPage: number
-  rows: TeletextRow[]
+  lines: string[]
   timeCode?: number // PTS in milliseconds
-}
-
-interface TeletextRow {
-  rowNumber: number
-  data: Uint8Array
 }
 
 class TeletextParser {
@@ -65,7 +60,6 @@ class TeletextParser {
   private doc: SubtitleDocument
   private errors: ParseError[] = []
   private opts: ParseOptions
-  private pages: Map<number, TeletextPage[]> = new Map()
   private currentPages: Array<TeletextPage | null> = new Array(9).fill(null)
 
   constructor(input: Uint8Array, opts: Partial<ParseOptions> = {}) {
@@ -80,7 +74,6 @@ class TeletextParser {
 
   parse(): ParseResult {
     this.parsePackets()
-    this.extractSubtitles()
     return { document: this.doc, errors: this.errors, warnings: [] }
   }
 
@@ -110,6 +103,11 @@ class TeletextParser {
 
       this.pos += 45
     }
+
+    // Flush any remaining pages
+    for (const page of this.currentPages) {
+      if (page) this.emitPage(page)
+    }
   }
 
   private parsePageHeader(base: number, magazine: number): void {
@@ -127,17 +125,15 @@ class TeletextParser {
     const subPageS2 = this.unham(this.data[base + 8])
     const subPage = subPageS1 | (subPageS2 << 4)
 
-    if (!this.pages.has(pageNumber)) {
-      this.pages.set(pageNumber, [])
-    }
+    const current = this.currentPages[magazine]
+    if (current) this.emitPage(current)
 
     const page: TeletextPage = {
       pageNumber,
       subPage,
-      rows: []
+      lines: []
     }
 
-    this.pages.get(pageNumber)!.push(page)
     this.currentPages[magazine] = page
   }
 
@@ -147,41 +143,20 @@ class TeletextParser {
 
     // Extract 40 bytes of character data (bytes 2-41)
     // Row data is NOT Hamming encoded, just has parity bit
-    const rowData = this.data.subarray(base + 2, base + 42)
-    currentPage.rows.push({ rowNumber, data: rowData })
+    const decoded = this.decodeRow(base + 2)
+    if (decoded) currentPage.lines[currentPage.lines.length] = decoded
   }
 
-  private extractSubtitles(): void {
-    // Typically subtitles are on page 888, but process all pages
-    for (const [pageNum, pages] of this.pages.entries()) {
-      for (const page of pages) {
-        const event = this.pageToEvent(page)
-        if (event) {
-          this.doc.events.push(event)
-        }
-      }
-    }
-  }
-
-  private pageToEvent(page: TeletextPage): SubtitleEvent | null {
-    if (page.rows.length === 0) return null
-
-    const lines: string[] = []
-
-    // Build text from rows
-    for (const row of page.rows) {
-      const decoded = this.decodeRow(row.data)
-      if (decoded) lines[lines.length] = decoded
-    }
-
-    if (lines.length === 0) return null
-    const text = lines.join('\n')
+  private emitPage(page: TeletextPage): void {
+    if (page.lines.length === 0) return
+    const text = page.lines.join('\n')
+    if (!text) return
 
     // Calculate timing (placeholder - would come from PTS in real implementation)
     const start = page.timeCode || 0
     const end = start + 5000 // 5 second default duration
 
-    return {
+    this.doc.events.push({
       id: generateId(),
       start,
       end,
@@ -195,14 +170,16 @@ class TeletextParser {
       text,
       segments: EMPTY_SEGMENTS,
       dirty: false
-    }
+    })
   }
 
-  private decodeRow(data: Uint8Array): string {
+  private decodeRow(start: number): string {
     let result = ''
     let lastNonSpace = -1
 
-    for (let i = 0; i < data.length; i++) {
+    const data = this.data
+    const end = start + 40
+    for (let i = start; i < end; i++) {
       let byte = data[i]
 
       // Strip parity bit

@@ -70,6 +70,7 @@ class SSAParser {
   private errors: ParseError[] = []
   private opts: ParseOptions
   private eventIndex = 0
+  private eventFieldIndexes: EventFieldIndexes | null = null
 
   constructor(input: string, opts: Partial<ParseOptions> = {}) {
     this.lexer = new SSALexer(input)
@@ -278,11 +279,12 @@ class SSAParser {
 
       if ((firstChar === 70 || firstChar === 102) && this.startsWithCI(line, start, 'format:')) {
         format = line.substring(start + 7).split(',').map(s => s.trim().toLowerCase())
+        this.eventFieldIndexes = this.buildEventFieldIndexes(format)
         continue
       }
 
       if ((firstChar === 68 || firstChar === 100) && this.startsWithCI(line, start, 'dialogue:')) {
-        const event = this.parseDialogueLine(line.substring(start + 9), format)
+        const event = this.parseDialogueLineFast(line, start + 9, format)
         if (event) {
           this.doc.events[this.doc.events.length] = event
           this.eventIndex++
@@ -297,7 +299,7 @@ class SSAParser {
       }
       else if ((firstChar === 77 || firstChar === 109) && this.startsWithCI(line, start, 'marked:')) {
         // SSA v4 has Marked field - treat as dialogue
-        const event = this.parseDialogueLine(line.substring(start + 7), format)
+        const event = this.parseDialogueLineFast(line, start + 7, format)
         if (event) {
           this.doc.events[this.doc.events.length] = event
           this.eventIndex++
@@ -317,8 +319,11 @@ class SSAParser {
     return true
   }
 
-  private parseDialogueLine(data: string, format: string[]): SubtitleEvent | null {
-    const values = this.splitFields(data, format.length)
+  private parseDialogueLineFast(line: string, offset: number, format: string[]): SubtitleEvent | null {
+    const formatIndexes = this.eventFieldIndexes
+    if (!formatIndexes || formatIndexes.count === 0) {
+      return this.parseDialogueLine(line.substring(offset), format)
+    }
 
     const event: SubtitleEvent = {
       id: generateId(),
@@ -336,40 +341,76 @@ class SSAParser {
       dirty: false
     }
 
-    for (let i = 0; i < format.length && i < values.length; i++) {
-      const key = format[i]!
-      const val = values[i]!.trim()
+    const len = line.length
+    let field = 0
+    let startPos = offset
 
-      switch (key) {
-        case 'marked':
-          // SSA v4 has Marked field (0 or 1) - ignore
-          break
-        case 'layer': event.layer = parseInt(val) || 0; break
-        case 'start':
-          {
-            const t = this.parseTimeInline(val)
-            if (t < 0) this.addError('INVALID_TIMESTAMP', `Invalid start time: ${val}`)
-            else event.start = t
-          }
-          break
-        case 'end':
-          {
-            const t = this.parseTimeInline(val)
-            if (t < 0) this.addError('INVALID_TIMESTAMP', `Invalid end time: ${val}`)
-            else event.end = t
-          }
-          break
-        case 'style': event.style = val; break
-        case 'name': case 'actor': event.actor = val; break
-        case 'marginl': event.marginL = parseInt(val) || 0; break
-        case 'marginr': event.marginR = parseInt(val) || 0; break
-        case 'marginv': event.marginV = parseInt(val) || 0; break
-        case 'effect': event.effect = val; break
-        case 'text': event.text = val; break
+    while (startPos <= len && field < formatIndexes.count) {
+      let endPos: number
+      if (field < formatIndexes.count - 1) {
+        const comma = line.indexOf(',', startPos)
+        if (comma === -1) {
+          endPos = len
+        } else {
+          endPos = comma
+        }
+      } else {
+        endPos = len
       }
+
+      if (field === formatIndexes.start) {
+        const t = this.parseTimeRange(line, startPos, endPos)
+        if (t < 0) this.addError('INVALID_TIMESTAMP', `Invalid start time`)
+        else event.start = t
+      } else if (field === formatIndexes.end) {
+        const t = this.parseTimeRange(line, startPos, endPos)
+        if (t < 0) this.addError('INVALID_TIMESTAMP', `Invalid end time`)
+        else event.end = t
+      } else if (field === formatIndexes.layer) {
+        event.layer = this.parseIntRange(line, startPos, endPos)
+      } else if (field === formatIndexes.marginL) {
+        event.marginL = this.parseIntRange(line, startPos, endPos)
+      } else if (field === formatIndexes.marginR) {
+        event.marginR = this.parseIntRange(line, startPos, endPos)
+      } else if (field === formatIndexes.marginV) {
+        event.marginV = this.parseIntRange(line, startPos, endPos)
+      } else if (field === formatIndexes.style) {
+        const range = trimRange(line, startPos, endPos)
+        event.style = line.substring(range.start, range.end)
+      } else if (field === formatIndexes.actor) {
+        const range = trimRange(line, startPos, endPos)
+        event.actor = line.substring(range.start, range.end)
+      } else if (field === formatIndexes.effect) {
+        const range = trimRange(line, startPos, endPos)
+        event.effect = line.substring(range.start, range.end)
+      } else if (field === formatIndexes.text) {
+        const range = trimRange(line, startPos, endPos)
+        event.text = line.substring(range.start, range.end)
+      }
+
+      if (endPos === len) break
+      startPos = endPos + 1
+      field++
     }
 
     return event
+  }
+
+  private buildEventFieldIndexes(format: string[]): EventFieldIndexes {
+    const indexes: EventFieldIndexes = {
+      count: format.length,
+      layer: format.indexOf('layer'),
+      start: format.indexOf('start'),
+      end: format.indexOf('end'),
+      style: format.indexOf('style'),
+      actor: Math.max(format.indexOf('name'), format.indexOf('actor')),
+      marginL: format.indexOf('marginl'),
+      marginR: format.indexOf('marginr'),
+      marginV: format.indexOf('marginv'),
+      effect: format.indexOf('effect'),
+      text: format.indexOf('text'),
+    }
+    return indexes
   }
 
   private parseCommentLine(data: string, format: string[]): Comment | null {
@@ -480,6 +521,82 @@ class SSAParser {
 
     return h * 3600000 + m * 60000 + ss * 1000 + ms
   }
+
+  private parseTimeRange(s: string, start: number, end: number): number {
+    while (start < end && s.charCodeAt(start) <= 32) start++
+    while (end > start && s.charCodeAt(end - 1) <= 32) end--
+    if (start >= end) return -1
+
+    const colon1 = s.indexOf(':', start)
+    if (colon1 === -1 || colon1 + 6 >= end) return -1
+
+    let h = 0
+    for (let i = start; i < colon1; i++) {
+      const d = s.charCodeAt(i) - 48
+      if (d < 0 || d > 9) return -1
+      h = h * 10 + d
+    }
+
+    const m1 = s.charCodeAt(colon1 + 1) - 48
+    const m2 = s.charCodeAt(colon1 + 2) - 48
+    if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return -1
+
+    if (s.charCodeAt(colon1 + 3) !== 58) return -1
+
+    const s1 = s.charCodeAt(colon1 + 4) - 48
+    const s2 = s.charCodeAt(colon1 + 5) - 48
+    if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return -1
+
+    if (s.charCodeAt(colon1 + 6) !== 46) return -1
+
+    const fracStart = colon1 + 7
+    const fracLen = end - fracStart
+    if (fracLen <= 0) return -1
+    let ms = 0
+    const digits = fracLen >= 3 ? 3 : fracLen
+    for (let i = 0; i < digits; i++) {
+      const d = s.charCodeAt(fracStart + i) - 48
+      if (d < 0 || d > 9) return -1
+      ms = ms * 10 + d
+    }
+    if (digits === 1) ms *= 100
+    else if (digits === 2) ms *= 10
+
+    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + ms
+  }
+
+  private parseIntRange(s: string, start: number, end: number): number {
+    while (start < end && s.charCodeAt(start) <= 32) start++
+    while (end > start && s.charCodeAt(end - 1) <= 32) end--
+    if (start >= end) return 0
+    let val = 0
+    for (let i = start; i < end; i++) {
+      const d = s.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      val = val * 10 + d
+    }
+    return val
+  }
+}
+
+interface EventFieldIndexes {
+  count: number
+  layer: number
+  start: number
+  end: number
+  style: number
+  actor: number
+  marginL: number
+  marginR: number
+  marginV: number
+  effect: number
+  text: number
+}
+
+function trimRange(s: string, start: number, end: number): { start: number; end: number } {
+  while (start < end && s.charCodeAt(start) <= 32) start++
+  while (end > start && s.charCodeAt(end - 1) <= 32) end--
+  return { start, end }
 }
 
 /**
