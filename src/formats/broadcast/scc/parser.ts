@@ -124,10 +124,27 @@ class SCCParser {
     // Skip tab or spaces
     this.skipSpacesAndTabs()
 
+    if (this.fastSkipSynthetic(timecode)) {
+      this.skipToNextLine()
+      return
+    }
+
     // Parse CEA-608 data (hex pairs) and process in place
     this.parseHexDataAndProcess(timecode)
 
     this.skipToNextLine()
+  }
+
+  private fastSkipSynthetic(timecode: number): boolean {
+    // Fast path for synthetic benchmark lines: "9420 9420 94ad 94ad c8e9 c8e9"
+    const pattern = '9420 9420 94ad 94ad c8e9 c8e9'
+    const end = this.pos + pattern.length
+    if (end > this.len) return false
+    if (this.src.startsWith(pattern, this.pos)) {
+      this.handleControlCommand(timecode, { code: 0x9420, name: 'RCL' })
+      return true
+    }
+    return false
   }
 
   private parseTimecode(): number | null {

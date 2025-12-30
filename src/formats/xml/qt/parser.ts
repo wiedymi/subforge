@@ -421,6 +421,8 @@ class QTParser {
  * ```
  */
 export function parseQT(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseQTFastSimple(input, fastDoc)) return fastDoc
   const parser = new QTParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -440,6 +442,132 @@ export function parseQT(input: string): SubtitleDocument {
  * ```
  */
 export function parseQTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseQTFastSimple(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new QTParser(input, opts)
   return parser.parse()
+}
+
+function parseQTFastSimple(input: string, doc: SubtitleDocument): boolean {
+  let pos = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) pos = 1
+  if (input.indexOf('{timeScale') !== -1 || input.indexOf('{timescale') !== -1) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  let lastTime: number | null = null
+  let lastText = ''
+
+  while (pos < len) {
+    const c = input.charCodeAt(pos)
+    if (c <= 32) {
+      pos++
+      continue
+    }
+
+    if (c === 123) { // {
+      let depth = 1
+      pos++
+      while (pos < len && depth > 0) {
+        const ch = input.charCodeAt(pos)
+        if (ch === 123) depth++
+        else if (ch === 125) depth--
+        pos++
+      }
+      continue
+    }
+
+    if (c !== 91) { // [
+      pos++
+      continue
+    }
+
+    if (pos + 12 >= len || input.charCodeAt(pos + 12) !== 93) return false
+    if (
+      input.charCodeAt(pos + 3) !== 58 ||
+      input.charCodeAt(pos + 6) !== 58 ||
+      input.charCodeAt(pos + 9) !== 46
+    ) return false
+
+    const h1 = input.charCodeAt(pos + 1) - 48
+    const h2 = input.charCodeAt(pos + 2) - 48
+    const m1 = input.charCodeAt(pos + 4) - 48
+    const m2 = input.charCodeAt(pos + 5) - 48
+    const s1 = input.charCodeAt(pos + 7) - 48
+    const s2 = input.charCodeAt(pos + 8) - 48
+    const f1 = input.charCodeAt(pos + 10) - 48
+    const f2 = input.charCodeAt(pos + 11) - 48
+    if (
+      h1 < 0 || h1 > 9 || h2 < 0 || h2 > 9 ||
+      m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+      s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+      f1 < 0 || f1 > 9 || f2 < 0 || f2 > 9
+    ) return false
+
+    const hours = h1 * 10 + h2
+    const minutes = m1 * 10 + m2
+    const seconds = s1 * 10 + s2
+    const centis = f1 * 10 + f2
+    const time = hours * 3600000 + minutes * 60000 + seconds * 1000 + centis * 10
+
+    if (lastTime !== null && lastText.length > 0) {
+      events[eventCount++] = {
+        id: generateId(),
+        start: lastTime,
+        end: time,
+        layer: 0,
+        style: 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text: lastText,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      }
+    }
+
+    pos += 13
+
+    while (pos < len) {
+      const ws = input.charCodeAt(pos)
+      if (ws === 10 || ws === 13 || ws === 32 || ws === 9) {
+        pos++
+        continue
+      }
+      break
+    }
+
+    if (pos >= len || input.charCodeAt(pos) === 91 || input.charCodeAt(pos) === 123) {
+      lastTime = time
+      lastText = ''
+      continue
+    }
+
+    let lineEnd = pos
+    while (lineEnd < len) {
+      const ch = input.charCodeAt(lineEnd)
+      if (ch === 10 || ch === 13 || ch === 91 || ch === 123) break
+      lineEnd++
+    }
+
+    let tStart = pos
+    let tEnd = lineEnd
+    if (tStart < tEnd && (input.charCodeAt(tStart) <= 32 || input.charCodeAt(tEnd - 1) <= 32)) {
+      while (tStart < tEnd && input.charCodeAt(tStart) <= 32) tStart++
+      while (tEnd > tStart && input.charCodeAt(tEnd - 1) <= 32) tEnd--
+    }
+    lastText = tEnd > tStart ? input.substring(tStart, tEnd) : ''
+    lastTime = time
+
+    pos = lineEnd
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
 }

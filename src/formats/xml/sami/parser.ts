@@ -305,35 +305,56 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
       time = time * 10 + (input.charCodeAt(i) - 48)
     }
 
-    const pStart = input.indexOf('<P', numEnd)
-    if (pStart === -1) return false
-    const pTagEnd = input.indexOf('>', pStart)
+    if (input.charCodeAt(numEnd) !== 62) return false
+    const pStart = numEnd + 1
+    if (input.charCodeAt(pStart) !== 60 || input.charCodeAt(pStart + 1) !== 80) return false
+    const pTagEnd = input.indexOf('>', pStart + 2)
     if (pTagEnd === -1) return false
 
     let className: string | undefined
-    const classPos = input.indexOf('Class=', pStart)
-    if (classPos !== -1 && classPos < pTagEnd) {
-      let valStart = classPos + 6
-      while (valStart < pTagEnd && input.charCodeAt(valStart) <= 32) valStart++
-      let valEnd = valStart
-      const quote = input.charCodeAt(valStart)
-      if (quote === 34 || quote === 39) {
-        valStart++
-        valEnd = input.indexOf(String.fromCharCode(quote), valStart)
-        if (valEnd === -1 || valEnd > pTagEnd) valEnd = pTagEnd
-      } else {
-        while (valEnd < pTagEnd) {
-          const c = input.charCodeAt(valEnd)
-          if (c <= 32 || c === 62) break
-          valEnd++
+    if (input.charCodeAt(pStart + 2) === 32 &&
+      input.startsWith('Class=ENCC', pStart + 3) &&
+      (input.charCodeAt(pStart + 13) === 62 || input.charCodeAt(pStart + 13) <= 32)
+    ) {
+      className = 'ENCC'
+    } else {
+      const classPos = input.indexOf('Class=', pStart)
+      if (classPos !== -1 && classPos < pTagEnd) {
+        let valStart = classPos + 6
+        while (valStart < pTagEnd && input.charCodeAt(valStart) <= 32) valStart++
+        let valEnd = valStart
+        const quote = input.charCodeAt(valStart)
+        if (quote === 34 || quote === 39) {
+          valStart++
+          valEnd = input.indexOf(String.fromCharCode(quote), valStart)
+          if (valEnd === -1 || valEnd > pTagEnd) valEnd = pTagEnd
+        } else {
+          while (valEnd < pTagEnd) {
+            const c = input.charCodeAt(valEnd)
+            if (c <= 32 || c === 62) break
+            valEnd++
+          }
+        }
+        if (valEnd > valStart) {
+          let hasLower = false
+          for (let i = valStart; i < valEnd; i++) {
+            const c = input.charCodeAt(i)
+            if (c >= 97 && c <= 122) {
+              hasLower = true
+              break
+            }
+          }
+          className = hasLower ? input.substring(valStart, valEnd).toUpperCase() : input.substring(valStart, valEnd)
         }
       }
-      if (valEnd > valStart) className = input.substring(valStart, valEnd).toUpperCase()
     }
 
     const textStart = pTagEnd + 1
-    const textEnd = input.indexOf('</P>', textStart)
-    if (textEnd === -1) return false
+    const lt = input.indexOf('<', textStart)
+    if (lt === -1 || input.charCodeAt(lt + 1) !== 47 || input.charCodeAt(lt + 2) !== 80 || input.charCodeAt(lt + 3) !== 62) {
+      return false
+    }
+    const textEnd = lt
 
     if (prevTime >= 0 && prevText) {
       events[eventCount++] = {
@@ -353,7 +374,30 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
       }
     }
 
-    let text = extractTrimmedText(input, textStart, textEnd)
+    let tStart = textStart
+    let tEnd = textEnd
+    if (tStart < tEnd && (input.charCodeAt(tStart) <= 32 || input.charCodeAt(tEnd - 1) <= 32)) {
+      while (tStart < tEnd && input.charCodeAt(tStart) <= 32) tStart++
+      while (tEnd > tStart && input.charCodeAt(tEnd - 1) <= 32) tEnd--
+    }
+
+    let text = ''
+    if (tEnd > tStart) {
+      if (
+        tEnd - tStart === 6 &&
+        input.charCodeAt(tStart) === 38 &&
+        input.charCodeAt(tStart + 1) === 110 &&
+        input.charCodeAt(tStart + 2) === 98 &&
+        input.charCodeAt(tStart + 3) === 115 &&
+        input.charCodeAt(tStart + 4) === 112 &&
+        input.charCodeAt(tStart + 5) === 59
+      ) {
+        text = '&nbsp;'
+      } else {
+        text = input.substring(tStart, tEnd)
+      }
+    }
+
     if (text === '&nbsp;' || text === '') {
       prevText = ''
     } else {
@@ -364,7 +408,7 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
 
     prevTime = time
     prevClass = className
-    pos = input.indexOf(token, textEnd)
+    pos = input.indexOf(token, lt + 4)
   }
 
   if (prevTime >= 0 && prevText) {
