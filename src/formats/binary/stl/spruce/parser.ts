@@ -75,22 +75,30 @@ class SpruceSTLParser {
     this.pos = nlPos < this.len ? nlPos + 1 : this.len
     this.lineNum++
 
-    const line = this.src.substring(lineStart, lineEnd).trim()
-    if (!line) return null
+    let hasContent = false
+    for (let i = lineStart; i < lineEnd; i++) {
+      if (this.src.charCodeAt(i) > 32) {
+        hasContent = true
+        break
+      }
+    }
+    if (!hasContent) return null
 
     // Parse format: HH:MM:SS:FF , HH:MM:SS:FF , text
-    const parts = line.split(',')
-    if (parts.length < 3) {
+    const firstComma = this.src.indexOf(',', lineStart)
+    if (firstComma === -1 || firstComma >= lineEnd) {
+      this.addError('INVALID_FORMAT', 'Invalid Spruce STL line format')
+      return null
+    }
+    const secondComma = this.src.indexOf(',', firstComma + 1)
+    if (secondComma === -1 || secondComma >= lineEnd) {
       this.addError('INVALID_FORMAT', 'Invalid Spruce STL line format')
       return null
     }
 
-    const startStr = parts[0].trim()
-    const endStr = parts[1].trim()
-    const text = parts.slice(2).join(',').trim()
-
-    const start = this.parseTimecode(startStr)
-    const end = this.parseTimecode(endStr)
+    const start = this.parseTimecodeInline(lineStart, firstComma)
+    const end = this.parseTimecodeInline(firstComma + 1, secondComma)
+    let text = this.src.substring(secondComma + 1, lineEnd).trim()
 
     if (start === null || end === null) {
       this.addError('INVALID_TIMESTAMP', 'Invalid timecode')
@@ -114,17 +122,49 @@ class SpruceSTLParser {
     }
   }
 
-  private parseTimecode(tc: string): number | null {
+  private parseTimecodeInline(start: number, end: number): number | null {
     // Format: HH:MM:SS:FF
-    const parts = tc.split(':')
-    if (parts.length !== 4) return null
+    const src = this.src
+    while (start < end && src.charCodeAt(start) <= 32) start++
+    while (end > start && src.charCodeAt(end - 1) <= 32) end--
+    if (start >= end) return null
 
-    const hh = parseInt(parts[0], 10)
-    const mm = parseInt(parts[1], 10)
-    const ss = parseInt(parts[2], 10)
-    const ff = parseInt(parts[3], 10)
+    let i = start
+    let hh = 0
+    let digits = 0
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      hh = hh * 10 + d
+      digits++
+      i++
+    }
+    if (digits === 0 || i >= end || src.charCodeAt(i) !== 58) return null
+    i++
 
-    if (isNaN(hh) || isNaN(mm) || isNaN(ss) || isNaN(ff)) return null
+    if (i + 1 >= end) return null
+    const m1 = src.charCodeAt(i) - 48
+    const m2 = src.charCodeAt(i + 1) - 48
+    if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return null
+    const mm = m1 * 10 + m2
+    i += 2
+    if (i >= end || src.charCodeAt(i) !== 58) return null
+    i++
+
+    if (i + 1 >= end) return null
+    const s1 = src.charCodeAt(i) - 48
+    const s2 = src.charCodeAt(i + 1) - 48
+    if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return null
+    const ss = s1 * 10 + s2
+    i += 2
+    if (i >= end || src.charCodeAt(i) !== 58) return null
+    i++
+
+    if (i + 1 >= end) return null
+    const f1 = src.charCodeAt(i) - 48
+    const f2 = src.charCodeAt(i + 1) - 48
+    if (f1 < 0 || f1 > 9 || f2 < 0 || f2 > 9) return null
+    const ff = f1 * 10 + f2
 
     // Assume 25 fps for frame conversion
     const frameRate = 25

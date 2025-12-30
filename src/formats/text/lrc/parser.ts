@@ -2,7 +2,6 @@ import type { SubtitleDocument, SubtitleEvent, TextSegment } from '../../../core
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
-import { parseTime } from './time.ts'
 
 /**
  * Metadata tags supported in LRC format.
@@ -109,8 +108,8 @@ class LRCParser {
     this.pos = nlPos < this.len ? nlPos + 1 : this.len
     this.lineNum++
 
-    const line = this.src.substring(lineStart, lineEnd).trim()
-    return line || null
+    const line = this.src.substring(lineStart, lineEnd)
+    return line ? line : null
   }
 
   private parseLine(line: string): void {
@@ -127,7 +126,14 @@ class LRCParser {
       const beforeColon = tag.substring(0, colonIdx)
 
       // If the part before colon is all digits, it's a timestamp not metadata
-      const isTimestamp = /^\d+$/.test(beforeColon)
+      let isTimestamp = true
+      for (let i = 0; i < beforeColon.length; i++) {
+        const c = beforeColon.charCodeAt(i)
+        if (c < 48 || c > 57) {
+          isTimestamp = false
+          break
+        }
+      }
 
       if (!isTimestamp) {
         const key = beforeColon.toLowerCase()
@@ -168,7 +174,9 @@ class LRCParser {
 
     // Parse timestamp line(s)
     try {
-      const timestamps: number[] = []
+      let firstTimestamp = -1
+      let timestamps: number[] | null = null
+      let tsCount = 0
       let pos = 0
 
       // Extract all timestamps from the line
@@ -176,36 +184,87 @@ class LRCParser {
         const closeIdx = line.indexOf(']', pos)
         if (closeIdx === -1) break
 
-        const timeStr = line.substring(pos + 1, closeIdx)
-        try {
-          timestamps.push(parseTime(timeStr))
-        } catch {
-          // Skip invalid timestamp
+        const timestamp = parseTimeInline(line, pos + 1, closeIdx)
+        if (timestamp !== null) {
+          if (tsCount === 0) {
+            firstTimestamp = timestamp
+          } else {
+            if (!timestamps) timestamps = [firstTimestamp]
+            timestamps[timestamps.length] = timestamp
+          }
+          tsCount++
         }
         pos = closeIdx + 1
       }
 
-      if (timestamps.length === 0) return
+      if (tsCount === 0) return
 
       const text = line.substring(pos).trim()
 
       // Check for enhanced LRC (word timing)
-      const segments = this.parseEnhancedLRC(text, timestamps[0]!)
+      const lineStart = timestamps ? timestamps[0]! : firstTimestamp
+      const segments = this.parseEnhancedLRC(text, lineStart)
 
       // Create events for each timestamp (same lyrics can appear at multiple times)
-      for (const timestamp of timestamps) {
+      if (timestamps) {
+        for (const timestamp of timestamps) {
+          let event: SubtitleEvent
+          if (segments.length > 0) {
+            // Enhanced LRC with word timing - calculate end time from segments
+            const lastSegment = segments[segments.length - 1]!
+            const lastEffect = lastSegment.effects.find(e => e.type === 'karaoke')
+            const endTime = lastEffect && lastEffect.type === 'karaoke'
+              ? timestamp + lastEffect.params.duration
+              : timestamp + 5000 // Default 5 seconds if no timing
+
+            event = {
+              id: generateId(),
+              start: timestamp,
+              end: endTime,
+              layer: 0,
+              style: 'Default',
+              actor: '',
+              marginL: 0,
+              marginR: 0,
+              marginV: 0,
+              effect: '',
+              text: '',
+              segments,
+              dirty: true
+            }
+          } else {
+            // Simple LRC - use default duration of 5 seconds or until next line
+            event = {
+              id: generateId(),
+              start: timestamp,
+              end: timestamp + 5000, // Will be adjusted later
+              layer: 0,
+              style: 'Default',
+              actor: '',
+              marginL: 0,
+              marginR: 0,
+              marginV: 0,
+              effect: '',
+              text,
+              segments: EMPTY_SEGMENTS,
+              dirty: false
+            }
+          }
+          this.doc.events.push(event)
+        }
+      } else {
         let event: SubtitleEvent
         if (segments.length > 0) {
           // Enhanced LRC with word timing - calculate end time from segments
           const lastSegment = segments[segments.length - 1]!
           const lastEffect = lastSegment.effects.find(e => e.type === 'karaoke')
           const endTime = lastEffect && lastEffect.type === 'karaoke'
-            ? timestamp + lastEffect.params.duration
-            : timestamp + 5000 // Default 5 seconds if no timing
+            ? firstTimestamp + lastEffect.params.duration
+            : firstTimestamp + 5000 // Default 5 seconds if no timing
 
           event = {
             id: generateId(),
-            start: timestamp,
+            start: firstTimestamp,
             end: endTime,
             layer: 0,
             style: 'Default',
@@ -222,8 +281,8 @@ class LRCParser {
           // Simple LRC - use default duration of 5 seconds or until next line
           event = {
             id: generateId(),
-            start: timestamp,
-            end: timestamp + 5000, // Will be adjusted later
+            start: firstTimestamp,
+            end: firstTimestamp + 5000, // Will be adjusted later
             layer: 0,
             style: 'Default',
             actor: '',
@@ -256,9 +315,8 @@ class LRCParser {
         const closeIdx = text.indexOf('>', pos)
         if (closeIdx === -1) break
 
-        const timeStr = text.substring(pos + 1, closeIdx)
-        try {
-          const wordTime = parseTime(timeStr)
+        const wordTime = parseTimeInline(text, pos + 1, closeIdx)
+        if (wordTime !== null) {
           pos = closeIdx + 1
 
           // Find the next tag or end of string
@@ -280,7 +338,7 @@ class LRCParser {
           }
 
           pos = nextTag
-        } catch {
+        } else {
           // Skip invalid timestamp
           pos = closeIdx + 1
         }
@@ -304,6 +362,47 @@ class LRCParser {
     }
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
+}
+
+function parseTimeInline(text: string, start: number, end: number): number | null {
+  let i = start
+  let minutes = 0
+  let digits = 0
+  for (; i < end; i++) {
+    const c = text.charCodeAt(i)
+    if (c === 58) break
+    if (c < 48 || c > 57) return null
+    minutes = minutes * 10 + (c - 48)
+    digits++
+  }
+  if (i >= end || digits === 0) return null
+  i++
+
+  let seconds = 0
+  digits = 0
+  for (; i < end; i++) {
+    const c = text.charCodeAt(i)
+    if (c === 46) break
+    if (c < 48 || c > 57) return null
+    seconds = seconds * 10 + (c - 48)
+    digits++
+  }
+  if (i >= end || digits === 0) return null
+  i++
+
+  let frac = 0
+  let fracDigits = 0
+  for (; i < end; i++) {
+    const c = text.charCodeAt(i)
+    if (c < 48 || c > 57) return null
+    if (fracDigits >= 3) return null
+    frac = frac * 10 + (c - 48)
+    fracDigits++
+  }
+
+  if (fracDigits !== 2 && fracDigits !== 3) return null
+  const ms = fracDigits === 2 ? frac * 10 : frac
+  return minutes * 60000 + seconds * 1000 + ms
 }
 
 // Post-process to set proper end times

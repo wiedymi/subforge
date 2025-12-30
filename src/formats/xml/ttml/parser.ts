@@ -1,9 +1,414 @@
 import type { SubtitleDocument, SubtitleEvent, Style, InlineStyle, TextSegment } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId } from '../../../core/document.ts'
+import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseTime, parseDuration } from './time.ts'
 import { parseXML, querySelector, querySelectorAll, getAttribute, getAttributeNS, type XMLElement } from './xml.ts'
+
+function decodeXMLEntitiesFast(text: string): string {
+  let out = ''
+  let pos = 0
+  while (true) {
+    const amp = text.indexOf('&', pos)
+    if (amp === -1) {
+      if (pos === 0) return text
+      out += text.substring(pos)
+      return out
+    }
+    out += text.substring(pos, amp)
+    const semi = text.indexOf(';', amp + 1)
+    if (semi === -1) {
+      out += text.substring(amp)
+      return out
+    }
+    const entity = text.substring(amp + 1, semi)
+    switch (entity) {
+      case 'lt': out += '<'; break
+      case 'gt': out += '>'; break
+      case 'amp': out += '&'; break
+      case 'quot': out += '"'; break
+      case 'apos': out += "'"; break
+      default:
+        if (entity.startsWith('#x')) {
+          const code = parseInt(entity.slice(2), 16)
+          if (!isNaN(code)) out += String.fromCharCode(code)
+        } else if (entity.startsWith('#')) {
+          const code = parseInt(entity.slice(1), 10)
+          if (!isNaN(code)) out += String.fromCharCode(code)
+        }
+        break
+    }
+    pos = semi + 1
+  }
+}
+
+function getAttrValue(attrs: string, name: string): string | null {
+  const search = name + '='
+  let idx = attrs.indexOf(search)
+  if (idx === -1) return null
+  idx += search.length
+  while (idx < attrs.length && attrs.charCodeAt(idx) <= 32) idx++
+  if (idx >= attrs.length) return null
+  const quote = attrs.charCodeAt(idx)
+  if (quote === 34 || quote === 39) {
+    idx++
+    const end = attrs.indexOf(String.fromCharCode(quote), idx)
+    if (end === -1) return null
+    return attrs.substring(idx, end)
+  }
+  let end = idx
+  while (end < attrs.length) {
+    const c = attrs.charCodeAt(end)
+    if (c <= 32 || c === 62) break
+    end++
+  }
+  return attrs.substring(idx, end)
+}
+
+function parseTTMLClockTimeFast(s: string): number | null {
+  const len = s.length
+  const c1 = s.indexOf(':')
+  if (c1 === -1) return null
+  const c2 = s.indexOf(':', c1 + 1)
+  if (c2 === -1) return null
+  const dot = s.indexOf('.', c2 + 1)
+  if (dot === -1) return null
+
+  let h = 0
+  for (let i = 0; i < c1; i++) {
+    const d = s.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    h = h * 10 + d
+  }
+
+  if (c2 - c1 < 3) return null
+  const m1 = s.charCodeAt(c1 + 1) - 48
+  const m2 = s.charCodeAt(c1 + 2) - 48
+  const s1 = s.charCodeAt(c2 + 1) - 48
+  const s2 = s.charCodeAt(c2 + 2) - 48
+  if (
+    m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+    s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9
+  ) return null
+
+  const msLen = len - (dot + 1)
+  if (msLen < 1) return null
+  let ms = 0
+  const msDigits = msLen >= 3 ? 3 : msLen
+  for (let i = 0; i < msDigits; i++) {
+    const d = s.charCodeAt(dot + 1 + i) - 48
+    if (d < 0 || d > 9) return null
+    ms = ms * 10 + d
+  }
+  if (msDigits === 1) ms *= 100
+  else if (msDigits === 2) ms *= 10
+
+  return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + ms
+}
+
+function parseTTMLClockTimeRange(s: string, start: number, end: number): number | null {
+  const c1 = s.indexOf(':', start)
+  if (c1 === -1 || c1 >= end) return null
+  const c2 = s.indexOf(':', c1 + 1)
+  if (c2 === -1 || c2 >= end) return null
+  const dot = s.indexOf('.', c2 + 1)
+  if (dot === -1 || dot >= end) return null
+
+  let h = 0
+  for (let i = start; i < c1; i++) {
+    const d = s.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    h = h * 10 + d
+  }
+
+  if (c2 - c1 < 3) return null
+  const m1 = s.charCodeAt(c1 + 1) - 48
+  const m2 = s.charCodeAt(c1 + 2) - 48
+  const s1 = s.charCodeAt(c2 + 1) - 48
+  const s2 = s.charCodeAt(c2 + 2) - 48
+  if (
+    m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+    s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9
+  ) return null
+
+  const msLen = end - (dot + 1)
+  if (msLen < 1) return null
+  let ms = 0
+  const msDigits = msLen >= 3 ? 3 : msLen
+  for (let i = 0; i < msDigits; i++) {
+    const d = s.charCodeAt(dot + 1 + i) - 48
+    if (d < 0 || d > 9) return null
+    ms = ms * 10 + d
+  }
+  if (msDigits === 1) ms *= 100
+  else if (msDigits === 2) ms *= 10
+
+  return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + ms
+}
+
+function parseTTMLTimeFast(s: string): number | null {
+  if (!s) return null
+  if (s.indexOf(':') !== -1) {
+    return parseTTMLClockTimeFast(s)
+  }
+  return null
+}
+
+function parseTTMLTimeRange(s: string, start: number, end: number): number | null {
+  if (start >= end) return null
+  const c1 = s.indexOf(':', start)
+  if (c1 !== -1 && c1 < end) {
+    return parseTTMLClockTimeRange(s, start, end)
+  }
+  return null
+}
+
+interface AttrRanges {
+  beginStart?: number
+  beginEnd?: number
+  endStart?: number
+  endEnd?: number
+  durStart?: number
+  durEnd?: number
+  styleStart?: number
+  styleEnd?: number
+  regionStart?: number
+  regionEnd?: number
+}
+
+function matchAttrName(src: string, start: number, end: number): number {
+  const len = end - start
+  if (len === 3) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    const c3 = src.charCodeAt(start + 2) | 32
+    if (c1 === 101 && c2 === 110 && c3 === 100) return 2 // end
+    if (c1 === 100 && c2 === 117 && c3 === 114) return 3 // dur
+    return 0
+  }
+  if (len === 5) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    const c3 = src.charCodeAt(start + 2) | 32
+    const c4 = src.charCodeAt(start + 3) | 32
+    const c5 = src.charCodeAt(start + 4) | 32
+    if (c1 === 98 && c2 === 101 && c3 === 103 && c4 === 105 && c5 === 110) return 1 // begin
+    if (c1 === 115 && c2 === 116 && c3 === 121 && c4 === 108 && c5 === 101) return 4 // style
+    return 0
+  }
+  if (len === 6) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    const c3 = src.charCodeAt(start + 2) | 32
+    const c4 = src.charCodeAt(start + 3) | 32
+    const c5 = src.charCodeAt(start + 4) | 32
+    const c6 = src.charCodeAt(start + 5) | 32
+    if (c1 === 114 && c2 === 101 && c3 === 103 && c4 === 105 && c5 === 111 && c6 === 110) return 5 // region
+  }
+  return 0
+}
+
+function parsePAttrRanges(src: string, start: number, end: number): AttrRanges {
+  const ranges: AttrRanges = {}
+  let i = start
+
+  while (i < end) {
+    const c = src.charCodeAt(i)
+    if (c <= 32) {
+      i++
+      continue
+    }
+
+    const nameStart = i
+    i++
+    while (i < end) {
+      const ch = src.charCodeAt(i)
+      if (ch <= 32 || ch === 61) break
+      i++
+    }
+    const nameEnd = i
+
+    while (i < end && src.charCodeAt(i) <= 32) i++
+    if (i >= end || src.charCodeAt(i) !== 61) {
+      while (i < end && src.charCodeAt(i) !== 32) i++
+      continue
+    }
+    i++ // '='
+    while (i < end && src.charCodeAt(i) <= 32) i++
+    if (i >= end) break
+
+    const quote = src.charCodeAt(i)
+    let valStart = i
+    let valEnd = i
+    if (quote === 34 || quote === 39) {
+      valStart = i + 1
+      valEnd = src.indexOf(String.fromCharCode(quote), valStart)
+      if (valEnd === -1 || valEnd > end) valEnd = end
+      i = valEnd + 1
+    } else {
+      while (i < end) {
+        const ch = src.charCodeAt(i)
+        if (ch <= 32 || ch === 62) break
+        i++
+      }
+      valStart = valStart
+      valEnd = i
+    }
+
+    const key = matchAttrName(src, nameStart, nameEnd)
+    switch (key) {
+      case 1:
+        ranges.beginStart = valStart
+        ranges.beginEnd = valEnd
+        break
+      case 2:
+        ranges.endStart = valStart
+        ranges.endEnd = valEnd
+        break
+      case 3:
+        ranges.durStart = valStart
+        ranges.durEnd = valEnd
+        break
+      case 4:
+        ranges.styleStart = valStart
+        ranges.styleEnd = valEnd
+        break
+      case 5:
+        ranges.regionStart = valStart
+        ranges.regionEnd = valEnd
+        break
+    }
+  }
+
+  return ranges
+}
+
+function parseTTMLFast(input: string, doc: SubtitleDocument): boolean {
+  if (input.indexOf('<p') === -1 && input.indexOf('<P') === -1) return false
+  if (
+    input.indexOf('<span') !== -1 || input.indexOf('<SPAN') !== -1 ||
+    input.indexOf('<br') !== -1 || input.indexOf('<BR') !== -1 ||
+    input.indexOf('<styling') !== -1 || input.indexOf('<STYLING') !== -1 ||
+    input.indexOf('<layout') !== -1 || input.indexOf('<LAYOUT') !== -1 ||
+    input.indexOf('<region') !== -1 || input.indexOf('<REGION') !== -1 ||
+    input.indexOf('<style') !== -1 || input.indexOf('<STYLE') !== -1 ||
+    input.indexOf('tts:') !== -1 || input.indexOf('TTS:') !== -1
+  ) {
+    return false
+  }
+
+  const len = input.length
+  let pos = 0
+  let found = false
+
+  while (pos < len) {
+    // Find next <p or <P
+    let pStart = -1
+    for (let i = pos; i < len - 1; i++) {
+      if (input.charCodeAt(i) === 60) { // <
+        const c = input.charCodeAt(i + 1)
+        if (c === 112 || c === 80) { // p or P
+          pStart = i
+          break
+        }
+      }
+    }
+    if (pStart === -1) break
+
+    const tagEnd = input.indexOf('>', pStart + 2)
+    if (tagEnd === -1) break
+
+    const closeStart = input.indexOf('</p', tagEnd)
+    if (closeStart === -1) break
+    const closeEnd = input.indexOf('>', closeStart + 3)
+    if (closeEnd === -1) break
+
+    const ranges = parsePAttrRanges(input, pStart + 2, tagEnd)
+    if (ranges.beginStart === undefined || ranges.beginEnd === undefined) {
+      pos = closeEnd + 1
+      continue
+    }
+    const beginStart = ranges.beginStart
+    const beginEnd = ranges.beginEnd
+    const endStart = ranges.endStart
+    const endEnd = ranges.endEnd
+    const durStart = ranges.durStart
+    const durEnd = ranges.durEnd
+
+    let startMs = parseTTMLTimeRange(input, beginStart, beginEnd)
+    if (startMs === null) {
+      const begin = input.substring(beginStart, beginEnd)
+      try {
+        startMs = parseTTMLTimeFast(begin) ?? parseTime(begin)
+      } catch {
+        pos = closeEnd + 1
+        continue
+      }
+    }
+
+    let endMs: number
+    if (endStart !== undefined && endEnd !== undefined) {
+      const fast = parseTTMLTimeRange(input, endStart, endEnd)
+      if (fast === null) {
+        const end = input.substring(endStart, endEnd)
+        try {
+          endMs = parseTTMLTimeFast(end) ?? parseTime(end)
+        } catch {
+          pos = closeEnd + 1
+          continue
+        }
+      } else {
+        endMs = fast
+      }
+    } else if (durStart !== undefined && durEnd !== undefined) {
+      const dur = input.substring(durStart, durEnd)
+      try {
+        endMs = startMs + parseDuration(dur)
+      } catch {
+        pos = closeEnd + 1
+        continue
+      }
+    } else {
+      pos = closeEnd + 1
+      continue
+    }
+
+    const styleRef = ranges.styleStart !== undefined && ranges.styleEnd !== undefined
+      ? input.substring(ranges.styleStart, ranges.styleEnd)
+      : null
+    const regionRef = ranges.regionStart !== undefined && ranges.regionEnd !== undefined
+      ? input.substring(ranges.regionStart, ranges.regionEnd)
+      : null
+
+    let text = input.substring(tagEnd + 1, closeStart)
+    if (text.indexOf('&') !== -1) {
+      text = decodeXMLEntitiesFast(text)
+    }
+
+    if (text.length > 0) {
+      doc.events.push({
+        id: generateId(),
+        start: startMs,
+        end: endMs,
+        layer: 0,
+        style: styleRef || 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: regionRef || '',
+        text,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      })
+      found = true
+    }
+
+    pos = closeEnd + 1
+  }
+
+  return found
+}
 
 /**
  * Represents a TTML region for subtitle positioning and layout
@@ -60,6 +465,10 @@ class TTMLParser {
   }
 
   parse(input: string): ParseResult {
+    if (parseTTMLFast(input, this.doc)) {
+      return { document: this.doc, errors: this.errors, warnings: [] }
+    }
+
     // Parse XML using our simple parser
     let ttElement: XMLElement
     try {

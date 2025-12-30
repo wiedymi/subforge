@@ -2,7 +2,7 @@ import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
-import { parseTime, videoStandardToFps } from './time.ts'
+import { videoStandardToFps } from './time.ts'
 
 interface CAPHeader {
   captionMax?: string
@@ -119,33 +119,26 @@ class CAPParser {
     let timeLineEnd = nlPos
     if (timeLineEnd > timeLineStart && this.src.charCodeAt(timeLineEnd - 1) === 13) timeLineEnd--
 
-    const timeLine = this.src.substring(timeLineStart, timeLineEnd)
     this.pos = nlPos < this.len ? nlPos + 1 : this.len
     this.lineNum++
 
     // Split by tab
-    const tabPos = timeLine.indexOf('\t')
-    if (tabPos === -1) {
+    const tabPos = this.src.indexOf('\t', timeLineStart)
+    if (tabPos === -1 || tabPos >= timeLineEnd) {
       this.addError('INVALID_TIMESTAMP', `Missing tab separator in timecode line`)
       return null
     }
 
-    const startStr = timeLine.substring(0, tabPos).trim()
-    const endStr = timeLine.substring(tabPos + 1).trim()
-
-    let start: number
-    let end: number
-
-    try {
-      start = parseTime(startStr, this.fps)
-    } catch (e) {
+    const start = this.parseTimeInline(timeLineStart, tabPos)
+    if (start < 0) {
+      const startStr = this.src.substring(timeLineStart, tabPos).trim()
       this.addError('INVALID_TIMESTAMP', `Invalid start timecode: ${startStr}`)
       return null
     }
 
-    try {
-      end = parseTime(endStr, this.fps)
-    } catch (e) {
+    const end = this.parseTimeInline(tabPos + 1, timeLineEnd)
+    if (end < 0) {
+      const endStr = this.src.substring(tabPos + 1, timeLineEnd).trim()
       this.addError('INVALID_TIMESTAMP', `Invalid end timecode: ${endStr}`)
       return null
     }
@@ -206,6 +199,52 @@ class CAPParser {
       throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
     }
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
+  }
+
+  private parseTimeInline(start: number, end: number): number {
+    const src = this.src
+    while (start < end && src.charCodeAt(start) <= 32) start++
+    while (end > start && src.charCodeAt(end - 1) <= 32) end--
+    if (start >= end) return -1
+
+    let i = start
+    let h = 0
+    let digits = 0
+
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      h = h * 10 + d
+      digits++
+      i++
+    }
+    if (digits === 0 || i >= end || src.charCodeAt(i) !== 58) return -1
+    i++
+
+    if (i + 1 >= end) return -1
+    const m1 = src.charCodeAt(i) - 48
+    const m2 = src.charCodeAt(i + 1) - 48
+    if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return -1
+    i += 2
+    if (i >= end || src.charCodeAt(i) !== 58) return -1
+    i++
+
+    if (i + 1 >= end) return -1
+    const s1 = src.charCodeAt(i) - 48
+    const s2 = src.charCodeAt(i + 1) - 48
+    if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return -1
+    i += 2
+    if (i >= end || src.charCodeAt(i) !== 58) return -1
+    i++
+
+    if (i + 1 >= end) return -1
+    const f1 = src.charCodeAt(i) - 48
+    const f2 = src.charCodeAt(i + 1) - 48
+    if (f1 < 0 || f1 > 9 || f2 < 0 || f2 > 9) return -1
+
+    const frames = f1 * 10 + f2
+    const frameMs = (frames / this.fps) * 1000
+    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + frameMs
   }
 
   getHeader(): CAPHeader {

@@ -185,7 +185,7 @@ class QTParser {
         const timestamp = this.parseTimestamp()
         if (timestamp !== null) {
           // Create event from last timestamp/text to current timestamp
-          if (lastTime !== null && lastText.trim().length > 0) {
+          if (lastTime !== null && lastText.length > 0) {
             const event: SubtitleEvent = {
               id: generateId(),
               start: lastTime,
@@ -197,7 +197,7 @@ class QTParser {
               marginR: 0,
               marginV: 0,
               effect: '',
-              text: lastText.trim(),
+              text: lastText,
               segments: EMPTY_SEGMENTS,
               dirty: false
             }
@@ -231,42 +231,89 @@ class QTParser {
       this.pos++
     }
 
-    const timestampStr = this.src.substring(start, end).trim()
-    return this.parseTime(timestampStr)
+    return this.parseTimeInline(start, end)
   }
 
-  private parseTime(timeStr: string): number {
-    // Format: HH:MM:SS.mmm or MM:SS.mmm
-    const parts = timeStr.split(':')
+  private parseTimeInline(start: number, end: number): number | null {
+    const src = this.src
+    while (start < end && src.charCodeAt(start) <= 32) start++
+    while (end > start && src.charCodeAt(end - 1) <= 32) end--
+    if (start >= end) return null
+
+    let i = start
+    let first = 0
+    let digits = 0
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      first = first * 10 + d
+      digits++
+      i++
+    }
+    if (digits === 0 || i >= end || src.charCodeAt(i) !== 58) return null
+    i++ // skip :
+
+    let second = 0
+    digits = 0
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      second = second * 10 + d
+      digits++
+      i++
+    }
+    if (digits === 0 || i >= end) return null
+
     let hours = 0
     let minutes = 0
     let seconds = 0
 
-    if (parts.length === 3) {
-      hours = parseInt(parts[0], 10)
-      minutes = parseInt(parts[1], 10)
-      const secParts = parts[2].split('.')
-      seconds = parseInt(secParts[0], 10)
-      const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0').substring(0, 3), 10) : 0
+    const sep = src.charCodeAt(i)
+    if (sep === 58) { // HH:MM:SS.mmm
+      hours = first
+      minutes = second
+      i++
 
-      const timeScaleMs = (hours * 3600 + minutes * 60 + seconds) * this.header.timeScale +
-                          Math.floor(ms * this.header.timeScale / 1000)
-
-      // Convert from timeScale units to milliseconds
-      return Math.floor(timeScaleMs * 1000 / this.header.timeScale)
-    } else if (parts.length === 2) {
-      minutes = parseInt(parts[0], 10)
-      const secParts = parts[1].split('.')
-      seconds = parseInt(secParts[0], 10)
-      const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0').substring(0, 3), 10) : 0
-
-      const timeScaleMs = (minutes * 60 + seconds) * this.header.timeScale +
-                          Math.floor(ms * this.header.timeScale / 1000)
-
-      return Math.floor(timeScaleMs * 1000 / this.header.timeScale)
+      seconds = 0
+      digits = 0
+      while (i < end) {
+        const d = src.charCodeAt(i) - 48
+        if (d < 0 || d > 9) break
+        seconds = seconds * 10 + d
+        digits++
+        i++
+      }
+      if (digits === 0 || i >= end || src.charCodeAt(i) !== 46) return null
+    } else if (sep === 46) { // MM:SS.mmm
+      hours = 0
+      minutes = first
+      seconds = second
+    } else {
+      return null
     }
 
-    return 0
+    if (src.charCodeAt(i) !== 46) return null
+    i++
+
+    let ms = 0
+    let msDigits = 0
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      if (msDigits < 3) {
+        ms = ms * 10 + d
+        msDigits++
+      }
+      i++
+    }
+    if (msDigits === 0) return null
+    if (msDigits === 1) ms *= 100
+    else if (msDigits === 2) ms *= 10
+
+    const timeScale = this.header.timeScale || 1000
+    const timeScaleMs = (hours * 3600 + minutes * 60 + seconds) * timeScale +
+                        Math.floor(ms * timeScale / 1000)
+    return Math.floor(timeScaleMs * 1000 / timeScale)
   }
 
   private parseText(): string {

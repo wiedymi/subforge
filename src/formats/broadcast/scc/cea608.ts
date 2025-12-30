@@ -39,6 +39,11 @@ export const CONTROL_CODES = {
   TO3: 0x9723, // Tab offset 3 columns
 } as const
 
+const CONTROL_CODE_NAMES: { [code: number]: string } = {}
+for (const [name, value] of Object.entries(CONTROL_CODES)) {
+  CONTROL_CODE_NAMES[value] = name
+}
+
 /**
  * Preamble Address Codes (PAC) mapping codes to row numbers.
  *
@@ -302,12 +307,8 @@ export function decodeCEA608(b1: number, b2: number): CEA608Command | null {
 
   // Check for control codes
   if ((b1 & 0xf0) === 0x90 && b1 >= 0x94 && b1 <= 0x97) {
-    // Control code
-    for (const [name, value] of Object.entries(CONTROL_CODES)) {
-      if (value === code) {
-        return { type: 'control', code, name }
-      }
-    }
+    const name = CONTROL_CODE_NAMES[code]
+    if (name) return { type: 'control', code, name }
   }
 
   // Check for PAC (preamble address codes)

@@ -48,17 +48,26 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
   }
 
   // Pass 2: Parse each SYNC point knowing where the next one is
+  const syncDataList: Array<SyncPoint | null> = new Array(syncCount)
   for (let i = 0; i < syncCount; i++) {
     const syncPos = syncPositions[i]
     const nextSyncPos = i + 1 < syncCount ? syncPositions[i + 1] : len
+    syncDataList[i] = parseSyncPoint(input, syncPos, nextSyncPos, len)
+  }
 
-    const syncData = parseSyncPoint(input, syncPos, nextSyncPos, len)
+  for (let i = 0; i < syncCount; i++) {
+    const syncData = syncDataList[i]
     if (!syncData) continue
 
     const { time, pTagEnd, contentEnd, className } = syncData
 
-    // Extract text content
-    const text = input.substring(pTagEnd, contentEnd).trim()
+    // Extract text content (manual trim to avoid extra allocations)
+    let textStart = pTagEnd
+    let textEnd = contentEnd
+    while (textStart < textEnd && input.charCodeAt(textStart) <= 32) textStart++
+    while (textEnd > textStart && input.charCodeAt(textEnd - 1) <= 32) textEnd--
+    if (textEnd <= textStart) continue
+    const text = input.substring(textStart, textEnd)
 
     // Skip empty markers
     if (text === '&nbsp;' || text === '') continue
@@ -66,10 +75,8 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
     // Calculate end time from next SYNC
     let endTime = time + 5000
     if (i + 1 < syncCount) {
-      const nextData = parseSyncPoint(input, syncPositions[i + 1], syncPositions[i + 2] ?? len, len)
-      if (nextData) {
-        endTime = nextData.time
-      }
+      const nextData = syncDataList[i + 1]
+      if (nextData) endTime = nextData.time
     }
 
     // Parse inline HTML tags if present
@@ -176,8 +183,13 @@ function parseSyncPoint(src: string, syncPos: number, nextSyncPos: number, len: 
     numEnd++
   }
 
-  const time = parseInt(src.substring(numStart, numEnd), 10)
-  if (isNaN(time)) return null
+  let time = 0
+  for (let i = numStart; i < numEnd; i++) {
+    const d = src.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    time = time * 10 + d
+  }
+  if (numStart === numEnd) return null
 
   // Find end of SYNC tag
   const syncTagEnd = src.indexOf('>', syncPos)
@@ -195,21 +207,40 @@ function parseSyncPoint(src: string, syncPos: number, nextSyncPos: number, len: 
   let className: string | undefined
   const pTagClose = src.indexOf('>', pStart)
   if (pTagClose !== -1) {
-    const pTag = src.substring(pStart, pTagClose)
-    const classIdx = pTag.toLowerCase().indexOf('class')
-    if (classIdx !== -1) {
-      const eqIdx = pTag.indexOf('=', classIdx)
-      if (eqIdx !== -1) {
-        let valStart = eqIdx + 1
-        while (valStart < pTag.length && pTag.charCodeAt(valStart) <= 32) valStart++
-        let valEnd = valStart
-        while (valEnd < pTag.length) {
-          const c = pTag.charCodeAt(valEnd)
-          if (c <= 32 || c === 62) break
-          valEnd++
+    for (let i = pStart; i < pTagClose - 4; i++) {
+      const c1 = src.charCodeAt(i) | 32
+      if (c1 !== 99) continue // c
+      const c2 = src.charCodeAt(i + 1) | 32
+      const c3 = src.charCodeAt(i + 2) | 32
+      const c4 = src.charCodeAt(i + 3) | 32
+      const c5 = src.charCodeAt(i + 4) | 32
+      if (c2 !== 108 || c3 !== 97 || c4 !== 115 || c5 !== 115) continue // l a s s
+
+      let j = i + 5
+      while (j < pTagClose && src.charCodeAt(j) <= 32) j++
+      if (j >= pTagClose || src.charCodeAt(j) !== 61) continue
+      j++
+      while (j < pTagClose && src.charCodeAt(j) <= 32) j++
+      if (j >= pTagClose) break
+
+      const quote = src.charCodeAt(j)
+      let valStart = j
+      let valEnd = j
+      if (quote === 34 || quote === 39) {
+        valStart = j + 1
+        valEnd = src.indexOf(String.fromCharCode(quote), valStart)
+        if (valEnd === -1 || valEnd > pTagClose) valEnd = pTagClose
+      } else {
+        while (j < pTagClose) {
+          const ch = src.charCodeAt(j)
+          if (ch <= 32 || ch === 62) break
+          j++
         }
-        className = pTag.substring(valStart, valEnd).toUpperCase()
+        valEnd = j
       }
+
+      if (valEnd > valStart) className = src.substring(valStart, valEnd).toUpperCase()
+      break
     }
   }
 
@@ -240,14 +271,32 @@ function parseSyncPoint(src: string, syncPos: number, nextSyncPos: number, len: 
   }
 }
 
+function indexOfTagCaseInsensitive(src: string, tag: string, start: number): number {
+  const tagLen = tag.length
+  const max = src.length - tagLen
+  for (let i = start; i <= max; i++) {
+    let matched = true
+    for (let j = 0; j < tagLen; j++) {
+      const a = src.charCodeAt(i + j)
+      const b = tag.charCodeAt(j)
+      if ((a | 32) !== (b | 32)) {
+        matched = false
+        break
+      }
+    }
+    if (matched) return i
+  }
+  return -1
+}
+
 function extractStyles(src: string, doc: SubtitleDocument): void {
-  const styleStartLower = src.toLowerCase().indexOf('<style')
-  if (styleStartLower === -1) return
+  const styleStart = indexOfTagCaseInsensitive(src, '<style', 0)
+  if (styleStart === -1) return
 
-  const styleEndLower = src.toLowerCase().indexOf('</style>', styleStartLower)
-  if (styleEndLower === -1) return
+  const styleEnd = indexOfTagCaseInsensitive(src, '</style>', styleStart)
+  if (styleEnd === -1) return
 
-  const cssBlock = src.substring(styleStartLower, styleEndLower + 8)
+  const cssBlock = src.substring(styleStart, styleEnd + 8)
   const classes = parseCSS(cssBlock)
 
   for (const [className, classObj] of classes) {

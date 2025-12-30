@@ -66,6 +66,7 @@ class TeletextParser {
   private errors: ParseError[] = []
   private opts: ParseOptions
   private pages: Map<number, TeletextPage[]> = new Map()
+  private currentPages: Array<TeletextPage | null> = new Array(9).fill(null)
 
   constructor(input: Uint8Array, opts: Partial<ParseOptions> = {}) {
     this.data = input
@@ -84,15 +85,12 @@ class TeletextParser {
   }
 
   private parsePackets(): void {
-    while (this.pos < this.data.length) {
-      if (this.pos + 45 > this.data.length) break
-
-      // Skip clock run-in and framing code (2 bytes typically)
-      // In some formats this is implicit, we'll start from magazine/row
-      const packet = this.data.slice(this.pos, this.pos + 45)
+    const len = this.data.length
+    while (this.pos + 45 <= len) {
+      const base = this.pos
 
       // First byte contains magazine (bits 0-2) and packet number (bits 3-7)
-      const byte0 = this.unham84(packet[0], packet[1])
+      const byte0 = this.unham84(this.data[base], this.data[base + 1])
       if (byte0 === -1) {
         this.pos += 45
         continue
@@ -104,29 +102,29 @@ class TeletextParser {
 
       // Packet 0 is page header
       if (packetNum === 0) {
-        this.parsePageHeader(packet, actualMag)
+        this.parsePageHeader(base, actualMag)
       } else if (packetNum >= 1 && packetNum <= 24) {
         // Row data packets (packet 1-24 correspond to rows 1-24)
-        this.parseRowData(packet, actualMag, packetNum)
+        this.parseRowData(base, actualMag, packetNum)
       }
 
       this.pos += 45
     }
   }
 
-  private parsePageHeader(packet: Uint8Array, magazine: number): void {
+  private parsePageHeader(base: number, magazine: number): void {
     // Bytes 2-5 contain page number (units and tens)
     // Each is Hamming 8/4 encoded
-    const pageUnits = this.unham(packet[2]) // Only need first byte of pair
-    const pageTens = this.unham(packet[4])  // Only need first byte of pair
+    const pageUnits = this.unham(this.data[base + 2]) // Only need first byte of pair
+    const pageTens = this.unham(this.data[base + 4])  // Only need first byte of pair
 
     if (pageUnits === -1 || pageTens === -1) return
 
     const pageNumber = magazine * 100 + pageTens * 10 + pageUnits
 
     // Bytes 6-9 contain subpage
-    const subPageS1 = this.unham(packet[6])
-    const subPageS2 = this.unham(packet[8])
+    const subPageS1 = this.unham(this.data[base + 6])
+    const subPageS2 = this.unham(this.data[base + 8])
     const subPage = subPageS1 | (subPageS2 << 4)
 
     if (!this.pages.has(pageNumber)) {
@@ -140,30 +138,17 @@ class TeletextParser {
     }
 
     this.pages.get(pageNumber)!.push(page)
+    this.currentPages[magazine] = page
   }
 
-  private parseRowData(packet: Uint8Array, magazine: number, rowNumber: number): void {
-    // Find the current page for this magazine
-    const pageNumbers = Array.from(this.pages.keys()).filter(p => Math.floor(p / 100) === magazine)
-    if (pageNumbers.length === 0) return
-
-    const pageNumber = pageNumbers[pageNumbers.length - 1]
-    const pages = this.pages.get(pageNumber)!
-    if (pages.length === 0) return
-
-    const currentPage = pages[pages.length - 1]
+  private parseRowData(base: number, magazine: number, rowNumber: number): void {
+    const currentPage = this.currentPages[magazine]
+    if (!currentPage) return
 
     // Extract 40 bytes of character data (bytes 2-41)
     // Row data is NOT Hamming encoded, just has parity bit
-    const rowData = new Uint8Array(40)
-    for (let i = 0; i < 40; i++) {
-      rowData[i] = packet[2 + i]
-    }
-
-    currentPage.rows.push({
-      rowNumber,
-      data: rowData
-    })
+    const rowData = this.data.subarray(base + 2, base + 42)
+    currentPage.rows.push({ rowNumber, data: rowData })
   }
 
   private extractSubtitles(): void {
@@ -181,23 +166,16 @@ class TeletextParser {
   private pageToEvent(page: TeletextPage): SubtitleEvent | null {
     if (page.rows.length === 0) return null
 
-    let text = ''
-    let minRow = 24
-    let maxRow = 0
+    const lines: string[] = []
 
     // Build text from rows
     for (const row of page.rows) {
-      if (row.rowNumber < minRow) minRow = row.rowNumber
-      if (row.rowNumber > maxRow) maxRow = row.rowNumber
-
       const decoded = this.decodeRow(row.data)
-      if (decoded.trim()) {
-        text += decoded + '\n'
-      }
+      if (decoded) lines[lines.length] = decoded
     }
 
-    text = text.trim()
-    if (!text) return null
+    if (lines.length === 0) return null
+    const text = lines.join('\n')
 
     // Calculate timing (placeholder - would come from PTS in real implementation)
     const start = page.timeCode || 0
@@ -222,9 +200,7 @@ class TeletextParser {
 
   private decodeRow(data: Uint8Array): string {
     let result = ''
-    let currentColor = ALPHA_WHITE
-    let doubleHeight = false
-    let mosaicMode = false
+    let lastNonSpace = -1
 
     for (let i = 0; i < data.length; i++) {
       let byte = data[i]
@@ -234,17 +210,6 @@ class TeletextParser {
 
       // Handle control codes
       if (byte < 0x20) {
-        if (byte >= ALPHA_BLACK && byte <= ALPHA_WHITE) {
-          currentColor = byte
-          mosaicMode = false
-        } else if (byte >= MOSAIC_BLACK && byte <= MOSAIC_WHITE) {
-          currentColor = byte - 0x10
-          mosaicMode = true
-        } else if (byte === NORMAL_HEIGHT) {
-          doubleHeight = false
-        } else if (byte === DOUBLE_HEIGHT) {
-          doubleHeight = true
-        }
         // For subtitle purposes, we'll replace control codes with spaces
         result += ' '
       } else if (byte === 0x7F) {
@@ -253,10 +218,12 @@ class TeletextParser {
       } else {
         // Regular character
         result += String.fromCharCode(byte)
+        lastNonSpace = result.length
       }
     }
 
-    return result.trimEnd()
+    if (lastNonSpace === -1) return ''
+    return lastNonSpace === result.length ? result : result.slice(0, lastNonSpace)
   }
 
   // Hamming 8/4 decode (one byte encodes 4 bits)

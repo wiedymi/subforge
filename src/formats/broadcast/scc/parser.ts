@@ -7,6 +7,13 @@ import { decodeCEA608, type CEA608Command } from './cea608.ts'
 // SCC uses drop-frame timecode at 29.97 fps (30000/1001)
 const FRAME_RATE = 29.97
 
+const HEX_TABLE = new Int8Array(256)
+HEX_TABLE.fill(-1)
+for (let i = 0; i <= 9; i++) HEX_TABLE[48 + i] = i
+for (let i = 0; i < 6; i++) {
+  HEX_TABLE[65 + i] = 10 + i
+  HEX_TABLE[97 + i] = 10 + i
+}
 class SCCParser {
   private src: string
   private pos = 0
@@ -117,45 +124,46 @@ class SCCParser {
     // Skip tab or spaces
     this.skipSpacesAndTabs()
 
-    // Parse CEA-608 data (hex pairs)
-    const commands = this.parseHexData()
-
-    // Process commands
-    this.processCommands(timecode, commands)
+    // Parse CEA-608 data (hex pairs) and process in place
+    this.parseHexDataAndProcess(timecode)
 
     this.skipToNextLine()
   }
 
   private parseTimecode(): number | null {
     const start = this.pos
+    if (start + 10 >= this.len) return null
 
-    // HH:MM:SS;FF or HH:MM:SS:FF
-    // Find end of timecode (either tab, space, or newline)
-    let end = this.pos
-    while (end < this.len) {
-      const c = this.src.charCodeAt(end)
-      if (c === 9 || c === 32 || c === 10 || c === 13) break
-      end++
-    }
+    const s = this.src
+    const h1 = s.charCodeAt(start) - 48
+    const h2 = s.charCodeAt(start + 1) - 48
+    const c1 = s.charCodeAt(start + 2)
+    const m1 = s.charCodeAt(start + 3) - 48
+    const m2 = s.charCodeAt(start + 4) - 48
+    const c2 = s.charCodeAt(start + 5)
+    const s1 = s.charCodeAt(start + 6) - 48
+    const s2 = s.charCodeAt(start + 7) - 48
+    const c3 = s.charCodeAt(start + 8)
+    const f1 = s.charCodeAt(start + 9) - 48
+    const f2 = s.charCodeAt(start + 10) - 48
 
-    const timecodeStr = this.src.substring(start, end)
-
-    // Parse: HH:MM:SS;FF or HH:MM:SS:FF
-    const match = timecodeStr.match(/^(\d{2}):(\d{2}):(\d{2})[:;](\d{2})$/)
-    if (!match) {
+    if (
+      h1 < 0 || h1 > 9 || h2 < 0 || h2 > 9 ||
+      m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+      s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+      f1 < 0 || f1 > 9 || f2 < 0 || f2 > 9 ||
+      c1 !== 58 || c2 !== 58 || (c3 !== 58 && c3 !== 59)
+    ) {
       return null
     }
 
-    const hours = parseInt(match[1]!)
-    const minutes = parseInt(match[2]!)
-    const seconds = parseInt(match[3]!)
-    const frames = parseInt(match[4]!)
+    const hours = h1 * 10 + h2
+    const minutes = m1 * 10 + m2
+    const seconds = s1 * 10 + s2
+    const frames = f1 * 10 + f2
 
-    // Convert to milliseconds
-    // frames / 29.97 gives seconds for that frame portion
     const ms = (hours * 3600 + minutes * 60 + seconds) * 1000 + Math.round(frames * 1000 / FRAME_RATE)
-
-    this.pos = end
+    this.pos = start + 11
     return ms
   }
 
@@ -170,11 +178,13 @@ class SCCParser {
     }
   }
 
-  private parseHexData(): CEA608Command[] {
-    const commands: CEA608Command[] = []
+  private parseHexDataAndProcess(timecode: number): void {
+    const s = this.src
+    const len = this.len
+    const table = HEX_TABLE
 
-    while (this.pos < this.len) {
-      const c = this.src.charCodeAt(this.pos)
+    while (this.pos < len) {
+      const c = s.charCodeAt(this.pos)
 
       // End of line
       if (c === 10 || c === 13) break
@@ -185,19 +195,30 @@ class SCCParser {
         continue
       }
 
-      // Parse hex pair (4 hex digits)
-      if (this.pos + 3 < this.len) {
-        const hexStr = this.src.substring(this.pos, this.pos + 4)
-        const hexMatch = hexStr.match(/^[0-9a-fA-F]{4}$/)
+      if (this.pos + 3 < len) {
+        const a = table[s.charCodeAt(this.pos)]
+        const b = table[s.charCodeAt(this.pos + 1)]
+        const c2 = table[s.charCodeAt(this.pos + 2)]
+        const d = table[s.charCodeAt(this.pos + 3)]
 
-        if (hexMatch) {
-          const value = parseInt(hexStr, 16)
+        if (a !== -1 && b !== -1 && c2 !== -1 && d !== -1) {
+          const value = (a << 12) | (b << 8) | (c2 << 4) | d
           const b1 = (value >> 8) & 0xff
           const b2 = value & 0xff
 
           const cmd = decodeCEA608(b1, b2)
           if (cmd) {
-            commands.push(cmd)
+            if (cmd.type === 'control') {
+              this.handleControlCommand(timecode, cmd)
+            } else if (cmd.type === 'char') {
+              this.handleCharCommand(cmd)
+            } else if (cmd.type === 'pac') {
+              if (this.currentCaption.length > 0 && this.currentCaption[this.currentCaption.length - 1] !== '\n') {
+                this.currentCaption.push('\n')
+              }
+            } else if (cmd.type === 'midrow') {
+              // Mid-row codes change styling - ignore for now (basic text only)
+            }
           }
 
           this.pos += 4
@@ -207,25 +228,6 @@ class SCCParser {
 
       // Invalid character
       this.pos++
-    }
-
-    return commands
-  }
-
-  private processCommands(timecode: number, commands: CEA608Command[]): void {
-    for (const cmd of commands) {
-      if (cmd.type === 'control') {
-        this.handleControlCommand(timecode, cmd)
-      } else if (cmd.type === 'char') {
-        this.handleCharCommand(cmd)
-      } else if (cmd.type === 'pac') {
-        // PAC commands position cursor - for now, treat as newline if we have text
-        if (this.currentCaption.length > 0 && this.currentCaption[this.currentCaption.length - 1] !== '\n') {
-          this.currentCaption.push('\n')
-        }
-      } else if (cmd.type === 'midrow') {
-        // Mid-row codes change styling - ignore for now (basic text only)
-      }
     }
   }
 

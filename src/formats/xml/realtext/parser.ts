@@ -32,6 +32,10 @@ class RealTextParser {
       src = src.slice(1)
     }
 
+    if (this.parseFast(src)) {
+      return { document: this.doc, errors: this.errors, warnings: [] }
+    }
+
     // Tokenize XML
     const tokens = this.tokenize(src)
 
@@ -117,6 +121,112 @@ class RealTextParser {
     }
 
     return { document: this.doc, errors: this.errors, warnings: [] }
+  }
+
+  private parseFast(src: string): boolean {
+    const windowStart = indexOfTagCaseInsensitive(src, '<window', 0)
+    if (windowStart === -1) return false
+    const windowOpenEnd = src.indexOf('>', windowStart)
+    if (windowOpenEnd === -1) return false
+    const windowClose = indexOfTagCaseInsensitive(src, '</window>', windowOpenEnd)
+    if (windowClose === -1) return false
+
+    let pos = windowOpenEnd + 1
+    let currentTime = 0
+    let currentText = ''
+    let hasContent = false
+
+    while (pos < windowClose) {
+      const lt = src.indexOf('<', pos)
+      if (lt === -1 || lt >= windowClose) {
+        const text = src.substring(pos, windowClose)
+        if (text) {
+          currentText += text
+          if (!hasContent && hasNonWhitespace(text)) hasContent = true
+        }
+        break
+      }
+
+      if (lt > pos) {
+        const text = src.substring(pos, lt)
+        currentText += text
+        if (!hasContent && hasNonWhitespace(text)) hasContent = true
+      }
+
+      const gt = src.indexOf('>', lt + 1)
+      if (gt === -1 || gt > windowClose) break
+
+      let i = lt + 1
+      while (i < gt && src.charCodeAt(i) <= 32) i++
+      if (i >= gt) {
+        pos = gt + 1
+        continue
+      }
+
+      const isClose = src.charCodeAt(i) === 47
+      if (isClose) i++
+
+      const nameStart = i
+      while (i < gt) {
+        const c = src.charCodeAt(i)
+        if (c <= 32 || c === 47) break
+        i++
+      }
+      const nameEnd = i
+      const tag = matchTagName(src, nameStart, nameEnd)
+
+      if (isClose) {
+        if (tag === 4) currentText += '</b>'
+        else if (tag === 5) currentText += '</i>'
+        else if (tag === 6) currentText += '</u>'
+        else if (tag === 7) currentText += '</font>'
+      } else {
+        if (tag === 1) {
+          const begin = findAttrValueRange(src, i, gt, 'begin')
+          if (begin) {
+            const nextTime = parseRealTextTimeRange(src, begin.start, begin.end)
+            if (nextTime !== null) {
+              if (hasContent && currentText.trim()) {
+                this.addEvent(currentTime, currentText.trim())
+              }
+              currentTime = nextTime
+              currentText = ''
+              hasContent = false
+            }
+          }
+        } else if (tag === 2) {
+          if (hasContent && currentText.trim()) {
+            this.addEvent(currentTime, currentText.trim())
+          }
+          currentText = ''
+          hasContent = false
+        } else if (tag === 3) {
+          currentText += '\n'
+        } else if (tag === 4) {
+          currentText += '<b>'
+        } else if (tag === 5) {
+          currentText += '<i>'
+        } else if (tag === 6) {
+          currentText += '<u>'
+        } else if (tag === 7) {
+          const color = findAttrValueRange(src, i, gt, 'color')
+          if (color) {
+            const colorValue = src.substring(color.start, color.end)
+            currentText += `<font color="${colorValue}">`
+          } else {
+            currentText += '<font>'
+          }
+        }
+      }
+
+      pos = gt + 1
+    }
+
+    if (hasContent && currentText.trim()) {
+      this.addEvent(currentTime, currentText.trim())
+    }
+
+    return true
   }
 
   private tokenize(src: string): Token[] {
@@ -217,6 +327,161 @@ class RealTextParser {
 
     this.doc.events.push(event)
   }
+}
+
+function indexOfTagCaseInsensitive(src: string, tag: string, start: number): number {
+  const tagLen = tag.length
+  const max = src.length - tagLen
+  for (let i = start; i <= max; i++) {
+    let matched = true
+    for (let j = 0; j < tagLen; j++) {
+      const a = src.charCodeAt(i + j)
+      const b = tag.charCodeAt(j)
+      if ((a | 32) !== (b | 32)) {
+        matched = false
+        break
+      }
+    }
+    if (matched) return i
+  }
+  return -1
+}
+
+function hasNonWhitespace(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) > 32) return true
+  }
+  return false
+}
+
+function matchTagName(src: string, start: number, end: number): number {
+  const len = end - start
+  if (len === 4) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    const c3 = src.charCodeAt(start + 2) | 32
+    const c4 = src.charCodeAt(start + 3) | 32
+    if (c1 === 116 && c2 === 105 && c3 === 109 && c4 === 101) return 1 // time
+    if (c1 === 102 && c2 === 111 && c3 === 110 && c4 === 116) return 7 // font
+  } else if (len === 5) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    const c3 = src.charCodeAt(start + 2) | 32
+    const c4 = src.charCodeAt(start + 3) | 32
+    const c5 = src.charCodeAt(start + 4) | 32
+    if (c1 === 99 && c2 === 108 && c3 === 101 && c4 === 97 && c5 === 114) return 2 // clear
+  } else if (len === 2) {
+    const c1 = src.charCodeAt(start) | 32
+    const c2 = src.charCodeAt(start + 1) | 32
+    if (c1 === 98 && c2 === 114) return 3 // br
+  } else if (len === 1) {
+    const c1 = src.charCodeAt(start) | 32
+    if (c1 === 98) return 4 // b
+    if (c1 === 105) return 5 // i
+    if (c1 === 117) return 6 // u
+  }
+  return 0
+}
+
+function findAttrValueRange(src: string, start: number, end: number, attr: string): { start: number; end: number } | null {
+  let i = start
+  const attrLen = attr.length
+  while (i < end) {
+    const c = src.charCodeAt(i)
+    if (c <= 32) {
+      i++
+      continue
+    }
+    const nameStart = i
+    i++
+    while (i < end) {
+      const ch = src.charCodeAt(i)
+      if (ch <= 32 || ch === 61) break
+      i++
+    }
+    const nameEnd = i
+    if (nameEnd - nameStart === attrLen) {
+      let matched = true
+      for (let j = 0; j < attrLen; j++) {
+        const a = src.charCodeAt(nameStart + j)
+        const b = attr.charCodeAt(j)
+        if ((a | 32) !== (b | 32)) {
+          matched = false
+          break
+        }
+      }
+      if (matched) {
+        while (i < end && src.charCodeAt(i) <= 32) i++
+        if (i >= end || src.charCodeAt(i) !== 61) {
+          continue
+        }
+        i++
+        while (i < end && src.charCodeAt(i) <= 32) i++
+        if (i >= end) return null
+        const quote = src.charCodeAt(i)
+        if (quote === 34 || quote === 39) {
+          const valStart = i + 1
+          const valEnd = src.indexOf(String.fromCharCode(quote), valStart)
+          if (valEnd === -1 || valEnd > end) return null
+          return { start: valStart, end: valEnd }
+        }
+        const valStart = i
+        while (i < end) {
+          const ch = src.charCodeAt(i)
+          if (ch <= 32 || ch === 62) break
+          i++
+        }
+        return { start: valStart, end: i }
+      }
+    }
+    i++
+  }
+  return null
+}
+
+function parseRealTextTimeRange(src: string, start: number, end: number): number | null {
+  const c1 = src.indexOf(':', start)
+  if (c1 === -1 || c1 >= end) return null
+  const c2 = src.indexOf(':', c1 + 1)
+  if (c2 === -1 || c2 >= end) return null
+  const dot = src.indexOf('.', c2 + 1)
+  if (dot === -1 || dot >= end) return null
+
+  let hours = 0
+  for (let i = start; i < c1; i++) {
+    const d = src.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    hours = hours * 10 + d
+  }
+
+  let minutes = 0
+  for (let i = c1 + 1; i < c2; i++) {
+    const d = src.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    minutes = minutes * 10 + d
+  }
+
+  let seconds = 0
+  for (let i = c2 + 1; i < dot; i++) {
+    const d = src.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return null
+    seconds = seconds * 10 + d
+  }
+
+  let centis = 0
+  let digits = 0
+  for (let i = dot + 1; i < end; i++) {
+    const d = src.charCodeAt(i) - 48
+    if (d < 0 || d > 9) break
+    if (digits < 2) {
+      centis = centis * 10 + d
+      digits++
+    }
+  }
+  if (digits === 0) return null
+  if (digits === 1) centis *= 10
+
+  return hours * 3600000 + minutes * 60000 + seconds * 1000 + centis * 10
 }
 
 /**

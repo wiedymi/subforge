@@ -2,7 +2,6 @@ import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
-import { parseTime } from './time.ts'
 
 class SBVParser {
   private src: string
@@ -80,22 +79,16 @@ class SBVParser {
     }
 
     // Parse timestamps
-    const startStr = this.src.substring(timeLineStart, commaPos)
-    const endStr = this.src.substring(commaPos + 1, timeLineEnd)
-
-    let start: number
-    let end: number
-
-    try {
-      start = parseTime(startStr)
-    } catch (e) {
+    const start = this.parseTimeInline(timeLineStart, commaPos)
+    if (start < 0) {
+      const startStr = this.src.substring(timeLineStart, commaPos)
       this.addError('INVALID_TIMESTAMP', `Invalid start timestamp: ${startStr}`)
       return null
     }
 
-    try {
-      end = parseTime(endStr)
-    } catch (e) {
+    const end = this.parseTimeInline(commaPos + 1, timeLineEnd)
+    if (end < 0) {
+      const endStr = this.src.substring(commaPos + 1, timeLineEnd)
       this.addError('INVALID_TIMESTAMP', `Invalid end timestamp: ${endStr}`)
       return null
     }
@@ -128,11 +121,23 @@ class SBVParser {
       this.lineNum++
     }
 
-    let text = this.src.substring(textStart, textEnd)
+    let textStartTrim = textStart
+    let textEndTrim = textEnd
+    while (textStartTrim < textEndTrim) {
+      const c = this.src.charCodeAt(textStartTrim)
+      if (c === 32 || c === 9 || c === 10 || c === 13) textStartTrim++
+      else break
+    }
+    while (textEndTrim > textStartTrim) {
+      const c = this.src.charCodeAt(textEndTrim - 1)
+      if (c === 32 || c === 9 || c === 10 || c === 13) textEndTrim--
+      else break
+    }
+
+    let text = this.src.substring(textStartTrim, textEndTrim)
     if (text.includes('\r')) {
       text = text.replace(/\r/g, '')
     }
-    text = text.trim()
 
     return {
       id: generateId(),
@@ -149,6 +154,48 @@ class SBVParser {
       segments: EMPTY_SEGMENTS,
       dirty: false
     }
+  }
+
+  private parseTimeInline(start: number, end: number): number {
+    const src = this.src
+    let i = start
+    let h = 0
+
+    while (i < end) {
+      const d = src.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      h = h * 10 + d
+      i++
+    }
+
+    if (i >= end || src.charCodeAt(i) !== 58) return -1
+    i++
+    if (i + 1 >= end) return -1
+
+    const m1 = src.charCodeAt(i) - 48
+    const m2 = src.charCodeAt(i + 1) - 48
+    if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return -1
+    i += 2
+
+    if (i >= end || src.charCodeAt(i) !== 58) return -1
+    i++
+    if (i + 1 >= end) return -1
+
+    const s1 = src.charCodeAt(i) - 48
+    const s2 = src.charCodeAt(i + 1) - 48
+    if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return -1
+    i += 2
+
+    if (i >= end || src.charCodeAt(i) !== 46) return -1
+    i++
+    if (i + 2 >= end) return -1
+
+    const ms1 = src.charCodeAt(i) - 48
+    const ms2 = src.charCodeAt(i + 1) - 48
+    const ms3 = src.charCodeAt(i + 2) - 48
+    if (ms1 < 0 || ms1 > 9 || ms2 < 0 || ms2 > 9 || ms3 < 0 || ms3 > 9) return -1
+
+    return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (ms1 * 100 + ms2 * 10 + ms3)
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
