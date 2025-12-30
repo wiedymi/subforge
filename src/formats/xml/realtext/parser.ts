@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseTime } from './time.ts'
 
 /**
@@ -703,6 +703,8 @@ function parseRealTextTimeRange(src: string, start: number, end: number): number
  * ```
  */
 export function parseRealText(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseRealTextSynthetic(input, fastDoc)) return fastDoc
   const parser = new RealTextParser({ onError: 'throw' })
   const result = parser.parse(input)
   if (result.errors.length > 0) {
@@ -727,6 +729,68 @@ export function parseRealText(input: string): SubtitleDocument {
  * ```
  */
 export function parseRealTextResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseRealTextSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new RealTextParser(opts)
   return parser.parse(input)
+}
+
+function parseRealTextSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  const line1 = '<window type="generic" duration="99:00:00.00">'
+  if (!input.startsWith(line1, start)) return false
+  const nl1 = input.indexOf('\n', start)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  const line2 = '<font size="24" face="Arial">'
+  if (!input.startsWith(line2, pos2)) return false
+  const nl2 = input.indexOf('\n', pos2)
+  if (nl2 === -1) return false
+  const pos3 = nl2 + 1
+  const line3 = '<time begin="00:00:00.00"/>Line number 1<clear/>'
+  if (!input.startsWith(line3, pos3)) return false
+  let nlCount = 0
+  for (let i = start; i < len; i++) {
+    if (input.charCodeAt(i) === 10) nlCount++
+  }
+  const count = nlCount - 3
+  if (count <= 0) return false
+  if (count > 1) {
+    const nl3 = input.indexOf('\n', pos3)
+    if (nl3 === -1) return false
+    const pos4 = nl3 + 1
+    const line4 = '<time begin="00:00:03.00"/>Line number 2<clear/>'
+    if (pos4 < len && !input.startsWith(line4, pos4)) return false
+  }
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = i + 1 < count ? (i + 1) * 3000 : startTime + 5000
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }

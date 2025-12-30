@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 /**
  * Metadata tags supported in LRC format.
@@ -718,6 +718,7 @@ function parseLRCSynthetic(input: string, doc: SubtitleDocument): boolean {
 
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   doc.info.title = 'Benchmark'
   doc.info.author = 'Test'
 
@@ -725,7 +726,7 @@ function parseLRCSynthetic(input: string, doc: SubtitleDocument): boolean {
     const startTime = i * 3000
     const endTime = i + 1 < count ? startTime + 3000 : startTime + 5000
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start: startTime,
       end: endTime,
       layer: 0,

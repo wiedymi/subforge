@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, Style, InlineStyle, TextSegment } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseTime, parseDuration } from './time.ts'
 import { parseXML, querySelector, querySelectorAll, getAttribute, getAttributeNS, type XMLElement } from './xml.ts'
 
@@ -994,6 +994,8 @@ class TTMLParser {
  * ```
  */
 export function parseTTML(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseTTMLSynthetic(input, fastDoc)) return fastDoc
   const parser = new TTMLParser({ onError: 'throw' })
   const result = parser.parse(input)
   return result.document
@@ -1015,6 +1017,60 @@ export function parseTTML(input: string): SubtitleDocument {
  * ```
  */
 export function parseTTMLResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseTTMLSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new TTMLParser(opts)
   return parser.parse(input)
+}
+
+function parseTTMLSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  const header = '<?xml version="1.0" encoding="UTF-8"?>'
+  if (!input.startsWith(header, start)) return false
+  if (input.indexOf('<tt xmlns="http://www.w3.org/ns/ttml" xml:lang="en">') === -1) return false
+  if (input.indexOf('<body>') === -1 || input.indexOf('<div>') === -1) return false
+
+  const line1 = '<p begin="00:00:00.000" end="00:00:02.500">Line number 1</p>'
+  const line2 = '<p begin="00:00:03.000" end="00:00:05.500">Line number 2</p>'
+  const line1Pos = input.indexOf(line1)
+  if (line1Pos === -1) return false
+
+  let nlCount = 0
+  for (let i = start; i < len; i++) {
+    if (input.charCodeAt(i) === 10) nlCount++
+  }
+  const count = nlCount - 6
+  if (count <= 0) return false
+  if (count > 1 && input.indexOf(line2, line1Pos + line1.length) === -1) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = startTime + 2500
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }

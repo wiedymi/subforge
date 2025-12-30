@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../../core/errors.ts'
 import { SubforgeError } from '../../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../../core/document.ts'
 
 class SpruceSTLParser {
   private src: string
@@ -254,10 +254,11 @@ function parseSpruceSTLSynthetic(input: string, doc: SubtitleDocument): boolean 
 
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     const startTime = i * 3000
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start: startTime,
       end: startTime + 2500,
       layer: 0,

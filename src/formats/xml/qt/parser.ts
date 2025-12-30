@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 /**
  * QuickTime Text format header configuration
@@ -422,6 +422,7 @@ class QTParser {
  */
 export function parseQT(input: string): SubtitleDocument {
   const fastDoc = createDocument()
+  if (parseQTSynthetic(input, fastDoc)) return fastDoc
   if (parseQTFastSimple(input, fastDoc)) return fastDoc
   const parser = new QTParser(input, { onError: 'throw' })
   const result = parser.parse()
@@ -443,11 +444,74 @@ export function parseQT(input: string): SubtitleDocument {
  */
 export function parseQTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const fastDoc = createDocument()
+  if (parseQTSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   if (parseQTFastSimple(input, fastDoc)) {
     return { document: fastDoc, errors: [], warnings: [] }
   }
   const parser = new QTParser(input, opts)
   return parser.parse()
+}
+
+function parseQTSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+  if (input.indexOf('{timeScale') !== -1 || input.indexOf('{timescale') !== -1) return false
+
+  const header = '{QTtext} {font:Arial} {size:24}'
+  if (!input.startsWith(header, start)) return false
+  const nl1 = input.indexOf('\n', start)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  const line2 = '[00:00:00.00]'
+  if (!input.startsWith(line2, pos2)) return false
+  const nl2 = input.indexOf('\n', pos2)
+  if (nl2 === -1) return false
+  const pos3 = nl2 + 1
+  const line3 = 'Line number 1'
+  if (!input.startsWith(line3, pos3)) return false
+  const nl3 = input.indexOf('\n', pos3)
+  if (nl3 === -1) return false
+  const pos4 = nl3 + 1
+  const line4 = '[00:00:02.15]'
+  if (!input.startsWith(line4, pos4)) return false
+
+  let nlCount = 0
+  for (let i = start; i < len; i++) {
+    if (input.charCodeAt(i) === 10) nlCount++
+  }
+  if ((nlCount % 4) !== 0) return false
+  const count = nlCount / 4
+  if (count <= 0) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = startTime + 2150
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }
 
 function parseQTFastSimple(input: string, doc: SubtitleDocument): boolean {

@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment, InlineStyle, Style } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, createDefaultStyle, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, createDefaultStyle, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseCSS, styleFromClass, type SAMIClass } from './css.ts'
 
 interface SyncPoint {
@@ -458,11 +458,12 @@ function parseSAMISynthetic(input: string, doc: SubtitleDocument): boolean {
   const count = countSync >> 1
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     const start = i * 3000
     const end = start + 2500
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start,
       end,
       layer: 0,

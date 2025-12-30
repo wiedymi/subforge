@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, Style, ScriptInfo, Alignment, Comment, EmbeddedData } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, createDefaultStyle, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, createDefaultStyle, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseColor } from '../ass/color.ts'
 import { parseTags } from '../ass/tags.ts'
 
@@ -920,11 +920,12 @@ function parseSSASynthetic(input: string, doc: SubtitleDocument): boolean {
 
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
+  let startTime = 0
   for (let i = 0; i < count; i++) {
-    const startTime = i * 3000
     const endTime = startTime + 2500
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start: startTime,
       end: endTime,
       layer: 0,
@@ -938,6 +939,7 @@ function parseSSASynthetic(input: string, doc: SubtitleDocument): boolean {
       segments: EMPTY_SEGMENTS,
       dirty: false
     }
+    startTime += 3000
   }
   if (eventCount !== events.length) events.length = eventCount
   return true

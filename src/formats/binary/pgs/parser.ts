@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect, PGSEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import {
   SegmentType,
   type SegmentHeader,
@@ -320,10 +320,11 @@ function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
   const count = len / SYNTHETIC_STRIDE
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     const start = i * SYNTHETIC_EVENT_STEP_MS
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start,
       end: start + SYNTHETIC_EVENT_STEP_MS,
       layer: 0,

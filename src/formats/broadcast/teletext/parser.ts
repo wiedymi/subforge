@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, InlineStyle } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 // Teletext control codes
 const ALPHA_BLACK = 0x00
@@ -267,9 +267,10 @@ function parseTeletextSynthetic(input: Uint8Array, doc: SubtitleDocument): boole
 
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start: 0,
       end: 5000,
       layer: 0,

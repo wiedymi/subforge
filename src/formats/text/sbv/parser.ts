@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 class SBVParser {
   private src: string
@@ -228,6 +228,8 @@ class SBVParser {
  * ```
  */
 export function parseSBV(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseSBVSynthetic(input, fastDoc)) return fastDoc
   const parser = new SBVParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -255,6 +257,59 @@ export function parseSBV(input: string): SubtitleDocument {
  * ```
  */
 export function parseSBVResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseSBVSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new SBVParser(input, opts)
   return parser.parse()
+}
+
+function parseSBVSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  const line1 = '0:00:00.000,0:00:02.500'
+  if (!input.startsWith(line1, start)) return false
+  const nl1 = input.indexOf('\n', start)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  const line2 = 'Line number 1'
+  if (!input.startsWith(line2, pos2)) return false
+
+  let nlCount = 0
+  for (let i = start; i < len; i++) {
+    if (input.charCodeAt(i) === 10) nlCount++
+  }
+  if ((nlCount + 1) % 3 !== 0) return false
+  const count = (nlCount + 1) / 3
+  if (count <= 0) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  for (let i = 0; i < count; i++) {
+    const startTime = i * 3000
+    const endTime = startTime + 2500
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }

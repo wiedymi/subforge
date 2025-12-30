@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 const SYNC_BYTE = 0x0F
 const END_OF_DISPLAY_SET = 0x80
@@ -425,10 +425,11 @@ function parseDVBSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
   const count = len / stride
   const events = doc.events
   let eventCount = events.length
+  const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     const start = i * 3000
     events[eventCount++] = {
-      id: generateId(),
+      id: baseId + i,
       start,
       end: start + 3000,
       layer: 0,

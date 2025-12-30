@@ -17,6 +17,16 @@ export function generateId(): number {
 }
 
 /**
+ * Reserve a contiguous range of IDs and return the starting ID.
+ * Useful for fast-path bulk event creation.
+ */
+export function reserveIds(count: number): number {
+  const start = idCounter + 1
+  idCounter += count
+  return start
+}
+
+/**
  * Creates a new subtitle document with default values.
  * @param init - Optional partial document to override defaults
  * @returns New subtitle document
