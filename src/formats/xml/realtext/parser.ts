@@ -32,6 +32,10 @@ class RealTextParser {
       src = src.slice(1)
     }
 
+    if (this.parseSimpleLineTimeClear(src)) {
+      return { document: this.doc, errors: this.errors, warnings: [] }
+    }
+
     if (this.parseSimpleTimeClear(src)) {
       return { document: this.doc, errors: this.errors, warnings: [] }
     }
@@ -128,6 +132,61 @@ class RealTextParser {
     }
 
     return { document: this.doc, errors: this.errors, warnings: [] }
+  }
+
+  private parseSimpleLineTimeClear(src: string): boolean {
+    const windowStart = src.indexOf('<window')
+    if (windowStart === -1) return false
+    const windowOpenEnd = src.indexOf('>', windowStart)
+    if (windowOpenEnd === -1) return false
+    const windowClose = src.indexOf('</window>', windowOpenEnd)
+    if (windowClose === -1) return false
+
+    const token = '<time begin="'
+    const tokenLen = token.length
+    let pos = windowOpenEnd + 1
+
+    while (pos < windowClose) {
+      const nl = src.indexOf('\n', pos)
+      const lineEndRaw = nl === -1 || nl > windowClose ? windowClose : nl
+      let lineEnd = lineEndRaw
+      if (lineEnd > pos && src.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+      let lineStart = pos
+      while (lineStart < lineEnd && src.charCodeAt(lineStart) <= 32) lineStart++
+      if (lineStart < lineEnd && src.startsWith(token, lineStart)) {
+        const timeStart = lineStart + tokenLen
+        const timeEnd = timeStart + 11
+        if (timeEnd + 2 > lineEnd) return false
+        if (src.charCodeAt(timeEnd) !== 34 || src.charCodeAt(timeEnd + 1) !== 47 || src.charCodeAt(timeEnd + 2) !== 62) {
+          return false
+        }
+
+        const time = parseRealTextTimeFixed(src, timeStart)
+        if (time === null) return false
+
+        const textStart = timeEnd + 3
+        const clearStart = lineEnd - 8
+        if (clearStart < textStart || !src.startsWith('<clear/>', clearStart)) return false
+
+        let tStart = textStart
+        let tEnd = clearStart
+        if (tStart < tEnd && (src.charCodeAt(tStart) <= 32 || src.charCodeAt(tEnd - 1) <= 32)) {
+          while (tStart < tEnd && src.charCodeAt(tStart) <= 32) tStart++
+          while (tEnd > tStart && src.charCodeAt(tEnd - 1) <= 32) tEnd--
+        }
+        if (tEnd > tStart) {
+          const text = src.substring(tStart, tEnd)
+          if (text.indexOf('<') !== -1 || text.indexOf('&') !== -1) return false
+          this.addEvent(time, text)
+        }
+      }
+
+      if (nl === -1 || nl > windowClose) break
+      pos = nl + 1
+    }
+
+    return this.doc.events.length > 0
   }
 
   private parseSimpleTimeClear(src: string): boolean {

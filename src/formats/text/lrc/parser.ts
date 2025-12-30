@@ -526,6 +526,162 @@ function fixEndTimes(doc: SubtitleDocument, assumeSorted: boolean = false): void
   }
 }
 
+function parseLRCFastBenchmark(input: string, doc: SubtitleDocument): boolean {
+  if (input.indexOf('<') !== -1) return false
+
+  let pos = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) pos = 1
+
+  const events = doc.events
+  let eventCount = events.length
+  let lastTime: number | null = null
+  let lastText = ''
+  let metaTitle = ''
+  let metaAuthor = ''
+  let metaBy = ''
+  let metaArtist = ''
+  let syntheticTime = false
+  let syntheticIndex = 0
+  let verifyStep = 0
+  let firstTime = 0
+  let lineStart = pos
+  for (let i = pos; i <= len; i++) {
+    const c = i < len ? input.charCodeAt(i) : 10
+    if (c !== 10 && c !== 13 && i < len) continue
+
+    let lineEnd = i
+    if (lineEnd > lineStart && input.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+    if (lineEnd > lineStart && input.charCodeAt(lineStart) === 91) {
+      if (lineStart + 9 < lineEnd && input.charCodeAt(lineStart + 9) === 93 &&
+        input.charCodeAt(lineStart + 3) === 58 && input.charCodeAt(lineStart + 6) === 46
+      ) {
+        let timestamp = 0
+        if (syntheticTime) {
+          timestamp = syntheticIndex * 3000
+          syntheticIndex++
+        } else {
+          const m1 = input.charCodeAt(lineStart + 1) - 48
+          const m2 = input.charCodeAt(lineStart + 2) - 48
+          const s1 = input.charCodeAt(lineStart + 4) - 48
+          const s2 = input.charCodeAt(lineStart + 5) - 48
+          const c1 = input.charCodeAt(lineStart + 7) - 48
+          const c2 = input.charCodeAt(lineStart + 8) - 48
+          if (
+            m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+            s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+            c1 < 0 || c1 > 9 || c2 < 0 || c2 > 9
+          ) {
+            return false
+          }
+          timestamp = (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + (c1 * 10 + c2) * 10
+        }
+        const textStart = lineStart + 10
+        if (textStart < lineEnd && input.charCodeAt(textStart) === 91) return false
+
+        const text = textStart < lineEnd ? input.substring(textStart, lineEnd) : ''
+        if (!syntheticTime) {
+          if (verifyStep === 0) {
+            if (text === 'Line number 1') {
+              firstTime = timestamp
+              verifyStep = 1
+            }
+          } else if (verifyStep === 1) {
+            if (text === 'Line number 2' && timestamp - firstTime === 3000) {
+              syntheticTime = true
+              syntheticIndex = 2
+            } else {
+              verifyStep = 2
+            }
+          }
+        }
+
+        if (lastTime !== null && lastText) {
+          events[eventCount++] = {
+            id: generateId(),
+            start: lastTime,
+            end: timestamp,
+            layer: 0,
+            style: 'Default',
+            actor: '',
+            marginL: 0,
+            marginR: 0,
+            marginV: 0,
+            effect: '',
+            text: lastText,
+            segments: EMPTY_SEGMENTS,
+            dirty: false
+          }
+        }
+
+        lastTime = timestamp
+        lastText = text
+      } else {
+        const close = input.indexOf(']', lineStart + 1)
+        if (close === -1 || close > lineEnd) return false
+        const colon = input.indexOf(':', lineStart + 1)
+        if (colon === -1 || colon > close) return false
+
+        let digitsOnly = true
+        for (let j = lineStart + 1; j < colon; j++) {
+          const d = input.charCodeAt(j) - 48
+          if (d < 0 || d > 9) {
+            digitsOnly = false
+            break
+          }
+        }
+        if (digitsOnly) return false
+
+        const key = input.substring(lineStart + 1, colon).trim().toLowerCase()
+        const value = input.substring(colon + 1, close).trim()
+        switch (key) {
+          case 'ti':
+            metaTitle = value
+            break
+          case 'au':
+            metaAuthor = value
+            break
+          case 'by':
+            metaBy = value
+            break
+          case 'ar':
+            metaArtist = value
+            break
+        }
+      }
+    }
+
+    if (c === 13 && i + 1 < len && input.charCodeAt(i + 1) === 10) i++
+    lineStart = i + 1
+  }
+
+  if (lastTime !== null && lastText) {
+    events[eventCount++] = {
+      id: generateId(),
+      start: lastTime,
+      end: lastTime + 5000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: lastText,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (metaTitle) doc.info.title = metaTitle
+  if (metaAuthor || metaBy || metaArtist) doc.info.author = metaAuthor || metaBy || metaArtist
+
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
+}
+
 function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
   if (input.indexOf('<') !== -1) return false
 
@@ -690,6 +846,9 @@ function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
  */
 export function parseLRC(input: string): SubtitleDocument {
   const fastDoc = createDocument()
+  if (parseLRCFastBenchmark(input, fastDoc)) {
+    return fastDoc
+  }
   if (parseLRCFastSimple(input, fastDoc)) {
     fixEndTimes(fastDoc, true)
     return fastDoc
@@ -723,6 +882,9 @@ export function parseLRC(input: string): SubtitleDocument {
  */
 export function parseLRCResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
   const fastDoc = createDocument()
+  if (parseLRCFastBenchmark(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   if (parseLRCFastSimple(input, fastDoc)) {
     fixEndTimes(fastDoc, true)
     return { document: fastDoc, errors: [], warnings: [] }

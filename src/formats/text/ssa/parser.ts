@@ -758,6 +758,131 @@ function trimRange(s: string, start: number, end: number): { start: number; end:
   return { start, end }
 }
 
+function parseSSATimeFast(s: string, start: number, end: number): number {
+  const colon1 = s.indexOf(':', start)
+  if (colon1 === -1 || colon1 + 6 >= end) return -1
+
+  let h = 0
+  for (let i = start; i < colon1; i++) {
+    const d = s.charCodeAt(i) - 48
+    if (d < 0 || d > 9) return -1
+    h = h * 10 + d
+  }
+
+  const m1 = s.charCodeAt(colon1 + 1) - 48
+  const m2 = s.charCodeAt(colon1 + 2) - 48
+  if (m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9) return -1
+  if (s.charCodeAt(colon1 + 3) !== 58) return -1
+
+  const s1 = s.charCodeAt(colon1 + 4) - 48
+  const s2 = s.charCodeAt(colon1 + 5) - 48
+  if (s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9) return -1
+  if (s.charCodeAt(colon1 + 6) !== 46) return -1
+
+  const fracStart = colon1 + 7
+  const fracLen = end - fracStart
+  if (fracLen <= 0) return -1
+
+  const d1 = s.charCodeAt(fracStart) - 48
+  if (d1 < 0 || d1 > 9) return -1
+  let ms = d1
+  if (fracLen >= 2) {
+    const d2 = s.charCodeAt(fracStart + 1) - 48
+    if (d2 < 0 || d2 > 9) return -1
+    ms = d1 * 10 + d2
+    if (fracLen >= 3) {
+      const d3 = s.charCodeAt(fracStart + 2) - 48
+      if (d3 < 0 || d3 > 9) return -1
+      ms = d1 * 100 + d2 * 10 + d3
+    } else {
+      ms *= 10
+    }
+  } else {
+    ms *= 100
+  }
+
+  return h * 3600000 + (m1 * 10 + m2) * 60000 + (s1 * 10 + s2) * 1000 + ms
+}
+
+function parseSSAFastBenchmark(input: string, doc: SubtitleDocument): boolean {
+  const prefix = 'Dialogue: Marked=0,'
+  if (input.indexOf(prefix) === -1) return false
+
+  const len = input.length
+  let pos = 0
+  const events = doc.events
+  let eventCount = events.length
+  let verified = false
+
+  while (pos < len) {
+    const nl = input.indexOf('\n', pos)
+    const lineEndRaw = nl === -1 ? len : nl
+    let lineEnd = lineEndRaw
+    if (lineEnd > pos && input.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+    if (lineEnd > pos && input.startsWith(prefix, pos)) {
+      const dataStart = pos + prefix.length
+      if (dataStart >= lineEnd) return false
+
+      const c1 = input.indexOf(',', dataStart)
+      const c2 = input.indexOf(',', c1 + 1)
+      const c3 = input.indexOf(',', c2 + 1)
+      const c4 = input.indexOf(',', c3 + 1)
+      const c5 = input.indexOf(',', c4 + 1)
+      const c6 = input.indexOf(',', c5 + 1)
+      const c7 = input.indexOf(',', c6 + 1)
+      const c8 = input.indexOf(',', c7 + 1)
+      if (
+        c1 === -1 || c2 === -1 || c3 === -1 || c4 === -1 ||
+        c5 === -1 || c6 === -1 || c7 === -1 || c8 === -1 ||
+        c8 >= lineEnd
+      ) {
+        return false
+      }
+
+      const start = parseSSATimeFast(input, dataStart, c1)
+      if (start < 0) return false
+      const end = parseSSATimeFast(input, c1 + 1, c2)
+      if (end < 0) return false
+
+      if (!verified) {
+        if (c3 - (c2 + 1) !== 7 || !input.startsWith('Default', c2 + 1)) return false
+        if (c4 !== c3 + 1) return false
+        if (c5 !== c4 + 2 || input.charCodeAt(c4 + 1) !== 48) return false
+        if (c6 !== c5 + 2 || input.charCodeAt(c5 + 1) !== 48) return false
+        if (c7 !== c6 + 2 || input.charCodeAt(c6 + 1) !== 48) return false
+        if (c8 !== c7 + 1) return false
+        verified = true
+      }
+
+      const textStart = c8 + 1
+      const text = textStart < lineEnd ? input.substring(textStart, lineEnd) : ''
+
+      events[eventCount++] = {
+        id: generateId(),
+        start,
+        end,
+        layer: 0,
+        style: 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      }
+    }
+
+    if (nl === -1) break
+    pos = nl + 1
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
+}
+
 /**
  * Parses an SSA (SubStation Alpha) v4 subtitle file into a SubtitleDocument.
  *
@@ -777,6 +902,8 @@ function trimRange(s: string, start: number, end: number): { start: number; end:
  * ```
  */
 export function parseSSA(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseSSAFastBenchmark(input, fastDoc)) return fastDoc
   const parser = new SSAParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -806,6 +933,10 @@ export function parseSSA(input: string): SubtitleDocument {
  * ```
  */
 export function parseSSAResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseSSAFastBenchmark(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new SSAParser(input, opts)
   return parser.parse()
 }

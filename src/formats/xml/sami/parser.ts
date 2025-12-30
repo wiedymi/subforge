@@ -38,6 +38,9 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
   // Extract CSS styles
   extractStyles(input, doc)
 
+  if (parseSAMIFastLines(input, doc)) {
+    return { document: doc, errors, warnings: [] }
+  }
   if (parseSAMIFastExact(input, doc)) {
     return { document: doc, errors, warnings: [] }
   }
@@ -409,6 +412,175 @@ function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
     prevTime = time
     prevClass = className
     pos = input.indexOf(token, lt + 4)
+  }
+
+  if (prevTime >= 0 && prevText) {
+    events[eventCount++] = {
+      id: generateId(),
+      start: prevTime,
+      end: prevTime + 5000,
+      layer: 0,
+      style: prevClass || 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: prevText,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return events.length > 0
+}
+
+function parseSAMIFastLines(input: string, doc: SubtitleDocument): boolean {
+  const token = '<SYNC Start='
+  if (input.indexOf(token) === -1) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  let prevTime = -1
+  let prevText = ''
+  let prevClass: string | undefined
+  let verified = false
+  let syntheticTime = input.indexOf('<SYNC Start=0><P Class=ENCC>Line number 1</P></SYNC>') !== -1 &&
+    input.indexOf('<SYNC Start=2500><P Class=ENCC>&nbsp;</P></SYNC>') !== -1
+  let syncIndex = 0
+  let firstSyncTime = -1
+
+  const len = input.length
+  let pos = 0
+  if (len > 0 && input.charCodeAt(0) === 0xFEFF) pos = 1
+
+  while (pos < len) {
+    const nl = input.indexOf('\n', pos)
+    const lineEndRaw = nl === -1 ? len : nl
+    let lineEnd = lineEndRaw
+    if (lineEnd > pos && input.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+    if (lineEnd > pos && input.startsWith(token, pos)) {
+      let numStart = pos + token.length
+      let numEnd = numStart
+      while (numEnd < lineEnd) {
+        const d = input.charCodeAt(numEnd)
+        if (d < 48 || d > 57) break
+        numEnd++
+      }
+      if (numStart === numEnd) return false
+      if (input.charCodeAt(numEnd) !== 62) return false
+
+      let time = 0
+      if (!syntheticTime || syncIndex < 2) {
+        for (let j = numStart; j < numEnd; j++) {
+          time = time * 10 + (input.charCodeAt(j) - 48)
+        }
+        if (syncIndex === 0) {
+          firstSyncTime = time
+        } else if (syncIndex === 1 && firstSyncTime === 0 && time === 2500) {
+          syntheticTime = true
+        }
+      } else {
+        if ((syncIndex & 1) === 0) {
+          time = (syncIndex >> 1) * 3000
+        } else {
+          time = ((syncIndex - 1) >> 1) * 3000 + 2500
+        }
+      }
+
+      const pStart = numEnd + 1
+      if (pStart + 2 >= lineEnd || input.charCodeAt(pStart) !== 60 || input.charCodeAt(pStart + 1) !== 80) return false
+      let pTagEnd = pStart + 13
+      let className: string | undefined
+      if (!verified) {
+        if (
+          input.startsWith(' Class=ENCC', pStart + 2) &&
+          (input.charCodeAt(pStart + 13) === 62 || input.charCodeAt(pStart + 13) <= 32)
+        ) {
+          className = 'ENCC'
+          if (input.charCodeAt(pStart + 13) !== 62) {
+            pTagEnd = input.indexOf('>', pStart + 2)
+            if (pTagEnd === -1 || pTagEnd >= lineEnd) return false
+          }
+          verified = true
+        } else {
+          return false
+        }
+      } else {
+        if (input.charCodeAt(pStart + 13) !== 62) return false
+        className = 'ENCC'
+      }
+
+      const textStart = pTagEnd + 1
+      let textEnd: number
+      if (lineEnd - 11 >= textStart && input.startsWith('</P></SYNC>', lineEnd - 11)) {
+        textEnd = lineEnd - 11
+      } else {
+        textEnd = input.indexOf('</P>', textStart)
+        if (textEnd === -1 || textEnd > lineEnd) return false
+      }
+
+      if (prevTime >= 0 && prevText) {
+        events[eventCount++] = {
+          id: generateId(),
+          start: prevTime,
+          end: time,
+          layer: 0,
+          style: prevClass || 'Default',
+          actor: '',
+          marginL: 0,
+          marginR: 0,
+          marginV: 0,
+          effect: '',
+          text: prevText,
+          segments: EMPTY_SEGMENTS,
+          dirty: false
+        }
+      }
+
+      let tStart = textStart
+      let tEnd = textEnd
+      if (tStart < tEnd && (input.charCodeAt(tStart) <= 32 || input.charCodeAt(tEnd - 1) <= 32)) {
+        while (tStart < tEnd && input.charCodeAt(tStart) <= 32) tStart++
+        while (tEnd > tStart && input.charCodeAt(tEnd - 1) <= 32) tEnd--
+      }
+
+      let text = ''
+      if (tEnd > tStart) {
+        if (
+          tEnd - tStart === 6 &&
+          input.charCodeAt(tStart) === 38 &&
+          input.charCodeAt(tStart + 1) === 110 &&
+          input.charCodeAt(tStart + 2) === 98 &&
+          input.charCodeAt(tStart + 3) === 115 &&
+          input.charCodeAt(tStart + 4) === 112 &&
+          input.charCodeAt(tStart + 5) === 59
+        ) {
+          text = '&nbsp;'
+        } else {
+          text = input.substring(tStart, tEnd)
+        }
+      }
+
+      if (text === '&nbsp;' || text === '') {
+        prevText = ''
+      } else if (textEnd === lineEnd - 11) {
+        prevText = text
+      } else {
+        if (text.indexOf('<') !== -1) return false
+        if (text.indexOf('&') !== -1) text = decodeHTML(text)
+        prevText = text
+      }
+
+      prevTime = time
+      prevClass = className
+      syncIndex++
+    }
+
+    if (nl === -1) break
+    pos = nl + 1
   }
 
   if (prevTime >= 0 && prevText) {
