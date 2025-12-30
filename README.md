@@ -12,6 +12,12 @@ To run tests:
 bun test
 ```
 
+To build (bundled ESM to `dist/`):
+
+```bash
+bun run build
+```
+
 To run benchmarks:
 
 ```bash

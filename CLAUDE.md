@@ -71,7 +71,7 @@ interface SubtitleDocument {
 }
 
 interface SubtitleEvent {
-  id: string
+  id: number
   start: number           // milliseconds
   end: number             // milliseconds
   text: string            // Raw text with tags

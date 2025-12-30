@@ -1,6 +1,7 @@
 {
   "name": "subforge",
   "version": "0.1.0",
+  "license": "MIT",
   "devDependencies": {
     "@types/bun": "latest",
     "mitata": "^1.0.34"
@@ -8,28 +9,94 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./core": "./src/core/index.ts",
-    "./ass": "./src/formats/text/ass/index.ts",
-    "./ssa": "./src/formats/text/ssa/index.ts",
-    "./srt": "./src/formats/text/srt/index.ts",
-    "./vtt": "./src/formats/text/vtt/index.ts",
-    "./sbv": "./src/formats/text/sbv/index.ts",
-    "./lrc": "./src/formats/text/lrc/index.ts",
-    "./microdvd": "./src/formats/text/microdvd/index.ts",
-    "./ttml": "./src/formats/xml/ttml/index.ts",
-    "./sami": "./src/formats/xml/sami/index.ts",
-    "./realtext": "./src/formats/xml/realtext/index.ts",
-    "./qt": "./src/formats/xml/qt/index.ts",
-    "./stl": "./src/formats/binary/stl/index.ts",
-    "./pgs": "./src/formats/binary/pgs/index.ts",
-    "./dvb": "./src/formats/binary/dvb/index.ts",
-    "./vobsub": "./src/formats/binary/vobsub/index.ts",
-    "./pac": "./src/formats/binary/pac/index.ts",
-    "./scc": "./src/formats/broadcast/scc/index.ts",
-    "./cap": "./src/formats/broadcast/cap/index.ts",
-    "./teletext": "./src/formats/broadcast/teletext/index.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./src/core/index.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./ass": {
+      "types": "./src/formats/text/ass/index.ts",
+      "default": "./dist/formats/text/ass/index.js"
+    },
+    "./ssa": {
+      "types": "./src/formats/text/ssa/index.ts",
+      "default": "./dist/formats/text/ssa/index.js"
+    },
+    "./srt": {
+      "types": "./src/formats/text/srt/index.ts",
+      "default": "./dist/formats/text/srt/index.js"
+    },
+    "./vtt": {
+      "types": "./src/formats/text/vtt/index.ts",
+      "default": "./dist/formats/text/vtt/index.js"
+    },
+    "./sbv": {
+      "types": "./src/formats/text/sbv/index.ts",
+      "default": "./dist/formats/text/sbv/index.js"
+    },
+    "./lrc": {
+      "types": "./src/formats/text/lrc/index.ts",
+      "default": "./dist/formats/text/lrc/index.js"
+    },
+    "./microdvd": {
+      "types": "./src/formats/text/microdvd/index.ts",
+      "default": "./dist/formats/text/microdvd/index.js"
+    },
+    "./ttml": {
+      "types": "./src/formats/xml/ttml/index.ts",
+      "default": "./dist/formats/xml/ttml/index.js"
+    },
+    "./sami": {
+      "types": "./src/formats/xml/sami/index.ts",
+      "default": "./dist/formats/xml/sami/index.js"
+    },
+    "./realtext": {
+      "types": "./src/formats/xml/realtext/index.ts",
+      "default": "./dist/formats/xml/realtext/index.js"
+    },
+    "./qt": {
+      "types": "./src/formats/xml/qt/index.ts",
+      "default": "./dist/formats/xml/qt/index.js"
+    },
+    "./stl": {
+      "types": "./src/formats/binary/stl/index.ts",
+      "default": "./dist/formats/binary/stl/index.js"
+    },
+    "./pgs": {
+      "types": "./src/formats/binary/pgs/index.ts",
+      "default": "./dist/formats/binary/pgs/index.js"
+    },
+    "./dvb": {
+      "types": "./src/formats/binary/dvb/index.ts",
+      "default": "./dist/formats/binary/dvb/index.js"
+    },
+    "./vobsub": {
+      "types": "./src/formats/binary/vobsub/index.ts",
+      "default": "./dist/formats/binary/vobsub/index.js"
+    },
+    "./pac": {
+      "types": "./src/formats/binary/pac/index.ts",
+      "default": "./dist/formats/binary/pac/index.js"
+    },
+    "./scc": {
+      "types": "./src/formats/broadcast/scc/index.ts",
+      "default": "./dist/formats/broadcast/scc/index.js"
+    },
+    "./cap": {
+      "types": "./src/formats/broadcast/cap/index.ts",
+      "default": "./dist/formats/broadcast/cap/index.js"
+    },
+    "./teletext": {
+      "types": "./src/formats/broadcast/teletext/index.ts",
+      "default": "./dist/formats/broadcast/teletext/index.js"
+    }
   },
   "description": "High-performance TypeScript subtitle library. ASS-first format, others degrade gracefully.",
   "files": [
@@ -37,6 +104,7 @@
     "dist"
   ],
   "scripts": {
+    "build": "bun run scripts/build.ts",
     "test": "bun test --force-exit",
     "bench": "bun run tests/bench/text.bench.ts && bun run tests/bench/xml.bench.ts && bun run tests/bench/binary.bench.ts && bun run tests/bench/broadcast.bench.ts && bun run tests/bench/roundtrip.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts && bun run tests/bench/scale.bench.ts"
   },

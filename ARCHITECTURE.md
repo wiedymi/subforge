@@ -13,17 +13,20 @@ High-performance TypeScript subtitle library. ASS-first format, others degrade g
 
 ## Package Structure
 
-Single package with multiple entry points:
+Single package with multiple entry points, bundled with Bun to `dist/`:
 
 ```
 subforge/
 ├── package.json
 ├── src/
-│   ├── core/           # Shared types, operations
-│   ├── ass/            # ASS/SSA format
-│   ├── srt/            # SubRip format
-│   ├── vtt/            # WebVTT format
-│   └── index.ts        # Full bundle
+│   ├── core/                 # Shared types, operations
+│   ├── formats/
+│   │   ├── text/             # ASS/SSA/SRT/VTT/SBV/LRC/MicroDVD
+│   │   ├── xml/              # TTML/DFXP/SAMI/RealText/QT
+│   │   ├── binary/           # STL/PGS/DVB/VobSub/PAC
+│   │   └── broadcast/        # SCC/CAP/Teletext
+│   └── index.ts              # Full bundle
+└── dist/                      # Built output (ESM)
 ```
 
 ### Exports
@@ -33,11 +36,9 @@ subforge/
   "name": "subforge",
   "sideEffects": false,
   "exports": {
-    ".": "./dist/index.js",
-    "./core": "./dist/core/index.js",
-    "./ass": "./dist/ass/index.js",
-    "./srt": "./dist/srt/index.js",
-    "./vtt": "./dist/vtt/index.js"
+    ".": { "types": "./src/index.ts", "default": "./dist/index.js" },
+    "./core": { "types": "./src/core/index.ts", "default": "./dist/core/index.js" },
+    "./ass": { "types": "./src/formats/text/ass/index.ts", "default": "./dist/formats/text/ass/index.js" }
   }
 }
 ```
@@ -68,25 +69,30 @@ src/
 │   ├── convert.ts         # Format conversion
 │   ├── color.ts           # Universal color utilities (ABGR numbers)
 │   └── time.ts            # Universal time utilities (milliseconds)
-├── ass/
-│   ├── index.ts           # Public: parseASS, toASS
-│   ├── parser.ts          # Full ASS parser
-│   ├── serializer.ts      # ASS writer
-│   ├── tags.ts            # Override tag parsing
-│   ├── time.ts            # ASS time: "0:00:00.00" <-> ms
-│   └── color.ts           # ASS color: "&HAABBGGRR&" <-> ABGR
-├── srt/
-│   ├── index.ts
-│   ├── parser.ts
-│   ├── serializer.ts
-│   ├── tags.ts            # HTML-like tag parsing
-│   └── time.ts            # SRT time: "00:00:00,000" <-> ms
-├── vtt/
-│   ├── index.ts
-│   ├── parser.ts
-│   ├── serializer.ts
-│   ├── tags.ts            # Cue tag parsing
-│   └── time.ts            # VTT time: "00:00:00.000" <-> ms
+├── formats/
+│   ├── text/
+│   │   ├── ass/            # ASS format (full-featured reference)
+│   │   ├── ssa/            # SSA format
+│   │   ├── srt/            # SubRip
+│   │   ├── vtt/            # WebVTT
+│   │   ├── sbv/            # YouTube SBV
+│   │   ├── lrc/            # LRC
+│   │   └── microdvd/       # MicroDVD
+│   ├── xml/
+│   │   ├── ttml/           # TTML/DFXP/SMPTE-TT
+│   │   ├── sami/           # SAMI
+│   │   ├── realtext/       # RealText
+│   │   └── qt/             # QuickTime Text
+│   ├── binary/
+│   │   ├── stl/            # EBU-STL + Spruce STL
+│   │   ├── pgs/            # PGS bitmaps
+│   │   ├── dvb/            # DVB subtitles
+│   │   ├── vobsub/         # VobSub (.idx/.sub)
+│   │   └── pac/            # PAC (Cavena)
+│   └── broadcast/
+│       ├── scc/            # Scenarist Closed Caption
+│       ├── cap/            # CAP
+│       └── teletext/       # Teletext
 └── index.ts               # Full bundle re-exports
 ```
 
@@ -182,7 +188,7 @@ type Alignment = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 // === Events ===
 
 interface SubtitleEvent {
-  id: string              // Stable unique ID
+  id: number              // Stable unique ID
   start: number           // ms
   end: number             // ms
   layer: number
