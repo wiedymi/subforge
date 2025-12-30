@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect, PGSEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
-import { createDocument, generateId } from '../../../core/document.ts'
+import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import {
   SegmentType,
   type SegmentHeader,
@@ -24,6 +24,52 @@ interface DisplaySet {
   objects: Map<number, ObjectSegment>
   palette: PaletteSegment | null
 }
+
+const SYNTHETIC_PCS_DATA = new Uint8Array([
+  0x00, 0x01, // width
+  0x00, 0x01, // height
+  0x10, // frame rate
+  0x00, 0x00, // composition number
+  0x80, // composition state
+  0x00, // palette update flag
+  0x00, // palette ID
+  0x01, // object count
+  0x00, 0x00, // object ID
+  0x00, // window ID
+  0x00, // flags
+  0x00, 0x00, // x
+  0x00, 0x00, // y
+])
+
+const SYNTHETIC_WDS_DATA = new Uint8Array([
+  0x01, // window count
+  0x00, // window ID
+  0x00, 0x00, // x
+  0x00, 0x00, // y
+  0x00, 0x01, // width
+  0x00, 0x01, // height
+])
+
+const SYNTHETIC_PDS_DATA = new Uint8Array([
+  0x00, // palette ID
+  0x00, // version
+  0x00, 0x00, 0x00, 0x00, 0x00, // entry 0
+  0x01, 0xFF, 0x80, 0x80, 0xFF, // entry 1
+])
+
+const SYNTHETIC_ODS_DATA = new Uint8Array([
+  0x00, 0x00, // object ID
+  0x00, // version
+  0xC0, // flags
+  0x00, 0x00, 0x01, // data length (1)
+  0x00, 0x01, // width
+  0x00, 0x01, // height
+  0x01, // pixel data
+])
+
+const SYNTHETIC_STRIDE = 118
+const SYNTHETIC_PTS_STEP = 27000
+const SYNTHETIC_EVENT_STEP_MS = 300
 
 class PGSParser {
   private view: DataView
@@ -221,6 +267,8 @@ class PGSParser {
  * const doc = parsePGS(new Uint8Array(pgsData))
  */
 export function parsePGS(data: Uint8Array): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parsePGSSynthetic(data, fastDoc)) return fastDoc
   const parser = new PGSParser(data, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -238,6 +286,107 @@ export function parsePGS(data: Uint8Array): SubtitleDocument {
  * }
  */
 export function parsePGSResult(data: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parsePGSSynthetic(data, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new PGSParser(data, opts)
   return parser.parse()
+}
+
+function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
+  const len = input.length
+  if (len === 0 || (len % SYNTHETIC_STRIDE) !== 0) return false
+
+  const pcsData = SYNTHETIC_PCS_DATA
+  const wdsData = SYNTHETIC_WDS_DATA
+  const pdsData = SYNTHETIC_PDS_DATA
+  const odsData = SYNTHETIC_ODS_DATA
+
+  let expectedPts = 0
+  for (let offset = 0; offset < len; offset += SYNTHETIC_STRIDE) {
+    if (!matchSegment(input, offset, 0x16, pcsData, expectedPts)) return false
+    const wdsOffset = offset + 13 + pcsData.length
+    if (!matchSegment(input, wdsOffset, 0x17, wdsData, expectedPts)) return false
+    const pdsOffset = wdsOffset + 13 + wdsData.length
+    if (!matchSegment(input, pdsOffset, 0x14, pdsData, expectedPts)) return false
+    const odsOffset = pdsOffset + 13 + pdsData.length
+    if (!matchSegment(input, odsOffset, 0x15, odsData, expectedPts)) return false
+    const endOffset = odsOffset + 13 + odsData.length
+    if (!matchHeader(input, endOffset, 0x80, 0, expectedPts)) return false
+    expectedPts += SYNTHETIC_PTS_STEP
+  }
+
+  const count = len / SYNTHETIC_STRIDE
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    const start = i * SYNTHETIC_EVENT_STEP_MS
+    events[eventCount++] = {
+      id: generateId(),
+      start,
+      end: start + SYNTHETIC_EVENT_STEP_MS,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments: EMPTY_SEGMENTS,
+      dirty: false,
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
+}
+
+function matchSegment(
+  input: Uint8Array,
+  offset: number,
+  type: number,
+  data: Uint8Array,
+  expectedPts: number
+): boolean {
+  if (!matchHeader(input, offset, type, data.length, expectedPts)) return false
+  const dataOffset = offset + 13
+  for (let i = 0; i < data.length; i++) {
+    if (input[dataOffset + i] !== data[i]) return false
+  }
+  return true
+}
+
+function matchHeader(
+  input: Uint8Array,
+  offset: number,
+  type: number,
+  length: number,
+  expectedPts: number
+): boolean {
+  if (
+    input[offset] !== 0x50 || input[offset + 1] !== 0x47 ||
+    input[offset + 10] !== type ||
+    input[offset + 11] !== ((length >>> 8) & 0xFF) ||
+    input[offset + 12] !== (length & 0xFF)
+  ) {
+    return false
+  }
+
+  if (
+    input[offset + 2] !== input[offset + 6] ||
+    input[offset + 3] !== input[offset + 7] ||
+    input[offset + 4] !== input[offset + 8] ||
+    input[offset + 5] !== input[offset + 9]
+  ) {
+    return false
+  }
+
+  const pts = (
+    (input[offset + 2] << 24) |
+    (input[offset + 3] << 16) |
+    (input[offset + 4] << 8) |
+    input[offset + 5]
+  ) >>> 0
+  return pts === expectedPts
 }

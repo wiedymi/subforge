@@ -8,6 +8,9 @@ import {
   loadFixture,
   loadBinaryFixture,
   generateDocument,
+  generateDVB,
+  generatePGS,
+  generateVobSubIdx,
   SIZES,
 } from './_utils.ts'
 
@@ -59,6 +62,18 @@ const spruce1k = toSpruceSTL(doc1k)
 const spruce10k = toSpruceSTL(doc10k)
 const spruce100k = toSpruceSTL(doc100k)
 
+const pgs1k = generatePGS(SIZES.medium)
+const pgs10k = generatePGS(SIZES.large)
+const pgs100k = generatePGS(SIZES.stress)
+
+const dvb1k = generateDVB(SIZES.medium)
+const dvb10k = generateDVB(SIZES.large)
+const dvb100k = generateDVB(SIZES.stress)
+
+const vobsubIdx1k = generateVobSubIdx(SIZES.medium)
+const vobsubIdx10k = generateVobSubIdx(SIZES.large)
+const vobsubIdx100k = generateVobSubIdx(SIZES.stress)
+
 // ============================================================================
 // PGS (Blu-ray) Parsing
 // ============================================================================
@@ -69,6 +84,9 @@ group('PGS parse', () => {
   } else {
     console.warn('PGS fixture not found, skipping PGS benchmarks')
   }
+  bench('1k events', () => parsePGS(pgs1k))
+  bench('10k events', () => parsePGS(pgs10k))
+  bench('100k events', () => parsePGS(pgs100k))
 })
 
 group('PGS serialize', () => {
@@ -89,6 +107,9 @@ group('DVB parse', () => {
   } else {
     console.warn('DVB fixture not found, skipping DVB benchmarks')
   }
+  bench('1k events', () => parseDVB(dvb1k))
+  bench('10k events', () => parseDVB(dvb10k))
+  bench('100k events', () => parseDVB(dvb100k))
 })
 
 group('DVB serialize', () => {
@@ -130,6 +151,9 @@ if (vobsubIdx) {
     // Note: Full VobSub parsing requires .sub file too
     // For benchmark purposes, we test idx parsing speed
     bench('idx parse', () => parseIdx(vobsubIdx))
+    bench('1k events', () => parseIdx(vobsubIdx1k))
+    bench('10k events', () => parseIdx(vobsubIdx10k))
+    bench('100k events', () => parseIdx(vobsubIdx100k))
   })
 }
 

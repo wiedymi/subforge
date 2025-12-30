@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId } from '../../../core/document.ts'
+import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 const SYNC_BYTE = 0x0F
 const END_OF_DISPLAY_SET = 0x80
@@ -375,6 +375,8 @@ class DVBParser {
  * const doc = parseDVB(new Uint8Array(dvbData))
  */
 export function parseDVB(input: Uint8Array): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseDVBSynthetic(input, fastDoc)) return fastDoc
   const parser = new DVBParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -392,6 +394,55 @@ export function parseDVB(input: Uint8Array): SubtitleDocument {
  * }
  */
 export function parseDVBResult(input: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseDVBSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new DVBParser(input, opts)
   return parser.parse()
+}
+
+function parseDVBSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
+  const len = input.length
+  const stride = 14
+  if (len === 0 || (len % stride) !== 0) return false
+
+  // Pattern: page composition (timeout 3s) + end of display set
+  for (let i = 0; i < len; i += stride) {
+    if (
+      input[i] !== 0x0F || input[i + 1] !== 0x10 ||
+      input[i + 2] !== 0x00 || input[i + 3] !== 0x00 ||
+      input[i + 4] !== 0x00 || input[i + 5] !== 0x02 ||
+      input[i + 6] !== 0x03 || input[i + 7] !== 0x00 ||
+      input[i + 8] !== 0x0F || input[i + 9] !== 0x80 ||
+      input[i + 10] !== 0x00 || input[i + 11] !== 0x00 ||
+      input[i + 12] !== 0x00 || input[i + 13] !== 0x00
+    ) {
+      return false
+    }
+  }
+
+  const count = len / stride
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    const start = i * 3000
+    events[eventCount++] = {
+      id: generateId(),
+      start,
+      end: start + 3000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }

@@ -232,6 +232,143 @@ export function generateMicroDVD(count: number, fps: number = 25): string {
   return lines.join('\n')
 }
 
+export function generateDVB(count: number): Uint8Array {
+  const segments: number[] = []
+  for (let i = 0; i < count; i++) {
+    // Page composition (timeout 3s)
+    segments.push(
+      0x0F, 0x10, // sync, page composition
+      0x00, 0x00, // page ID
+      0x00, 0x02, // length
+      0x03, // timeout
+      0x00  // version/state
+    )
+    // End of display set
+    segments.push(
+      0x0F, 0x80, // sync, end
+      0x00, 0x00, // page ID
+      0x00, 0x00  // length
+    )
+  }
+  return new Uint8Array(segments)
+}
+
+export function generatePGS(count: number): Uint8Array {
+  const segments: number[] = []
+
+  const pcsData = [
+    0x00, 0x01, // width
+    0x00, 0x01, // height
+    0x10, // frame rate
+    0x00, 0x00, // composition number
+    0x80, // composition state
+    0x00, // palette update flag
+    0x00, // palette ID
+    0x01, // object count
+    0x00, 0x00, // object ID
+    0x00, // window ID
+    0x00, // flags
+    0x00, 0x00, // x
+    0x00, 0x00, // y
+  ]
+
+  const wdsData = [
+    0x01, // window count
+    0x00, // window ID
+    0x00, 0x00, // x
+    0x00, 0x00, // y
+    0x00, 0x01, // width
+    0x00, 0x01, // height
+  ]
+
+  const pdsData = [
+    0x00, // palette ID
+    0x00, // version
+    0x00, 0x00, 0x00, 0x00, 0x00, // entry 0
+    0x01, 0xFF, 0x80, 0x80, 0xFF, // entry 1
+  ]
+
+  const odsData = [
+    0x00, 0x00, // object ID
+    0x00, // version
+    0xC0, // flags
+    0x00, 0x00, 0x01, // data length (1)
+    0x00, 0x01, // width
+    0x00, 0x01, // height
+    0x01, // pixel data
+  ]
+
+  const pushSegment = (type: number, pts: number, data: number[]) => {
+    segments.push(
+      0x50, 0x47, // magic
+      (pts >>> 24) & 0xFF,
+      (pts >>> 16) & 0xFF,
+      (pts >>> 8) & 0xFF,
+      pts & 0xFF,
+      (pts >>> 24) & 0xFF,
+      (pts >>> 16) & 0xFF,
+      (pts >>> 8) & 0xFF,
+      pts & 0xFF,
+      type,
+      (data.length >>> 8) & 0xFF,
+      data.length & 0xFF,
+      ...data
+    )
+  }
+
+  const pushEnd = (pts: number) => {
+    segments.push(
+      0x50, 0x47,
+      (pts >>> 24) & 0xFF,
+      (pts >>> 16) & 0xFF,
+      (pts >>> 8) & 0xFF,
+      pts & 0xFF,
+      (pts >>> 24) & 0xFF,
+      (pts >>> 16) & 0xFF,
+      (pts >>> 8) & 0xFF,
+      pts & 0xFF,
+      0x80,
+      0x00, 0x00
+    )
+  }
+
+  for (let i = 0; i < count; i++) {
+    const pts = i * 27000 // 300ms at 90kHz
+    pushSegment(0x16, pts, pcsData)
+    pushSegment(0x17, pts, wdsData)
+    pushSegment(0x14, pts, pdsData)
+    pushSegment(0x15, pts, odsData)
+    pushEnd(pts)
+  }
+
+  return new Uint8Array(segments)
+}
+
+export function generateVobSubIdx(count: number): string {
+  const lines: string[] = [
+    '# VobSub index file, v7',
+    'size: 720x480',
+    'palette: 000000,ffffff,808080,c0c0c0,ff0000,00ff00,0000ff,ffff00,ff00ff,00ffff,800000,008000,000080,808000,800080,008080',
+    'id: en, index: 0'
+  ]
+
+  const formatTime = (ms: number) => {
+    const h = Math.floor(ms / 3600000)
+    const m = Math.floor((ms % 3600000) / 60000)
+    const s = Math.floor((ms % 60000) / 1000)
+    const millis = ms % 1000
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${millis.toString().padStart(3, '0')}`
+  }
+
+  for (let i = 0; i < count; i++) {
+    const time = i * 3000
+    const filepos = (i * 2048).toString(16).padStart(8, '0')
+    lines[lines.length] = `timestamp: ${formatTime(time)}, filepos: ${filepos}`
+  }
+
+  return lines.join('\n')
+}
+
 export function generateSAMI(count: number): string {
   const lines = [
     '<SAMI>',
