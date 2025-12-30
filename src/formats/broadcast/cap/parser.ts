@@ -173,11 +173,14 @@ class CAPParser {
       this.lineNum++
     }
 
-    let text = this.src.substring(textStart, textEnd)
-    if (text.includes('\r')) {
+    let tStart = textStart
+    let tEnd = textEnd
+    while (tStart < tEnd && this.src.charCodeAt(tStart) <= 32) tStart++
+    while (tEnd > tStart && this.src.charCodeAt(tEnd - 1) <= 32) tEnd--
+    let text = this.src.substring(tStart, tEnd)
+    if (text.indexOf('\r') !== -1) {
       text = text.replace(/\r/g, '')
     }
-    text = text.trim()
 
     return {
       id: generateId(),

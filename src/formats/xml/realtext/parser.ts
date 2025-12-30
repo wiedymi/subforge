@@ -32,6 +32,10 @@ class RealTextParser {
       src = src.slice(1)
     }
 
+    if (this.parseSimpleTimeClear(src)) {
+      return { document: this.doc, errors: this.errors, warnings: [] }
+    }
+
     if (this.parseFast(src)) {
       return { document: this.doc, errors: this.errors, warnings: [] }
     }
@@ -124,6 +128,49 @@ class RealTextParser {
     }
 
     return { document: this.doc, errors: this.errors, warnings: [] }
+  }
+
+  private parseSimpleTimeClear(src: string): boolean {
+    const windowStart = indexOfTagCaseInsensitive(src, '<window', 0)
+    if (windowStart === -1) return false
+    const windowOpenEnd = src.indexOf('>', windowStart)
+    if (windowOpenEnd === -1) return false
+    const windowClose = indexOfTagCaseInsensitive(src, '</window>', windowOpenEnd)
+    if (windowClose === -1) return false
+
+    let pos = windowOpenEnd + 1
+    while (pos < windowClose) {
+      const timePos = indexOfTagCaseInsensitive(src, '<time', pos)
+      if (timePos === -1 || timePos >= windowClose) break
+      const timeTagEnd = src.indexOf('>', timePos)
+      if (timeTagEnd === -1 || timeTagEnd >= windowClose) return false
+
+      const beginIdx = indexOfAttrCaseInsensitive(src, 'begin', timePos, timeTagEnd)
+      if (beginIdx === -1) return false
+      const quote = src.charCodeAt(beginIdx)
+      if (quote !== 34 && quote !== 39) return false
+      const beginStart = beginIdx + 1
+      const beginEnd = src.indexOf(String.fromCharCode(quote), beginStart)
+      if (beginEnd === -1 || beginEnd > timeTagEnd) return false
+
+      const time = parseRealTextTimeRange(src, beginStart, beginEnd)
+      if (time === null) return false
+
+      const textStart = timeTagEnd + 1
+      const clearPos = indexOfTagCaseInsensitive(src, '<clear', textStart)
+      if (clearPos === -1 || clearPos > windowClose) return false
+
+      const range = trimRange(src, textStart, clearPos)
+      if (range.end > range.start) {
+        const text = src.substring(range.start, range.end)
+        if (text.indexOf('<') !== -1 || text.indexOf('&') !== -1) return false
+        this.addEvent(time, text)
+      }
+
+      pos = clearPos + 6
+    }
+
+    return this.doc.events.length > 0
   }
 
   private parseFast(src: string): boolean {
@@ -368,6 +415,47 @@ function trimStringFast(text: string): string {
   if (start === 0 && end === text.length) return text
   if (end <= start) return ''
   return text.substring(start, end)
+}
+
+function trimRange(src: string, start: number, end: number): { start: number; end: number } {
+  while (start < end && src.charCodeAt(start) <= 32) start++
+  while (end > start && src.charCodeAt(end - 1) <= 32) end--
+  return { start, end }
+}
+
+function indexOfAttrCaseInsensitive(src: string, attr: string, start: number, end: number): number {
+  const attrLen = attr.length
+  let pos = start
+  while (pos < end) {
+    const eq = src.indexOf('=', pos)
+    if (eq === -1 || eq >= end) return -1
+    let nameEnd = eq
+    let nameStart = nameEnd - 1
+    while (nameStart >= start) {
+      const c = src.charCodeAt(nameStart)
+      if (c <= 32) break
+      nameStart--
+    }
+    nameStart++
+    if (nameEnd - nameStart === attrLen) {
+      let matched = true
+      for (let i = 0; i < attrLen; i++) {
+        const a = src.charCodeAt(nameStart + i)
+        const b = attr.charCodeAt(i)
+        if ((a | 32) !== (b | 32)) {
+          matched = false
+          break
+        }
+      }
+      if (matched) {
+        let valStart = eq + 1
+        while (valStart < end && src.charCodeAt(valStart) <= 32) valStart++
+        return valStart
+      }
+    }
+    pos = eq + 1
+  }
+  return -1
 }
 
 function matchTagName(src: string, start: number, end: number): number {

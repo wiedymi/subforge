@@ -98,7 +98,11 @@ class SpruceSTLParser {
 
     const start = this.parseTimecodeInline(lineStart, firstComma)
     const end = this.parseTimecodeInline(firstComma + 1, secondComma)
-    let text = this.src.substring(secondComma + 1, lineEnd).trim()
+    let textStart = secondComma + 1
+    let textEnd = lineEnd
+    while (textStart < textEnd && this.src.charCodeAt(textStart) <= 32) textStart++
+    while (textEnd > textStart && this.src.charCodeAt(textEnd - 1) <= 32) textEnd--
+    let text = this.src.substring(textStart, textEnd)
 
     if (start === null || end === null) {
       this.addError('INVALID_TIMESTAMP', 'Invalid timecode')

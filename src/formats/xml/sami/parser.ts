@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment, InlineStyle, Style } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, createDefaultStyle } from '../../../core/document.ts'
+import { createDocument, generateId, createDefaultStyle, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseCSS, styleFromClass, type SAMIClass } from './css.ts'
 
 interface SyncPoint {
@@ -37,6 +37,10 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
 
   // Extract CSS styles
   extractStyles(input, doc)
+
+  if (parseSAMIFastExact(input, doc)) {
+    return { document: doc, errors, warnings: [] }
+  }
 
   let pos = start
   let prev: SyncPoint | null = null
@@ -273,6 +277,113 @@ function findContentEnd(src: string, start: number, end: number): number {
     pos = lt + 1
   }
   return end
+}
+
+function parseSAMIFastExact(input: string, doc: SubtitleDocument): boolean {
+  const token = '<SYNC Start='
+  let pos = input.indexOf(token)
+  if (pos === -1) return false
+
+  let prevTime = -1
+  let prevText = ''
+  let prevClass: string | undefined
+
+  while (pos !== -1) {
+    let numStart = pos + token.length
+    while (numStart < input.length && input.charCodeAt(numStart) <= 32) numStart++
+    let numEnd = numStart
+    while (numEnd < input.length) {
+      const c = input.charCodeAt(numEnd)
+      if (c < 48 || c > 57) break
+      numEnd++
+    }
+    if (numStart === numEnd) return false
+    let time = 0
+    for (let i = numStart; i < numEnd; i++) {
+      time = time * 10 + (input.charCodeAt(i) - 48)
+    }
+
+    const pStart = input.indexOf('<P', numEnd)
+    if (pStart === -1) return false
+    const pTagEnd = input.indexOf('>', pStart)
+    if (pTagEnd === -1) return false
+
+    let className: string | undefined
+    const classPos = input.indexOf('Class=', pStart)
+    if (classPos !== -1 && classPos < pTagEnd) {
+      let valStart = classPos + 6
+      while (valStart < pTagEnd && input.charCodeAt(valStart) <= 32) valStart++
+      let valEnd = valStart
+      const quote = input.charCodeAt(valStart)
+      if (quote === 34 || quote === 39) {
+        valStart++
+        valEnd = input.indexOf(String.fromCharCode(quote), valStart)
+        if (valEnd === -1 || valEnd > pTagEnd) valEnd = pTagEnd
+      } else {
+        while (valEnd < pTagEnd) {
+          const c = input.charCodeAt(valEnd)
+          if (c <= 32 || c === 62) break
+          valEnd++
+        }
+      }
+      if (valEnd > valStart) className = input.substring(valStart, valEnd).toUpperCase()
+    }
+
+    const textStart = pTagEnd + 1
+    const textEnd = input.indexOf('</P>', textStart)
+    if (textEnd === -1) return false
+
+    if (prevTime >= 0 && prevText) {
+      doc.events[doc.events.length] = {
+        id: generateId(),
+        start: prevTime,
+        end: time,
+        layer: 0,
+        style: prevClass || 'Default',
+        actor: '',
+        marginL: 0,
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text: prevText,
+        segments: EMPTY_SEGMENTS,
+        dirty: false
+      }
+    }
+
+    let text = extractTrimmedText(input, textStart, textEnd)
+    if (text === '&nbsp;' || text === '') {
+      prevText = ''
+    } else {
+      if (text.indexOf('<') !== -1) return false
+      if (text.indexOf('&') !== -1) text = decodeHTML(text)
+      prevText = text
+    }
+
+    prevTime = time
+    prevClass = className
+    pos = input.indexOf(token, textEnd)
+  }
+
+  if (prevTime >= 0 && prevText) {
+    doc.events[doc.events.length] = {
+      id: generateId(),
+      start: prevTime,
+      end: prevTime + 5000,
+      layer: 0,
+      style: prevClass || 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: prevText,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  return doc.events.length > 0
 }
 
 function extractTrimmedText(src: string, start: number, end: number): string {
