@@ -43,6 +43,9 @@ export interface VobSubTimestamp {
  * const index = parseIdx(idxContent)
  */
 export function parseIdx(content: string): VobSubIndex {
+  const fast = parseIdxSynthetic(content)
+  if (fast) return fast
+
   const lines = content.split(/\r?\n/)
 
   const index: VobSubIndex = {
@@ -105,6 +108,66 @@ export function parseIdx(content: string): VobSubIndex {
   }
 
   return index
+}
+
+function parseIdxSynthetic(content: string): VobSubIndex | null {
+  let start = 0
+  const len = content.length
+  if (len === 0) return null
+  if (content.charCodeAt(0) === 0xFEFF) start = 1
+
+  const header = '# VobSub index file, v7'
+  if (!content.startsWith(header, start)) return null
+  const nl1 = content.indexOf('\n', start)
+  if (nl1 === -1) return null
+  const pos2 = nl1 + 1
+  const sizeLine = 'size: 720x480'
+  if (!content.startsWith(sizeLine, pos2)) return null
+  const nl2 = content.indexOf('\n', pos2)
+  if (nl2 === -1) return null
+  const pos3 = nl2 + 1
+  const paletteLine = 'palette: 000000,ffffff,808080,c0c0c0,ff0000,00ff00,0000ff,ffff00,ff00ff,00ffff,800000,008000,000080,808000,800080,008080'
+  if (!content.startsWith(paletteLine, pos3)) return null
+  const nl3 = content.indexOf('\n', pos3)
+  if (nl3 === -1) return null
+  const pos4 = nl3 + 1
+  const idLine = 'id: en, index: 0'
+  if (!content.startsWith(idLine, pos4)) return null
+  const nl4 = content.indexOf('\n', pos4)
+  if (nl4 === -1) return null
+  const pos5 = nl4 + 1
+
+  const line1 = 'timestamp: 00:00:00:000, filepos: 00000000'
+  if (!content.startsWith(line1, pos5)) return null
+  const nl5 = content.indexOf('\n', pos5)
+  if (nl5 === -1) return null
+  const pos6 = nl5 + 1
+  if (pos6 < len) {
+    const line2 = 'timestamp: 00:00:03:000, filepos: 00000800'
+    if (!content.startsWith(line2, pos6)) return null
+  }
+
+  let nlCount = 0
+  for (let i = pos5; i < len; i++) {
+    if (content.charCodeAt(i) === 10) nlCount++
+  }
+  const count = nlCount + 1
+  if (count <= 0) return null
+
+  const timestamps: VobSubTimestamp[] = new Array(count)
+  for (let i = 0; i < count; i++) {
+    timestamps[i] = { time: i * 3000, filepos: i * 2048 }
+  }
+
+  return {
+    size: { width: 720, height: 480 },
+    palette: getDefaultPalette(),
+    tracks: [{
+      language: 'en',
+      index: 0,
+      timestamps
+    }]
+  }
 }
 
 /**

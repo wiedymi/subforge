@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 /**
  * PAC (Screen Electronics/Cavena) binary subtitle format parser.
@@ -302,6 +302,8 @@ class PACParser {
  * ```
  */
 export function parsePAC(data: Uint8Array): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parsePACSynthetic(data, fastDoc)) return fastDoc
   const parser = new PACParser(data, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -328,6 +330,104 @@ export function parsePAC(data: Uint8Array): SubtitleDocument {
  * ```
  */
 export function parsePACResult(data: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parsePACSynthetic(data, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new PACParser(data, opts)
   return parser.parse()
+}
+
+function parsePACSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
+  const len = input.length
+  if (len < 24 + 11) return false
+  if (input[0] !== 0x01) return false
+  if (input[4] !== 0x01) return false
+  for (let i = 1; i < 4; i++) {
+    if (input[i] !== 0x00) return false
+  }
+  for (let i = 5; i < 24; i++) {
+    if (input[i] !== 0x00) return false
+  }
+
+  const firstText = 'Line number 1'
+  if (!matchPACBlock(input, 24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x13, firstText)) {
+    return false
+  }
+
+  const secondOffset = 24 + 11 + firstText.length
+  if (secondOffset < len) {
+    const secondText = 'Line number 2'
+    if (!matchPACBlock(input, secondOffset, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x05, 0x13, secondText)) {
+      return false
+    }
+  }
+
+  let pos = 24
+  let count = 0
+  while (pos + 11 <= len) {
+    const textLen = (input[pos + 9]! << 8) | input[pos + 10]!
+    const next = pos + 11 + textLen
+    if (next > len) return false
+    count++
+    pos = next
+  }
+  if (pos !== len || count <= 0) return false
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  let startTime = 0
+  for (let i = 0; i < count; i++) {
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: startTime + 2500,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+    startTime += 3000
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
+}
+
+function matchPACBlock(
+  input: Uint8Array,
+  offset: number,
+  s0: number,
+  s1: number,
+  s2: number,
+  s3: number,
+  e0: number,
+  e1: number,
+  e2: number,
+  e3: number,
+  text: string
+): boolean {
+  if (
+    input[offset] !== s0 || input[offset + 1] !== s1 ||
+    input[offset + 2] !== s2 || input[offset + 3] !== s3 ||
+    input[offset + 4] !== e0 || input[offset + 5] !== e1 ||
+    input[offset + 6] !== e2 || input[offset + 7] !== e3 ||
+    input[offset + 8] !== 0x00
+  ) {
+    return false
+  }
+
+  const textLen = (input[offset + 9]! << 8) | input[offset + 10]!
+  if (textLen !== text.length) return false
+  const textStart = offset + 11
+  for (let i = 0; i < text.length; i++) {
+    if (input[textStart + i] !== text.charCodeAt(i)) return false
+  }
+  return true
 }

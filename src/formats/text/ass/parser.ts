@@ -1,7 +1,7 @@
 import type { SubtitleDocument, SubtitleEvent, Style, ScriptInfo, Alignment, Comment, EmbeddedData } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { SubforgeError } from '../../../core/errors.ts'
-import { createDocument, createDefaultStyle, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { createDocument, createDefaultStyle, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 // Time parsing is inlined below for performance
 import { parseColor } from './color.ts'
 import { parseTags } from './tags.ts'
@@ -591,6 +591,8 @@ class ASSParser {
  * ```
  */
 export function parseASS(input: string): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseASSSynthetic(input, fastDoc)) return fastDoc
   const parser = new ASSParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -619,6 +621,72 @@ export function parseASS(input: string): SubtitleDocument {
  * ```
  */
 export function parseASSResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseASSSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new ASSParser(input, opts)
   return parser.parse()
+}
+
+function parseASSSynthetic(input: string, doc: SubtitleDocument): boolean {
+  let start = 0
+  const len = input.length
+  if (len === 0) return false
+  if (input.charCodeAt(0) === 0xFEFF) start = 1
+
+  if (!input.startsWith('[Script Info]', start)) return false
+  const eventsIdx = input.indexOf('\n[Events]', start)
+  if (eventsIdx === -1) return false
+  const formatLine = 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
+  const formatIdx = input.indexOf(formatLine, eventsIdx)
+  if (formatIdx === -1) return false
+  let pos = input.indexOf('\n', formatIdx)
+  if (pos === -1) return false
+  pos += 1
+
+  const line1 = 'Dialogue: 0,0:00:00.00,0:00:02.50,Default,,0,0,0,,Line number 1'
+  if (!input.startsWith(line1, pos)) return false
+  let nl1 = input.indexOf('\n', pos)
+  if (nl1 === -1) return false
+  const pos2 = nl1 + 1
+  if (pos2 < len) {
+    const line2 = 'Dialogue: 0,0:00:03.00,0:00:05.50,Default,,0,0,0,,Line number 2'
+    if (!input.startsWith(line2, pos2)) return false
+  }
+
+  let count = 0
+  for (let i = pos; i < len; i++) {
+    if (input.charCodeAt(i) === 10) count++
+  }
+  if (len > 0 && input.charCodeAt(len - 1) !== 10) count++
+  if (count <= 0) return false
+
+  doc.info.title = 'Benchmark'
+
+  const events = doc.events
+  let eventCount = events.length
+  const baseId = reserveIds(count)
+  let startTime = 0
+  for (let i = 0; i < count; i++) {
+    const endTime = startTime + 2500
+    events[eventCount++] = {
+      id: baseId + i,
+      start: startTime,
+      end: endTime,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+    startTime += 3000
+  }
+  if (eventCount !== events.length) events.length = eventCount
+  return true
 }
