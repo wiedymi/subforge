@@ -17,13 +17,20 @@ import { parseSpruceSTL, toSpruceSTL } from '../../src/formats/binary/stl/index.
 import { parsePGS, toPGS } from '../../src/formats/binary/pgs/index.ts'
 import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 import { parseVobSub, toVobSub } from '../../src/formats/binary/vobsub/index.ts'
+import { parseIdx } from '../../src/formats/binary/vobsub/parser.ts'
 import { parsePAC, toPAC } from '../../src/formats/binary/pac/index.ts'
 
 // ============================================================================
 // Load Fixtures
 // ============================================================================
 
+// Pre-parsed documents for serialization
+const doc1k = generateDocument(SIZES.medium)
+const doc10k = generateDocument(SIZES.large)
+const doc100k = generateDocument(SIZES.stress)
+
 // Binary fixtures
+const ebuSimple = await loadBinaryFixture('stl/simple.stl')
 const pgsSimple = await loadBinaryFixture('pgs/simple.sup')
 const dvbSimple = await loadBinaryFixture('dvb/simple.dvb')
 const pacSimple = await loadBinaryFixture('pac/simple.pac')
@@ -32,12 +39,25 @@ const pacSimple = await loadBinaryFixture('pac/simple.pac')
 const vobsubIdx = await loadFixture('vobsub/test.idx')
 // Note: .sub fixture may not exist, we'll skip if missing
 
-// Text-based STL
-const spruceSimple = await loadFixture('stl/simple.stl')
+// Text-based STL (Spruce)
+const spruceFixture = await loadFixture('stl/spruce.stl')
+const spruceSample = spruceFixture ?? toSpruceSTL(doc1k)
+if (!spruceFixture) {
+  console.warn('Spruce STL fixture not found, using generated data')
+}
 
-// Pre-parsed documents for serialization
-const doc100 = generateDocument(SIZES.small)
-const doc1k = generateDocument(SIZES.medium)
+// Generated inputs for parse benchmarks
+const ebu1k = toEBUSTL(doc1k)
+const ebu10k = toEBUSTL(doc10k)
+const ebu100k = toEBUSTL(doc100k)
+
+const pac1k = toPAC(doc1k)
+const pac10k = toPAC(doc10k)
+const pac100k = toPAC(doc100k)
+
+const spruce1k = toSpruceSTL(doc1k)
+const spruce10k = toSpruceSTL(doc10k)
+const spruce100k = toSpruceSTL(doc100k)
 
 // ============================================================================
 // PGS (Blu-ray) Parsing
@@ -88,11 +108,15 @@ group('PAC parse', () => {
   } else {
     console.warn('PAC fixture not found, skipping PAC benchmarks')
   }
+  bench('1k events', () => parsePAC(pac1k))
+  bench('10k events', () => parsePAC(pac10k))
+  bench('100k events', () => parsePAC(pac100k))
 })
 
 group('PAC serialize', () => {
-  bench('100 events', () => toPAC(doc100))
   bench('1k events', () => toPAC(doc1k))
+  bench('10k events', () => toPAC(doc10k))
+  bench('100k events', () => toPAC(doc100k))
 })
 
 // ============================================================================
@@ -105,9 +129,7 @@ if (vobsubIdx) {
   group('VobSub parse (idx only)', () => {
     // Note: Full VobSub parsing requires .sub file too
     // For benchmark purposes, we test idx parsing speed
-    bench('idx parse', () => {
-      // parseVobSub requires both files, so this is limited
-    })
+    bench('idx parse', () => parseIdx(vobsubIdx))
   })
 }
 
@@ -119,8 +141,20 @@ if (vobsubIdx) {
 // Generate one if needed or skip
 
 group('EBU-STL serialize', () => {
-  bench('100 events', () => toEBUSTL(doc100))
   bench('1k events', () => toEBUSTL(doc1k))
+  bench('10k events', () => toEBUSTL(doc10k))
+  bench('100k events', () => toEBUSTL(doc100k))
+})
+
+group('EBU-STL parse', () => {
+  if (ebuSimple) {
+    bench('simple (real)', () => parseEBUSTL(ebuSimple))
+  } else {
+    console.warn('EBU-STL fixture not found, skipping')
+  }
+  bench('1k events', () => parseEBUSTL(ebu1k))
+  bench('10k events', () => parseEBUSTL(ebu10k))
+  bench('100k events', () => parseEBUSTL(ebu100k))
 })
 
 // ============================================================================
@@ -128,16 +162,16 @@ group('EBU-STL serialize', () => {
 // ============================================================================
 
 group('Spruce STL parse', () => {
-  if (spruceSimple) {
-    bench('simple (real)', () => parseSpruceSTL(spruceSimple))
-  } else {
-    console.warn('Spruce STL fixture not found, skipping')
-  }
+  bench('sample', () => parseSpruceSTL(spruceSample))
+  bench('1k events', () => parseSpruceSTL(spruce1k))
+  bench('10k events', () => parseSpruceSTL(spruce10k))
+  bench('100k events', () => parseSpruceSTL(spruce100k))
 })
 
 group('Spruce STL serialize', () => {
-  bench('100 events', () => toSpruceSTL(doc100))
   bench('1k events', () => toSpruceSTL(doc1k))
+  bench('10k events', () => toSpruceSTL(doc10k))
+  bench('100k events', () => toSpruceSTL(doc100k))
 })
 
 await run()

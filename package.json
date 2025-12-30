@@ -11,9 +11,25 @@
   "exports": {
     ".": "./src/index.ts",
     "./core": "./src/core/index.ts",
-    "./ass": "./src/ass/index.ts",
-    "./srt": "./src/srt/index.ts",
-    "./vtt": "./src/vtt/index.ts"
+    "./ass": "./src/formats/text/ass/index.ts",
+    "./ssa": "./src/formats/text/ssa/index.ts",
+    "./srt": "./src/formats/text/srt/index.ts",
+    "./vtt": "./src/formats/text/vtt/index.ts",
+    "./sbv": "./src/formats/text/sbv/index.ts",
+    "./lrc": "./src/formats/text/lrc/index.ts",
+    "./microdvd": "./src/formats/text/microdvd/index.ts",
+    "./ttml": "./src/formats/xml/ttml/index.ts",
+    "./sami": "./src/formats/xml/sami/index.ts",
+    "./realtext": "./src/formats/xml/realtext/index.ts",
+    "./qt": "./src/formats/xml/qt/index.ts",
+    "./stl": "./src/formats/binary/stl/index.ts",
+    "./pgs": "./src/formats/binary/pgs/index.ts",
+    "./dvb": "./src/formats/binary/dvb/index.ts",
+    "./vobsub": "./src/formats/binary/vobsub/index.ts",
+    "./pac": "./src/formats/binary/pac/index.ts",
+    "./scc": "./src/formats/broadcast/scc/index.ts",
+    "./cap": "./src/formats/broadcast/cap/index.ts",
+    "./teletext": "./src/formats/broadcast/teletext/index.ts"
   },
   "description": "High-performance TypeScript subtitle library. ASS-first format, others degrade gracefully.",
   "files": [
@@ -22,7 +38,7 @@
   ],
   "scripts": {
     "test": "bun test --force-exit",
-    "bench": "bun run tests/bench/parse.bench.ts && bun run tests/bench/serialize.bench.ts && bun run tests/bench/convert.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts"
+    "bench": "bun run tests/bench/text.bench.ts && bun run tests/bench/xml.bench.ts && bun run tests/bench/binary.bench.ts && bun run tests/bench/broadcast.bench.ts && bun run tests/bench/roundtrip.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts && bun run tests/bench/scale.bench.ts"
   },
   "sideEffects": false,
   "type": "module"

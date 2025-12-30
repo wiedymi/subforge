@@ -5,6 +5,7 @@
 
 import { bench, group, run } from 'mitata'
 import {
+  loadBinaryFixture,
   loadFixture,
   generateDocument,
   generateSCC,
@@ -19,15 +20,21 @@ import { parseTeletext, toTeletext } from '../../src/formats/broadcast/teletext/
 // ============================================================================
 
 const sccSimple = await loadFixture('scc/simple.scc')
-const teletextSimple = await loadFixture('teletext/simple.ttx')
+const teletextSimple = await loadBinaryFixture('teletext/simple.ttx')
 
 // Synthetic SCC data
-const scc100 = generateSCC(SIZES.small)
 const scc1k = generateSCC(SIZES.medium)
+const scc10k = generateSCC(SIZES.large)
+const scc100k = generateSCC(SIZES.stress)
 
 // Pre-parsed documents for serialization
-const doc100 = generateDocument(SIZES.small)
 const doc1k = generateDocument(SIZES.medium)
+const doc10k = generateDocument(SIZES.large)
+const doc100k = generateDocument(SIZES.stress)
+
+const teletext1k = toTeletext(doc1k)
+const teletext10k = toTeletext(doc10k)
+const teletext100k = toTeletext(doc100k)
 
 // ============================================================================
 // SCC Parsing
@@ -35,13 +42,15 @@ const doc1k = generateDocument(SIZES.medium)
 
 group('SCC parse', () => {
   if (sccSimple) bench('simple (real)', () => parseSCC(sccSimple))
-  bench('100 events', () => parseSCC(scc100))
   bench('1k events', () => parseSCC(scc1k))
+  bench('10k events', () => parseSCC(scc10k))
+  bench('100k events', () => parseSCC(scc100k))
 })
 
 group('SCC serialize', () => {
-  bench('100 events', () => toSCC(doc100))
   bench('1k events', () => toSCC(doc1k))
+  bench('10k events', () => toSCC(doc10k))
+  bench('100k events', () => toSCC(doc100k))
 })
 
 // ============================================================================
@@ -73,16 +82,16 @@ group('CEA-608 encode', () => {
 // ============================================================================
 
 group('Teletext parse', () => {
-  if (teletextSimple) {
-    bench('simple (real)', () => parseTeletext(teletextSimple))
-  } else {
-    console.warn('Teletext fixture not found, skipping')
-  }
+  if (teletextSimple) bench('simple (real)', () => parseTeletext(teletextSimple))
+  bench('1k events', () => parseTeletext(teletext1k))
+  bench('10k events', () => parseTeletext(teletext10k))
+  bench('100k events', () => parseTeletext(teletext100k))
 })
 
 group('Teletext serialize', () => {
-  bench('100 events', () => toTeletext(doc100))
   bench('1k events', () => toTeletext(doc1k))
+  bench('10k events', () => toTeletext(doc10k))
+  bench('100k events', () => toTeletext(doc100k))
 })
 
 await run()

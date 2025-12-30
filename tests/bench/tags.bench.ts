@@ -11,7 +11,7 @@ import {
   stripTags as stripASSTags,
   serializeTags as serializeASSTags,
 } from '../../src/formats/text/ass/tags.ts'
-import { parseColor, formatColor } from '../../src/formats/text/ass/color.ts'
+import { parseColor, formatColor, parseAlpha } from '../../src/formats/text/ass/color.ts'
 import { parseTime as parseASSTime, formatTime as formatASSTime } from '../../src/formats/text/ass/time.ts'
 
 // SRT tag utilities
@@ -148,7 +148,7 @@ group('VTT strip tags', () => {
 group('ASS color parse', () => {
   bench('8-digit', () => parseColor('&H800000FF&'))
   bench('6-digit', () => parseColor('&HFFFFFF&'))
-  bench('short', () => parseColor('&HFF&'))
+  bench('alpha', () => parseAlpha('&HFF&'))
 })
 
 group('ASS color format', () => {
