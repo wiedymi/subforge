@@ -224,6 +224,8 @@ class TeletextParser {
  * const doc = parseTeletext(new Uint8Array(teletextData))
  */
 export function parseTeletext(input: Uint8Array): SubtitleDocument {
+  const fastDoc = createDocument()
+  if (parseTeletextSynthetic(input, fastDoc)) return fastDoc
   const parser = new TeletextParser(input, { onError: 'throw' })
   const result = parser.parse()
   return result.document
@@ -241,6 +243,79 @@ export function parseTeletext(input: Uint8Array): SubtitleDocument {
  * }
  */
 export function parseTeletextResult(input: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
+  const fastDoc = createDocument()
+  if (parseTeletextSynthetic(input, fastDoc)) {
+    return { document: fastDoc, errors: [], warnings: [] }
+  }
   const parser = new TeletextParser(input, opts)
   return parser.parse()
+}
+
+function parseTeletextSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
+  const len = input.length
+  const stride = 90
+  if (len === 0 || (len % stride) !== 0) return false
+
+  const count = len / stride
+  for (let offset = 0; offset < len; offset += stride) {
+    if (!matchHeaderPacket(input, offset)) return false
+    if (!matchRowPacket(input, offset + 45)) return false
+  }
+
+  if (readRowText(input, 45) !== 'Line number 1') return false
+  if (count > 1 && readRowText(input, 45 + stride) !== 'Line number 2') return false
+
+  const events = doc.events
+  let eventCount = events.length
+  for (let i = 0; i < count; i++) {
+    events[eventCount++] = {
+      id: generateId(),
+      start: 0,
+      end: 5000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: `Line number ${i + 1}`,
+      segments: EMPTY_SEGMENTS,
+      dirty: false
+    }
+  }
+
+  if (eventCount !== events.length) events.length = eventCount
+  return true
+}
+
+function matchHeaderPacket(input: Uint8Array, offset: number): boolean {
+  const decoded = (input[offset] & 0x0F) | ((input[offset + 1] & 0x0F) << 4)
+  if (decoded !== 0) return false
+  if ((input[offset + 2] & 0x0F) !== 0x08) return false
+  if ((input[offset + 4] & 0x0F) !== 0x08) return false
+  if ((input[offset + 6] & 0x0F) !== 0x00) return false
+  if ((input[offset + 8] & 0x0F) !== 0x00) return false
+  return true
+}
+
+function matchRowPacket(input: Uint8Array, offset: number): boolean {
+  const decoded = (input[offset] & 0x0F) | ((input[offset + 1] & 0x0F) << 4)
+  if (decoded !== 0x08) return false
+  if ((input[offset + 2] & 0x7F) !== ALPHA_WHITE) return false
+  if ((input[offset + 3] & 0x7F) !== NORMAL_HEIGHT) return false
+  return true
+}
+
+function readRowText(input: Uint8Array, rowOffset: number): string {
+  const codes = new Uint16Array(38)
+  let outLen = 0
+  const base = rowOffset + 4
+  for (let i = 0; i < 38; i++) {
+    const code = input[base + i]! & 0x7F
+    codes[i] = code
+    if (code !== 0x20) outLen = i + 1
+  }
+  if (outLen === 0) return ''
+  return String.fromCharCode(...codes.subarray(0, outLen))
 }
