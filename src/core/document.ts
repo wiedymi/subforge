@@ -192,7 +192,13 @@ export function cloneDocument(doc: SubtitleDocument): SubtitleDocument {
   return {
     info: { ...doc.info },
     styles: new Map(doc.styles),
-    events: doc.events.map(e => ({ ...e, segments: [...e.segments] })),
+    events: doc.events.map(e => ({
+      ...e,
+      segments: [...e.segments],
+      image: e.image ? { ...e.image, data: e.image.data.slice() } : undefined,
+      vobsub: e.vobsub ? { ...e.vobsub } : undefined,
+      pgs: e.pgs ? { ...e.pgs } : undefined,
+    })),
     comments: [...doc.comments],
     fonts: doc.fonts ? [...doc.fonts] : undefined,
     graphics: doc.graphics ? [...doc.graphics] : undefined,
@@ -214,6 +220,9 @@ export function cloneEvent(event: SubtitleEvent): SubtitleEvent {
   return {
     ...event,
     id: generateId(),
-    segments: event.segments.map(s => ({ ...s, effects: [...s.effects] }))
+    segments: event.segments.map(s => ({ ...s, effects: [...s.effects] })),
+    image: event.image ? { ...event.image, data: event.image.data.slice() } : undefined,
+    vobsub: event.vobsub ? { ...event.vobsub } : undefined,
+    pgs: event.pgs ? { ...event.pgs } : undefined,
   }
 }

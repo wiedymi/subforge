@@ -74,15 +74,35 @@ test('createKaraokeEvent creates segments', () => {
 
 test('cloneDocument creates deep copy', () => {
   const doc = createDocument()
-  doc.events.push(createEvent(0, 1000, 'Test'))
+  const event = createEvent(0, 1000, 'Test')
+  event.image = {
+    format: 'indexed',
+    width: 2,
+    height: 1,
+    data: new Uint8Array([1, 2]),
+    palette: [0x000000FF, 0xFFFFFFFF],
+  }
+  event.vobsub = { forced: false, originalIndex: 0 }
+  doc.events.push(event)
   const clone = cloneDocument(doc)
   clone.events[0]!.text = 'Modified'
+  clone.events[0]!.image!.data[0] = 9
   expect(doc.events[0]!.text).toBe('Test')
+  expect(doc.events[0]!.image!.data[0]).toBe(1)
 })
 
 test('cloneEvent creates new id', () => {
   const event = createEvent(0, 1000, 'Test')
+  event.image = {
+    format: 'indexed',
+    width: 1,
+    height: 1,
+    data: new Uint8Array([3]),
+  }
+  event.pgs = { compositionNumber: 1, windowId: 0 }
   const clone = cloneEvent(event)
   expect(clone.id).not.toBe(event.id)
   expect(clone.text).toBe(event.text)
+  expect(clone.image?.data[0]).toBe(3)
+  expect(clone.pgs?.compositionNumber).toBe(1)
 })
