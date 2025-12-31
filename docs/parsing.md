@@ -15,6 +15,20 @@ console.log(result.ok, result.errors.length)
 const doc = unwrap(result)
 ```
 
+## Multi-part formats
+
+Some formats use multiple inputs. For example, VobSub requires both `.idx` and `.sub`:
+
+```ts
+import { parseIdx, parseVobSub } from 'subforge/vobsub'
+import { unwrap } from 'subforge/core'
+
+const idx = await fetch('/subs.idx').then(r => r.text())
+const sub = new Uint8Array(await fetch('/subs.sub').then(r => r.arrayBuffer()))
+const index = parseIdx(idx) // optional, but faster if you reuse it
+const doc = unwrap(parseVobSub(index, sub))
+```
+
 ## Parse options
 
 ```ts

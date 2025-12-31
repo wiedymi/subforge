@@ -14,6 +14,7 @@ const ass = toASS(doc)
 
 - If `event.dirty` is `false`, serializers can reuse `event.text` for lossless roundtrip.
 - If you edit `segments`, set `dirty = true` to regenerate text.
+- Bitmap formats (PGS, DVB, VobSub) read image payloads from `event.image` and metadata from `event.pgs` or `event.vobsub`.
 
 ## Format-specific options
 

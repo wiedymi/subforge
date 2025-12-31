@@ -33,3 +33,4 @@ type ConvertOptions = {
 
 - Conversion supports all formats that have serializers available.
 - When `reportLoss` is enabled, the result includes a list of features that could not be preserved.
+- Image-based formats are converted using `event.image`/metadata when present, or `segments` with image effects.
