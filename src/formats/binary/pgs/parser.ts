@@ -1,4 +1,4 @@
-import type { SubtitleDocument, SubtitleEvent, ImageEffect, PGSEffect } from '../../../core/types.ts'
+import type { SubtitleDocument, SubtitleEvent, ImageData, PGSMeta } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
 import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
@@ -210,48 +210,38 @@ class PGSParser {
         // Decompress RLE data
         const decompressed = decompressRLE(obj.data, obj.width, obj.height)
 
-        // Create image effect
-        const imageEffect: ImageEffect = {
-          type: 'image',
-          params: {
-            format: 'indexed',
-            width: obj.width,
-            height: obj.height,
-            x: compObj.x,
-            y: compObj.y,
-            data: decompressed,
-            palette,
-          },
-        }
+      const image: ImageData = {
+        format: 'indexed',
+        width: obj.width,
+        height: obj.height,
+        x: compObj.x,
+        y: compObj.y,
+        data: decompressed,
+        palette,
+      }
 
-        // Create PGS effect
-        const pgsEffect: PGSEffect = {
-          type: 'pgs',
-          params: {
-            compositionNumber: set.composition.compositionNumber,
-            windowId: compObj.windowId,
-          },
-        }
+      const pgs: PGSMeta = {
+        compositionNumber: set.composition.compositionNumber,
+        windowId: compObj.windowId,
+      }
 
-        const event: SubtitleEvent = {
-          id: generateId(),
-          start,
-          end,
+      const event: SubtitleEvent = {
+        id: generateId(),
+        start,
+        end,
           layer: 0,
           style: 'Default',
           actor: '',
           marginL: 0,
-          marginR: 0,
-          marginV: 0,
-          effect: '',
-          text: '',
-          segments: [{
-            text: '',
-            style: null,
-            effects: [imageEffect, pgsEffect],
-          }],
-          dirty: false,
-        }
+        marginR: 0,
+        marginV: 0,
+        effect: '',
+        text: '',
+        segments: EMPTY_SEGMENTS,
+        image,
+        pgs,
+        dirty: false,
+      }
 
         this.doc.events.push(event)
       }

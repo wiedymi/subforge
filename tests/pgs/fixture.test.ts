@@ -12,12 +12,12 @@ describe('PGS Fixture', () => {
     expect(doc.events).toHaveLength(1)
     expect(doc.events[0].start).toBeCloseTo(1000, 0) // 90000 / 90 = 1000ms
 
-    const imageEffect = doc.events[0].segments[0].effects.find(e => e.type === 'image')
-    expect(imageEffect).toBeDefined()
-    expect(imageEffect?.params.width).toBe(64)
-    expect(imageEffect?.params.height).toBe(32)
-    expect(imageEffect?.params.x).toBe(512)
-    expect(imageEffect?.params.y).toBe(256)
+    const image = doc.events[0].image
+    expect(image).toBeDefined()
+    expect(image?.width).toBe(64)
+    expect(image?.height).toBe(32)
+    expect(image?.x).toBe(512)
+    expect(image?.y).toBe(256)
   })
 
   test('roundtrip simple.sup', () => {
@@ -30,10 +30,10 @@ describe('PGS Fixture', () => {
     const reparsed = unwrap(parsePGS(serialized))
     expect(reparsed.events).toHaveLength(1)
 
-    const originalImage = doc.events[0].segments[0].effects.find(e => e.type === 'image')
-    const reparsedImage = reparsed.events[0].segments[0].effects.find(e => e.type === 'image')
+    const originalImage = doc.events[0].image
+    const reparsedImage = reparsed.events[0].image
 
-    expect(reparsedImage?.params.width).toBe(originalImage?.params.width)
-    expect(reparsedImage?.params.height).toBe(originalImage?.params.height)
+    expect(reparsedImage?.width).toBe(originalImage?.width)
+    expect(reparsedImage?.height).toBe(originalImage?.height)
   })
 })

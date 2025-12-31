@@ -75,12 +75,12 @@ describe('PGS Roundtrip', () => {
     expect(parsed.events).toHaveLength(1)
     expect(parsed.events[0].start).toBeCloseTo(1000, 5)
 
-    const parsedImage = parsed.events[0].segments[0].effects.find(e => e.type === 'image') as ImageEffect | undefined
+    const parsedImage = parsed.events[0].image
     expect(parsedImage).toBeDefined()
-    expect(parsedImage?.params.width).toBe(32)
-    expect(parsedImage?.params.height).toBe(16)
-    expect(parsedImage?.params.x).toBe(100)
-    expect(parsedImage?.params.y).toBe(50)
+    expect(parsedImage?.width).toBe(32)
+    expect(parsedImage?.height).toBe(16)
+    expect(parsedImage?.x).toBe(100)
+    expect(parsedImage?.y).toBe(50)
   })
 
   test('roundtrip - multiple subtitles', () => {

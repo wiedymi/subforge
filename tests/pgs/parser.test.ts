@@ -108,19 +108,17 @@ describe('PGS Parser', () => {
 
     expect(doc.events).toHaveLength(1)
     expect(doc.events[0].start).toBeCloseTo(63, 0) // 5678 / 90 ≈ 63ms
-    expect(doc.events[0].segments).toHaveLength(1)
+    const image = doc.events[0].image
+    expect(image).toBeDefined()
+    expect(image?.width).toBe(32)
+    expect(image?.height).toBe(16)
+    expect(image?.x).toBe(16)
+    expect(image?.y).toBe(16)
 
-    const imageEffect = doc.events[0].segments[0].effects.find(e => e.type === 'image')
-    expect(imageEffect).toBeDefined()
-    expect(imageEffect?.params.width).toBe(32)
-    expect(imageEffect?.params.height).toBe(16)
-    expect(imageEffect?.params.x).toBe(16)
-    expect(imageEffect?.params.y).toBe(16)
-
-    const pgsEffect = doc.events[0].segments[0].effects.find(e => e.type === 'pgs')
-    expect(pgsEffect).toBeDefined()
-    expect(pgsEffect?.params.compositionNumber).toBe(0)
-    expect(pgsEffect?.params.windowId).toBe(0)
+    const pgs = doc.events[0].pgs
+    expect(pgs).toBeDefined()
+    expect(pgs?.compositionNumber).toBe(0)
+    expect(pgs?.windowId).toBe(0)
   })
 
   test('parsePGS - multiple display sets', () => {

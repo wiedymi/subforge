@@ -74,16 +74,16 @@ describe('PGS Integration', () => {
     const event = parsed.events[0]
     expect(event.start).toBeCloseTo(500, 5)
 
-    const parsedImage = event.segments[0].effects.find(e => e.type === 'image') as ImageEffect | undefined
+    const parsedImage = event.image
     expect(parsedImage).toBeDefined()
-    expect(parsedImage?.params.width).toBe(size)
-    expect(parsedImage?.params.height).toBe(size)
-    expect(parsedImage?.params.format).toBe('indexed')
-    expect(parsedImage?.params.palette).toBeDefined()
-    expect(parsedImage?.params.palette?.length).toBeGreaterThan(0)
+    expect(parsedImage?.width).toBe(size)
+    expect(parsedImage?.height).toBe(size)
+    expect(parsedImage?.format).toBe('indexed')
+    expect(parsedImage?.palette).toBeDefined()
+    expect(parsedImage?.palette?.length).toBeGreaterThan(0)
 
     // Verify checkerboard pattern is preserved
-    const parsedData = parsedImage!.params.data
+    const parsedData = parsedImage!.data
     expect(parsedData[0]).toBe(0) // Top-left should be 0
     expect(parsedData[1]).toBe(1) // Next pixel should be 1
     expect(parsedData[size]).toBe(1) // Second row first pixel should be 1
