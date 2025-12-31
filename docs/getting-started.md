@@ -26,6 +26,23 @@ const doc = unwrap(parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n'))
 const ass = toASS(doc)
 ```
 
+## Bitmap formats
+
+For bitmap formats (PGS, DVB, VobSub), image payloads live on `event.image` with metadata on `event.pgs` or `event.vobsub`.
+
+```ts
+import { parseVobSub, parseIdx } from 'subforge/vobsub'
+import { unwrap } from 'subforge/core'
+
+const idx = await fetch('/subs.idx').then(r => r.text())
+const sub = new Uint8Array(await fetch('/subs.sub').then(r => r.arrayBuffer()))
+const index = parseIdx(idx)
+const doc = unwrap(parseVobSub(index, sub))
+
+const first = doc.events[0]
+console.log(first.image?.width, first.image?.height)
+```
+
 ## Use only what you need
 
 Subpath entry points keep imports small:
