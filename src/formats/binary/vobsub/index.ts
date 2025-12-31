@@ -41,8 +41,8 @@ export function parseVobSub(
   try {
     const data = toUint8Array(sub)
     const errors: string[] = []
-    const index = parseIdx(idx)
     const decodeMode = opts.decode ?? 'full'
+    const index = decodeMode === 'none' ? parseIdxTimings(idx) : parseIdx(idx)
 
     const doc: SubtitleDocument = {
       info: {
@@ -82,6 +82,11 @@ export function parseVobSub(
       events: [],
       comments: [],
     }
+    if (decodeMode === 'none') {
+      let total = 0
+      for (const track of index.tracks) total += track.timestamps.length
+      doc.events = new Array(total)
+    }
 
     let eventId = 0
 
@@ -94,8 +99,9 @@ export function parseVobSub(
           if (decodeMode === 'none') {
             const next = i + 1 < track.timestamps.length ? track.timestamps[i + 1]!.time : ts.time + 2000
             const endTime = next > ts.time ? next : ts.time + 2000
+            const id = eventId++
             const event: SubtitleEvent = {
-              id: eventId++,
+              id,
               start: ts.time,
               end: endTime,
               layer: 0,
@@ -109,7 +115,7 @@ export function parseVobSub(
               segments: EMPTY_SEGMENTS,
               dirty: false,
             }
-            doc.events.push(event)
+            doc.events[id] = event
             continue
           }
 
@@ -210,6 +216,142 @@ export function parseVobSub(
       warnings: []
     }
   }
+}
+
+function parseIdxTimings(content: string): VobSubIndex {
+  let pos = 0
+  const len = content.length
+  if (len === 0) {
+    return {
+      size: { width: 720, height: 480 },
+      palette: [],
+      tracks: [],
+    }
+  }
+  if (content.charCodeAt(0) === 0xFEFF) pos = 1
+
+  const index: VobSubIndex = {
+    size: { width: 720, height: 480 },
+    palette: [],
+    tracks: [],
+  }
+
+  let currentTrack = null as VobSubIndex['tracks'][number] | null
+
+  while (pos <= len) {
+    let lineEnd = content.indexOf('\n', pos)
+    if (lineEnd === -1) lineEnd = len
+    let lineStart = pos
+    if (lineEnd > lineStart && content.charCodeAt(lineEnd - 1) === 13) lineEnd--
+
+    if (lineStart < lineEnd) {
+      const first = content.charCodeAt(lineStart)
+      if (first !== 35) { // '#'
+        if (content.startsWith('size:', lineStart)) {
+          let i = lineStart + 5
+          while (i < lineEnd && content.charCodeAt(i) <= 32) i++
+          let w = 0
+          while (i < lineEnd) {
+            const d = content.charCodeAt(i) - 48
+            if (d < 0 || d > 9) break
+            w = w * 10 + d
+            i++
+          }
+          if (i < lineEnd && content.charCodeAt(i) === 120) i++
+          let h = 0
+          while (i < lineEnd) {
+            const d = content.charCodeAt(i) - 48
+            if (d < 0 || d > 9) break
+            h = h * 10 + d
+            i++
+          }
+          if (w > 0 && h > 0) {
+            index.size.width = w
+            index.size.height = h
+          }
+        } else if (content.startsWith('id:', lineStart)) {
+          let i = lineStart + 3
+          while (i < lineEnd && content.charCodeAt(i) <= 32) i++
+          const langStart = i
+          while (i < lineEnd && content.charCodeAt(i) > 32 && content.charCodeAt(i) !== 44) i++
+          const language = content.substring(langStart, i)
+          const indexPos = content.indexOf('index:', i)
+          if (indexPos !== -1) {
+            let j = indexPos + 6
+            while (j < lineEnd && content.charCodeAt(j) <= 32) j++
+            let trackIndex = 0
+            while (j < lineEnd) {
+              const d = content.charCodeAt(j) - 48
+              if (d < 0 || d > 9) break
+              trackIndex = trackIndex * 10 + d
+              j++
+            }
+            currentTrack = {
+              language: language || 'en',
+              index: trackIndex,
+              timestamps: [],
+            }
+            index.tracks.push(currentTrack)
+          }
+        } else if (content.startsWith('timestamp:', lineStart)) {
+          if (!currentTrack) {
+            currentTrack = { language: 'en', index: 0, timestamps: [] }
+            index.tracks.push(currentTrack)
+          }
+          const time = parseTimeFixed(content, lineStart + 11)
+          const fileposStart = lineStart + 34
+          if (time >= 0 && fileposStart < lineEnd) {
+            let filepos = 0
+            for (let i = fileposStart; i < lineEnd; i++) {
+              const c = content.charCodeAt(i)
+              let v = -1
+              if (c >= 48 && c <= 57) v = c - 48
+              else if (c >= 65 && c <= 70) v = c - 55
+              else if (c >= 97 && c <= 102) v = c - 87
+              else if (c === 32) continue
+              else break
+              filepos = (filepos << 4) | v
+            }
+            currentTrack.timestamps.push({ time, filepos })
+          }
+        }
+      }
+    }
+
+    if (lineEnd === len) break
+    pos = lineEnd + 1
+  }
+
+  return index
+}
+
+function parseTimeFixed(src: string, start: number): number {
+  const h1 = src.charCodeAt(start) - 48
+  const h2 = src.charCodeAt(start + 1) - 48
+  const c1 = src.charCodeAt(start + 2)
+  const m1 = src.charCodeAt(start + 3) - 48
+  const m2 = src.charCodeAt(start + 4) - 48
+  const c2 = src.charCodeAt(start + 5)
+  const s1 = src.charCodeAt(start + 6) - 48
+  const s2 = src.charCodeAt(start + 7) - 48
+  const c3 = src.charCodeAt(start + 8)
+  const ms1 = src.charCodeAt(start + 9) - 48
+  const ms2 = src.charCodeAt(start + 10) - 48
+  const ms3 = src.charCodeAt(start + 11) - 48
+  if (
+    h1 < 0 || h1 > 9 || h2 < 0 || h2 > 9 ||
+    m1 < 0 || m1 > 9 || m2 < 0 || m2 > 9 ||
+    s1 < 0 || s1 > 9 || s2 < 0 || s2 > 9 ||
+    ms1 < 0 || ms1 > 9 || ms2 < 0 || ms2 > 9 || ms3 < 0 || ms3 > 9 ||
+    c1 !== 58 || c2 !== 58 || c3 !== 58
+  ) {
+    return -1
+  }
+  const hours = h1 * 10 + h2
+  const minutes = m1 * 10 + m2
+  const seconds = s1 * 10 + s2
+  const millis = ms1 * 100 + ms2 * 10 + ms3
+  return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis
 }
 
 /**
