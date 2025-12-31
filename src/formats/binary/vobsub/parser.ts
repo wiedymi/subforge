@@ -45,8 +45,10 @@ export interface VobSubTimestamp {
 export function parseIdx(content: string): VobSubIndex {
   const fast = parseIdxSynthetic(content)
   if (fast) return fast
-  const fastSerialized = parseIdxSerialized(content)
+  const fastSerialized = parseIdxSerializedFast(content)
   if (fastSerialized) return fastSerialized
+  const serialized = parseIdxSerialized(content)
+  if (serialized) return serialized
 
   const lines = content.split(/\r?\n/)
 
@@ -105,6 +107,126 @@ export function parseIdx(content: string): VobSubIndex {
   }
 
   // Ensure we have a default palette if none was provided
+  if (index.palette.length === 0) {
+    index.palette = getDefaultPalette()
+  }
+
+  return index
+}
+
+function parseIdxSerializedFast(content: string): VobSubIndex | null {
+  let pos = 0
+  const len = content.length
+  if (len === 0) return null
+  if (content.charCodeAt(0) === 0xFEFF) pos = 1
+
+  if (!content.startsWith('# VobSub index file, v7', pos)) return null
+
+  const index: VobSubIndex = {
+    size: { width: 720, height: 480 },
+    palette: [],
+    tracks: [],
+  }
+
+  const sizePos = content.indexOf('size:', pos)
+  if (sizePos !== -1) {
+    let i = sizePos + 5
+    const sizeEnd = content.indexOf('\n', i)
+    const end = sizeEnd === -1 ? len : sizeEnd
+    while (i < end && content.charCodeAt(i) <= 32) i++
+    let w = 0
+    while (i < end) {
+      const d = content.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      w = w * 10 + d
+      i++
+    }
+    if (i < end && content.charCodeAt(i) === 120) i++
+    let h = 0
+    while (i < end) {
+      const d = content.charCodeAt(i) - 48
+      if (d < 0 || d > 9) break
+      h = h * 10 + d
+      i++
+    }
+    if (w > 0 && h > 0) {
+      index.size.width = w
+      index.size.height = h
+    }
+  }
+
+  const palettePos = content.indexOf('palette:', pos)
+  if (palettePos !== -1) {
+    let i = palettePos + 8
+    const paletteEnd = content.indexOf('\n', i)
+    const end = paletteEnd === -1 ? len : paletteEnd
+    const colors: number[] = []
+    while (i < end) {
+      while (i < end && (content.charCodeAt(i) === 32 || content.charCodeAt(i) === 44)) i++
+      if (i + 5 >= end) break
+      const color = parseHexColorFast(content, i)
+      colors.push(color)
+      i += 6
+      while (i < end && content.charCodeAt(i) !== 44) i++
+    }
+    if (colors.length > 0) index.palette = colors
+  }
+
+  let idPos = content.indexOf('id:', pos)
+  while (idPos !== -1) {
+    const lineEnd = content.indexOf('\n', idPos)
+    const end = lineEnd === -1 ? len : lineEnd
+    let i = idPos + 3
+    while (i < end && content.charCodeAt(i) <= 32) i++
+    const langStart = i
+    while (i < end && content.charCodeAt(i) > 32 && content.charCodeAt(i) !== 44) i++
+    const language = content.substring(langStart, i)
+    const indexPos = content.indexOf('index:', i)
+    let trackIndex = 0
+    if (indexPos !== -1 && indexPos < end) {
+      let j = indexPos + 6
+      while (j < end && content.charCodeAt(j) <= 32) j++
+      while (j < end) {
+        const d = content.charCodeAt(j) - 48
+        if (d < 0 || d > 9) break
+        trackIndex = trackIndex * 10 + d
+        j++
+      }
+    }
+
+    const track: VobSubTrack = {
+      language: language || 'en',
+      index: trackIndex,
+      timestamps: [],
+    }
+    index.tracks.push(track)
+
+    const nextId = content.indexOf('\nid:', idPos + 1)
+    const sectionEnd = nextId === -1 ? len : nextId + 1
+    let tsPos = content.indexOf('timestamp:', idPos)
+    while (tsPos !== -1 && tsPos < sectionEnd) {
+      const time = parseTimeFixed(content, tsPos + 11)
+      const fileposStart = tsPos + 34
+      if (time >= 0 && fileposStart < len) {
+        let filepos = 0
+        for (let j = fileposStart; j < len; j++) {
+          const c = content.charCodeAt(j)
+          let v = -1
+          if (c >= 48 && c <= 57) v = c - 48
+          else if (c >= 65 && c <= 70) v = c - 55
+          else if (c >= 97 && c <= 102) v = c - 87
+          else if (c === 32) continue
+          else break
+          filepos = (filepos << 4) | v
+        }
+        track.timestamps.push({ time, filepos })
+      }
+      tsPos = content.indexOf('timestamp:', tsPos + 1)
+    }
+
+    idPos = nextId === -1 ? -1 : content.indexOf('id:', nextId + 1)
+  }
+
   if (index.palette.length === 0) {
     index.palette = getDefaultPalette()
   }
@@ -373,6 +495,32 @@ function parseColor(hex: string): number {
 
   // Invalid format, return transparent black
   return 0x000000FF
+}
+
+function parseHexColorFast(src: string, start: number): number {
+  const v1 = hexNibble(src.charCodeAt(start))
+  const v2 = hexNibble(src.charCodeAt(start + 1))
+  const v3 = hexNibble(src.charCodeAt(start + 2))
+  const v4 = hexNibble(src.charCodeAt(start + 3))
+  const v5 = hexNibble(src.charCodeAt(start + 4))
+  const v6 = hexNibble(src.charCodeAt(start + 5))
+  if (
+    v1 < 0 || v2 < 0 || v3 < 0 ||
+    v4 < 0 || v5 < 0 || v6 < 0
+  ) {
+    return 0x000000FF
+  }
+  const r = (v1 << 4) | v2
+  const g = (v3 << 4) | v4
+  const b = (v5 << 4) | v6
+  return ((r << 24) | (g << 16) | (b << 8) | 0xFF) >>> 0
+}
+
+function hexNibble(code: number): number {
+  if (code >= 48 && code <= 57) return code - 48
+  if (code >= 65 && code <= 70) return code - 55
+  if (code >= 97 && code <= 102) return code - 87
+  return -1
 }
 
 /**
