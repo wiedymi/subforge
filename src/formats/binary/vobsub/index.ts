@@ -1,8 +1,8 @@
 // VobSub format support
 import type { SubtitleDocument, SubtitleEvent, ImageEffect, VobSubEffect } from '../../../core/types.ts'
-import type { ParseResult } from '../../../core/errors.ts'
+import type { ParseOptions, ParseResult } from '../../../core/errors.ts'
 import { toParseError } from '../../../core/errors.ts'
-import { createDocument } from '../../../core/document.ts'
+import { createDocument, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { toUint8Array } from '../../../core/binary.ts'
 import { parseIdx, serializeIdx, type VobSubIndex } from './parser.ts'
 import { parseSubPacket, createSubBinary, type SubtitlePacket } from './sub.ts'
@@ -11,6 +11,16 @@ import { decodeRLE, encodeRLE } from './rle.ts'
 export { parseTime, formatTime } from './parser.ts'
 export type { VobSubIndex, VobSubTrack, VobSubTimestamp } from './parser.ts'
 export type { SubtitlePacket } from './sub.ts'
+
+export type VobSubParseOptions = ParseOptions & {
+  /**
+   * Decode image data.
+   * - 'full': decode to indexed bitmap (default)
+   * - 'rle': keep raw RLE data in the image effect
+   * - 'none': skip sub packet parsing and image data (timing only)
+   */
+  decode?: 'full' | 'rle' | 'none'
+}
 export { decodeRLE, encodeRLE } from './rle.ts'
 
 /**
@@ -23,11 +33,16 @@ export { decodeRLE, encodeRLE } from './rle.ts'
  * const subData = await Bun.file('movie.sub').arrayBuffer()
  * const result = parseVobSub(idxText, new Uint8Array(subData))
  */
-export function parseVobSub(idx: string, sub: Uint8Array | ArrayBuffer): ParseResult {
+export function parseVobSub(
+  idx: string,
+  sub: Uint8Array | ArrayBuffer,
+  opts: Partial<VobSubParseOptions> = {}
+): ParseResult {
   try {
     const data = toUint8Array(sub)
     const errors: string[] = []
     const index = parseIdx(idx)
+    const decodeMode = opts.decode ?? 'full'
 
     const doc: SubtitleDocument = {
       info: {
@@ -76,14 +91,33 @@ export function parseVobSub(idx: string, sub: Uint8Array | ArrayBuffer): ParseRe
         const ts = track.timestamps[i]
 
         try {
+          if (decodeMode === 'none') {
+            const next = i + 1 < track.timestamps.length ? track.timestamps[i + 1]!.time : ts.time + 2000
+            const endTime = next > ts.time ? next : ts.time + 2000
+            const event: SubtitleEvent = {
+              id: eventId++,
+              start: ts.time,
+              end: endTime,
+              layer: 0,
+              style: 'Default',
+              actor: '',
+              marginL: 0,
+              marginR: 0,
+              marginV: 0,
+              effect: '',
+              text: '',
+              segments: EMPTY_SEGMENTS,
+              dirty: false,
+            }
+            doc.events.push(event)
+            continue
+          }
+
           const packet = parseSubPacket(data, ts.filepos)
           if (!packet) {
             errors.push(`Failed to parse packet at filepos ${ts.filepos.toString(16)}`)
             continue
           }
-
-          // Decode RLE data
-          const decoded = decodeRLE(packet.rleData, packet.width, packet.height)
 
           // Determine end time (use next timestamp or add duration)
           let endTime = ts.time + packet.duration
@@ -94,19 +128,31 @@ export function parseVobSub(idx: string, sub: Uint8Array | ArrayBuffer): ParseRe
             endTime = ts.time + 2000  // Default 2 second duration
           }
 
-          // Create subtitle event
-          const imageEffect: ImageEffect = {
-            type: 'image',
-            params: {
-              format: 'indexed',
-              width: packet.width,
-              height: packet.height,
-              x: packet.x,
-              y: packet.y,
-              data: decoded.data,
-              palette: index.palette,
-            },
-          }
+          const imageEffect: ImageEffect = decodeMode === 'rle'
+            ? {
+              type: 'image',
+              params: {
+                format: 'rle',
+                width: packet.width,
+                height: packet.height,
+                x: packet.x,
+                y: packet.y,
+                data: packet.rleData,
+                palette: index.palette,
+              },
+            }
+            : {
+              type: 'image',
+              params: {
+                format: 'indexed',
+                width: packet.width,
+                height: packet.height,
+                x: packet.x,
+                y: packet.y,
+                data: decodeRLE(packet.rleData, packet.width, packet.height).data,
+                palette: index.palette,
+              },
+            }
 
           const vobsubEffect: VobSubEffect = {
             type: 'vobsub',
@@ -236,7 +282,7 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
     })
 
     // Estimate filepos (will be recalculated when creating binary)
-    filepos += 14 + 6 + 10 + rleData.length + 20
+    filepos += 14 + 6 + 10 + 4 + rleData.length + 20
   }
 
   // Create .sub binary
@@ -250,7 +296,7 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
     // Calculate actual packet size
     const rleSize = packets[i].rleData.length
     const controlSeqSize = 20  // Approximate
-    const subPacketSize = rleSize + controlSeqSize
+    const subPacketSize = 4 + rleSize + controlSeqSize
     const pesLength = 8 + 1 + 2 + subPacketSize
     const packetSize = 14 + 6 + pesLength
 

@@ -169,6 +169,18 @@ group('VobSub parse (full)', () => {
   bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub))
 })
 
+group('VobSub parse (rle)', () => {
+  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub, { decode: 'rle' }))
+  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub, { decode: 'rle' }))
+  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub, { decode: 'rle' }))
+})
+
+group('VobSub parse (none)', () => {
+  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub, { decode: 'none' }))
+  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub, { decode: 'none' }))
+  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub, { decode: 'none' }))
+})
+
 // ============================================================================
 // EBU-STL Parsing (Binary broadcast format)
 // ============================================================================

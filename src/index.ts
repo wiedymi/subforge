@@ -215,6 +215,7 @@ export type {
   VobSubTrack,
   VobSubTimestamp,
   SubtitlePacket as VobSubPacket,
+  VobSubParseOptions,
 } from './formats/binary/vobsub/index.ts'
 
 /**

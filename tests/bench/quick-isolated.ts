@@ -26,6 +26,8 @@ const formats = [
   'DVB',
   'VobSub idx',
   'VobSub',
+  'VobSub rle',
+  'VobSub none',
 ]
 
 const args = Bun.argv.slice(2)

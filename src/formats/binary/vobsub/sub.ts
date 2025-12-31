@@ -124,12 +124,28 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   let controlSeqOffset = subPacketStart
   let controlInfo: ControlInfo | null = null
 
-  const guessedOffset = findControlSequence(data, subPacketStart, subPacketEnd)
-  if (guessedOffset !== null) {
-    const maybeInfo = parseControlSequence(data, guessedOffset, subPacketEnd)
-    if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
-      controlSeqOffset = guessedOffset
-      controlInfo = maybeInfo
+  const packetLen = subPacketEnd - subPacketStart
+  if (packetLen >= 4) {
+    const sizeField = (data[subPacketStart] << 8) | data[subPacketStart + 1]
+    const offsetField = (data[subPacketStart + 2] << 8) | data[subPacketStart + 3]
+    if (offsetField >= 4 && offsetField < packetLen && sizeField >= offsetField) {
+      const candidate = subPacketStart + offsetField
+      const maybeInfo = parseControlSequence(data, candidate, subPacketEnd)
+      if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
+        controlSeqOffset = candidate
+        controlInfo = maybeInfo
+      }
+    }
+  }
+
+  if (!controlInfo) {
+    const guessedOffset = findControlSequence(data, subPacketStart, subPacketEnd)
+    if (guessedOffset !== null) {
+      const maybeInfo = parseControlSequence(data, guessedOffset, subPacketEnd)
+      if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
+        controlSeqOffset = guessedOffset
+        controlInfo = maybeInfo
+      }
     }
   }
 
@@ -151,7 +167,9 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   }
 
   // Extract RLE data (between data start and control sequence)
-  const rleStart = subPacketStart
+  const rleStart = (controlInfo && packetLen >= 4 && controlSeqOffset > subPacketStart + 4)
+    ? subPacketStart + 4
+    : subPacketStart
   const rleEnd = controlSeqOffset
   const rleData = data.slice(rleStart, rleEnd)
 
@@ -309,7 +327,8 @@ export function createSubBinary(packets: SubtitlePacket[]): Uint8Array {
  */
 function createSubPacketBinary(packet: SubtitlePacket): Uint8Array {
   const controlSeq = createControlSequence(packet)
-  const subPacketSize = packet.rleData.length + controlSeq.length
+  const controlOffset = 4 + packet.rleData.length
+  const subPacketSize = 4 + packet.rleData.length + controlSeq.length
 
   // Estimate sizes
   const pesHeaderSize = 3 + 5  // Flags + PTS
@@ -373,6 +392,12 @@ function createSubPacketBinary(packet: SubtitlePacket): Uint8Array {
   // Subtitle packet size
   data[pos++] = (subPacketSize >> 8) & 0xFF
   data[pos++] = subPacketSize & 0xFF
+
+  // Subpicture header (size + control sequence offset)
+  data[pos++] = (subPacketSize >> 8) & 0xFF
+  data[pos++] = subPacketSize & 0xFF
+  data[pos++] = (controlOffset >> 8) & 0xFF
+  data[pos++] = controlOffset & 0xFF
 
   // RLE data
   data.set(packet.rleData, pos)

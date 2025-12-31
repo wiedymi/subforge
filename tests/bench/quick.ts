@@ -71,7 +71,9 @@ const ttml = needsTTML ? generateTTML(COUNT) : null
 const dvb = shouldRun('DVB') ? generateDVB(COUNT) : null
 const pgs = shouldRun('PGS') ? generatePGS(COUNT) : null
 const vobIdx = shouldRun('VobSub idx') ? generateVobSubIdx(COUNT) : null
-const vob = shouldRun('VobSub') ? generateVobSub(COUNT) : null
+const vob = (shouldRun('VobSub') || shouldRun('VobSub rle') || shouldRun('VobSub none'))
+  ? generateVobSub(COUNT)
+  : null
 
 const needsDoc = shouldRun('Teletext') || shouldRun('Spruce STL') || shouldRun('EBU-STL') || shouldRun('PAC')
 const doc = needsDoc ? generateDocument(COUNT) : null
@@ -102,7 +104,9 @@ if (pac) bench('PAC', () => parsePAC(pac))
 if (pgs) bench('PGS', () => parsePGS(pgs))
 if (dvb) bench('DVB', () => parseDVB(dvb))
 if (vobIdx) bench('VobSub idx', () => parseIdx(vobIdx))
-if (vob) bench('VobSub', () => parseVobSub(vob.idx, vob.sub))
+if (vob && shouldRun('VobSub')) bench('VobSub', () => parseVobSub(vob.idx, vob.sub))
+if (vob && shouldRun('VobSub rle')) bench('VobSub rle', () => parseVobSub(vob.idx, vob.sub, { decode: 'rle' }))
+if (vob && shouldRun('VobSub none')) bench('VobSub none', () => parseVobSub(vob.idx, vob.sub, { decode: 'none' }))
 
 results.sort((a, b) => a.ms - b.ms)
 
