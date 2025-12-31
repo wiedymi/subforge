@@ -424,7 +424,7 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
     })
 
     // Estimate filepos (will be recalculated when creating binary)
-    filepos += 14 + 6 + 10 + 4 + rleData.length + 20
+    filepos += estimatePacketSize(rleData.length, packet.forced)
   }
 
   // Create .sub binary
@@ -436,13 +436,7 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
     index.tracks[0].timestamps[i].filepos = actualPos
 
     // Calculate actual packet size
-    const rleSize = packets[i].rleData.length
-    const controlSeqSize = 20  // Approximate
-    const subPacketSize = 4 + rleSize + controlSeqSize
-    const pesLength = 8 + 1 + 2 + subPacketSize
-    const packetSize = 14 + 6 + pesLength
-
-    actualPos += packetSize
+    actualPos += estimatePacketSize(packets[i].rleData.length, packets[i].forced)
   }
 
   // Ensure we have a palette
@@ -462,4 +456,11 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
     idx: idxContent,
     sub: subBinary,
   }
+}
+
+function estimatePacketSize(rleSize: number, forced: boolean): number {
+  const controlSeqSize = forced ? 12 : 11
+  const subPacketSize = 4 + rleSize + controlSeqSize
+  const pesLength = 11 + subPacketSize
+  return 20 + pesLength
 }
