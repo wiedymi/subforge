@@ -16,28 +16,28 @@ These numbers are from isolated runs (each format executed in its own process) u
 
 | Format | 100k parse (ms) |
 | --- | ---: |
-| DVB | 5.58 |
-| VobSub idx | 7.29 |
-| PAC | 7.40 |
-| Teletext | 9.81 |
-| SCC | 11.07 |
-| SBV | 12.27 |
-| SMPTE-TT | 12.71 |
-| TTML | 13.02 |
-| DFXP | 13.06 |
-| LRC | 13.15 |
-| QT | 14.13 |
-| RealText | 14.16 |
-| SSA | 14.57 |
-| Spruce STL | 15.17 |
-| ASS | 16.00 |
-| CAP | 17.22 |
-| VobSub none | 17.30 |
-| PGS | 18.75 |
-| EBU-STL | 18.85 |
-| SAMI | 18.96 |
-| VobSub rle | 35.30 |
-| VobSub | 40.71 |
+| DVB | 4.88 |
+| VobSub idx | 7.00 |
+| PAC | 7.43 |
+| Teletext | 10.13 |
+| SBV | 11.48 |
+| SCC | 11.57 |
+| TTML | 12.60 |
+| DFXP | 12.87 |
+| LRC | 13.47 |
+| SMPTE-TT | 13.96 |
+| RealText | 14.08 |
+| QT | 14.38 |
+| Spruce STL | 14.85 |
+| SSA | 15.24 |
+| ASS | 15.28 |
+| SAMI | 16.19 |
+| VobSub none | 17.39 |
+| PGS | 17.40 |
+| CAP | 17.96 |
+| EBU-STL | 18.12 |
+| VobSub rle | 35.48 |
+| VobSub | 41.17 |
 
 Results vary by hardware and Bun version. Re-run the command to refresh numbers.
 VobSub full parses include sub-packet processing and image handling; use `decode: 'none'` or `parseIdx` for timing-only workflows.

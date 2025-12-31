@@ -43,6 +43,8 @@ export function parseVobSub(
     const errors: string[] = []
     const decodeMode = opts.decode ?? 'full'
     const index = decodeMode === 'none' ? parseIdxTimings(idx) : parseIdx(idx)
+    let totalEvents = 0
+    for (const track of index.tracks) totalEvents += track.timestamps.length
 
     const doc: SubtitleDocument = {
       info: {
@@ -79,13 +81,8 @@ export function parseVobSub(
           encoding: 1,
         }],
       ]),
-      events: [],
+      events: new Array(totalEvents),
       comments: [],
-    }
-    if (decodeMode === 'none') {
-      let total = 0
-      for (const track of index.tracks) total += track.timestamps.length
-      doc.events = new Array(total)
     }
 
     let eventId = 0
@@ -168,8 +165,9 @@ export function parseVobSub(
             },
           }
 
+          const id = eventId++
           const event: SubtitleEvent = {
-            id: eventId++,
+            id,
             start: ts.time,
             end: endTime,
             layer: 0,
@@ -188,11 +186,15 @@ export function parseVobSub(
             dirty: false,
           }
 
-          doc.events.push(event)
+          doc.events[id] = event
         } catch (err) {
           errors.push(`Error parsing packet at ${ts.filepos.toString(16)}: ${err}`)
         }
       }
+    }
+
+    if (eventId < doc.events.length) {
+      doc.events.length = eventId
     }
 
     const parseErrors = errors.map(message => ({

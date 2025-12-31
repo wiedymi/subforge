@@ -171,7 +171,7 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
     ? subPacketStart + 4
     : subPacketStart
   const rleEnd = controlSeqOffset
-  const rleData = data.slice(rleStart, rleEnd)
+  const rleData = data.subarray(rleStart, rleEnd)
 
   return {
     pts,
