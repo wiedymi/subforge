@@ -94,6 +94,57 @@ test('toVobSub creates valid VobSub files', () => {
   expect(sub.length).toBeGreaterThan(0)
 })
 
+test('toVobSub accepts event.image payloads', () => {
+  const doc: SubtitleDocument = {
+    info: {
+      playResX: 720,
+      playResY: 480,
+      scaleBorderAndShadow: true,
+      wrapStyle: 0,
+    },
+    styles: new Map(),
+    events: [{
+      id: 0,
+      start: 1000,
+      end: 3000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments: [],
+      image: {
+        format: 'indexed',
+        width: 4,
+        height: 2,
+        x: 10,
+        y: 20,
+        data: new Uint8Array(8).fill(1),
+        palette: [0x000000FF, 0xFFFFFFFF],
+      },
+      vobsub: {
+        forced: true,
+        originalIndex: 0,
+      },
+      dirty: false,
+    }],
+    comments: [],
+  }
+
+  const { idx, sub } = toVobSub(doc)
+  expect(idx).toContain('size: 720x480')
+  expect(sub.length).toBeGreaterThan(0)
+
+  const parsed = unwrap(parseVobSub(idx, sub))
+  expect(parsed.events).toHaveLength(1)
+  expect(parsed.events[0].image?.width).toBe(4)
+  expect(parsed.events[0].image?.height).toBe(2)
+  expect(parsed.events[0].vobsub?.forced).toBe(true)
+})
+
 test('parseVobSub supports timing-only mode', () => {
   const doc: SubtitleDocument = {
     info: {
