@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, Style, ScriptInfo, Alignment, Comment, EmbeddedData } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, createDefaultStyle, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseColor } from '../ass/color.ts'
 import { parseTags } from '../ass/tags.ts'
@@ -75,7 +75,7 @@ class SSAParser {
   constructor(input: string, opts: Partial<ParseOptions> = {}) {
     this.lexer = new SSALexer(input)
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -91,7 +91,7 @@ class SSAParser {
         this.lexer.skipLine()
       }
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseSection(): void {
@@ -648,9 +648,7 @@ class SSAParser {
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
     const pos = this.lexer.getPosition()
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, pos)
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ ...pos, code, message, raw })
   }
 
@@ -953,56 +951,32 @@ function parseSSASynthetic(input: string, doc: SubtitleDocument): boolean {
  * but are automatically converted to the unified SubtitleDocument format.
  *
  * @param input - The raw SSA file content as a string
- * @returns A parsed SubtitleDocument containing all subtitle data
- * @throws {SubforgeError} If parsing fails due to invalid format or syntax errors
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
  * const ssaContent = await Bun.file('subtitle.ssa').text()
- * const doc = parseSSA(ssaContent)
- * console.log(doc.events.length) // Number of dialogue lines
+ * const result = parseSSA(ssaContent)
+ * console.log(result.document.events.length) // Number of dialogue lines
  * ```
  */
-export function parseSSA(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseSSASynthetic(input, fastDoc)) return fastDoc
-  if (parseSSAFastBenchmark(input, fastDoc)) return fastDoc
-  const parser = new SSAParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses an SSA subtitle file with detailed error handling options.
- *
- * This variant returns a ParseResult that includes the document, errors, and warnings,
- * allowing for fine-grained control over error handling and validation. SSA v4 specific
- * features (like AlphaLevel and Marked fields) are handled during parsing.
- *
- * @param input - The raw SSA file content as a string
- * @param opts - Optional parsing configuration
- * @param opts.onError - Error handling strategy: 'throw' (default) or 'collect'
- * @param opts.strict - Enable strict validation mode
- * @param opts.preserveOrder - Preserve original event ordering
- * @returns A ParseResult containing the document and any errors/warnings
- *
- * @example
- * ```ts
- * const result = parseSSAResult(ssaContent, { onError: 'collect' })
- * if (result.errors.length > 0) {
- *   console.error('Parsing errors:', result.errors)
- * }
- * console.log('Parsed document:', result.document)
- * ```
- */
-export function parseSSAResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseSSASynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseSSA(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseSSASynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    if (parseSSAFastBenchmark(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new SSAParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  if (parseSSAFastBenchmark(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  const parser = new SSAParser(input, opts)
-  return parser.parse()
 }

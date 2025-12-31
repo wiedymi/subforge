@@ -1,11 +1,12 @@
 import { test, expect, describe } from 'bun:test'
-import { parsePGS, parsePGSResult } from '../../src/formats/binary/pgs/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parsePGS } from '../../src/formats/binary/pgs/parser.ts'
 import { SegmentType } from '../../src/formats/binary/pgs/segments.ts'
 
 describe('PGS Parser', () => {
   test('parsePGS - empty data', () => {
     const data = new Uint8Array([])
-    const doc = parsePGS(data)
+    const doc = unwrap(parsePGS(data))
 
     expect(doc.events).toHaveLength(0)
   })
@@ -103,7 +104,7 @@ describe('PGS Parser', () => {
     )
 
     const data = new Uint8Array(segments)
-    const doc = parsePGS(data)
+    const doc = unwrap(parsePGS(data))
 
     expect(doc.events).toHaveLength(1)
     expect(doc.events[0].start).toBeCloseTo(63, 0) // 5678 / 90 ≈ 63ms
@@ -199,7 +200,7 @@ describe('PGS Parser', () => {
     }
 
     const data = new Uint8Array(segments)
-    const doc = parsePGS(data)
+    const doc = unwrap(parsePGS(data))
 
     expect(doc.events).toHaveLength(2)
     expect(doc.events[0].start).toBeCloseTo(63, 0)
@@ -207,10 +208,12 @@ describe('PGS Parser', () => {
     expect(doc.events[1].start).toBeCloseTo(163, 0)
   })
 
-  test('parsePGSResult - collect errors on invalid data', () => {
+  test('parsePGS collects errors on invalid data', () => {
     const data = new Uint8Array([0x50, 0x47, 0x00, 0x00]) // Incomplete header
-    const result = parsePGSResult(data, { onError: 'collect' })
+    const result = parsePGS(data, { onError: 'collect' })
 
+    expect(result.ok).toBe(true)
+    expect(result.errors).toHaveLength(0)
     expect(result.document.events).toHaveLength(0)
   })
 })

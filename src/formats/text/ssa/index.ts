@@ -9,5 +9,5 @@
  * @module ssa
  */
 
-export { parseSSA, parseSSAResult } from './parser.ts'
+export { parseSSA } from './parser.ts'
 export { toSSA } from './serializer.ts'

@@ -31,12 +31,17 @@ interface SubtitleEvent {
   marginL: number
   marginR: number
   marginV: number
-  effect: string
+  effect?: string
+  region?: string
   text: string
   segments: TextSegment[]
   dirty: boolean
 }
 ```
+
+Notes:
+- `effect` is the raw ASS/SSA Effect field when present.
+- `region` holds TTML region references.
 
 ## Colors
 

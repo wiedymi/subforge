@@ -557,13 +557,14 @@ registerEffect({
 // core/errors.ts
 
 interface ParseOptions {
-  onError: 'throw' | 'skip' | 'collect'
+  onError?: 'skip' | 'collect'
   strict?: boolean
   encoding?: 'utf-8' | 'utf-16le' | 'utf-16be' | 'shift-jis' | 'auto'
   preserveOrder?: boolean  // Default: true
 }
 
 interface ParseResult {
+  ok: boolean
   document: SubtitleDocument
   errors: ParseError[]
   warnings: ParseWarning[]
@@ -595,8 +596,8 @@ type ErrorCode =
   | 'DUPLICATE_ID'
 
 // Convenience functions
-export function parseASS(input: string): SubtitleDocument  // throws on error
-export function parseASSResult(input: string, opts?: ParseOptions): ParseResult
+export function parseASS(input: string, opts?: ParseOptions): ParseResult
+export function unwrap(result: ParseResult): SubtitleDocument
 
 // Encoding detection
 export function detectEncoding(buffer: Uint8Array): string {
@@ -1096,7 +1097,7 @@ class ASSParser {
     while (!this.lexer.isEOF()) {
       this.parseSection()
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseSection(): void {
@@ -1114,9 +1115,7 @@ class ASSParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new ParseError(code, message, this.lexer.getPosition())
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({
       ...this.lexer.getPosition(),
       code,
@@ -1337,11 +1336,12 @@ test('parse simple dialogue', () => {
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello world`)
 
-  expect(result.events).toHaveLength(1)
-  expect(result.events[0].start).toBe(1000)
-  expect(result.events[0].end).toBe(5000)
-  expect(result.events[0].text).toBe('Hello world')
-  expect(result.events[0].id).toBeDefined()
+  const doc = unwrap(result)
+  expect(doc.events).toHaveLength(1)
+  expect(doc.events[0].start).toBe(1000)
+  expect(doc.events[0].end).toBe(5000)
+  expect(doc.events[0].text).toBe('Hello world')
+  expect(doc.events[0].id).toBeDefined()
 })
 
 test('parse comments', () => {
@@ -1349,14 +1349,16 @@ test('parse comments', () => {
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,This is a comment
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello`)
 
-  expect(result.comments).toHaveLength(1)
-  expect(result.comments[0].text).toBe('This is a comment')
+  const doc = unwrap(result)
+  expect(doc.comments).toHaveLength(1)
+  expect(doc.comments[0].text).toBe('This is a comment')
 })
 
 test('parse error collected', () => {
-  const result = parseASSResult(`[Events]
+  const result = parseASS(`[Events]
 Dialogue: invalid timestamp`, { onError: 'collect' })
 
+  expect(result.ok).toBe(false)
   expect(result.errors).toHaveLength(1)
   expect(result.errors[0].code).toBe('INVALID_TIMESTAMP')
 })
@@ -1408,9 +1410,9 @@ test('parse karaoke', () => {
 
 test('ASS roundtrip preserves content', async () => {
   const original = await Bun.file('fixtures/ass/complex-tags.ass').text()
-  const doc = parseASS(original)
+  const doc = unwrap(parseASS(original))
   const output = toASS(doc)
-  const reparsed = parseASS(output)
+  const reparsed = unwrap(parseASS(output))
 
   expect(reparsed.events.length).toBe(doc.events.length)
   for (let i = 0; i < doc.events.length; i++) {
@@ -1420,7 +1422,7 @@ test('ASS roundtrip preserves content', async () => {
 
 test('ASS roundtrip preserves comments', async () => {
   const original = await Bun.file('fixtures/ass/with-comments.ass').text()
-  const doc = parseASS(original)
+  const doc = unwrap(parseASS(original))
   const output = toASS(doc)
 
   expect(output).toContain('Comment:')
@@ -1429,10 +1431,10 @@ test('ASS roundtrip preserves comments', async () => {
 // === Conversion Tests ===
 
 test('ASS to SRT drops positioning', () => {
-  const doc = parseASS(`[Events]
+  const doc = unwrap(parseASS(`[Events]
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,{\\pos(100,200)}Hello`)
 
-  const result = convert(doc, 'srt', { reportLoss: true })
+  const result = convert(doc, { to: 'srt', reportLoss: true })
 
   expect(result.lostFeatures).toContainEqual({
     eventIndex: 0,

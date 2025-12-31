@@ -7,12 +7,13 @@
  * @example
  * ```ts
  * import { parseSRT, toASS } from 'subforge'
+ * import { unwrap } from 'subforge/core'
  *
  * const srt = `1
  * 00:00:05,000 --> 00:00:10,000
  * Hello, world!`
  *
- * const doc = parseSRT(srt)
+ * const doc = unwrap(parseSRT(srt))
  * const ass = toASS(doc)
  * ```
  *
@@ -30,7 +31,7 @@ export * from './core/index.ts'
  * Advanced SubStation Alpha (ASS) subtitle format
  * Text-based format with advanced styling, animations, and karaoke effects
  */
-export { parseASS, parseASSResult, toASS } from './formats/text/ass/index.ts'
+export { parseASS, toASS } from './formats/text/ass/index.ts'
 export {
   parseTime as parseASSTime,
   formatTime as formatASSTime,
@@ -45,13 +46,13 @@ export {
  * SubStation Alpha (SSA) subtitle format
  * Predecessor to ASS with basic styling support
  */
-export { parseSSA, parseSSAResult, toSSA } from './formats/text/ssa/index.ts'
+export { parseSSA, toSSA } from './formats/text/ssa/index.ts'
 
 /**
  * SubRip (SRT) subtitle format
  * Simple text-based format with basic HTML-like tags
  */
-export { parseSRT, parseSRTResult, toSRT } from './formats/text/srt/index.ts'
+export { parseSRT, toSRT } from './formats/text/srt/index.ts'
 export {
   parseTime as parseSRTTime,
   formatTime as formatSRTTime,
@@ -64,7 +65,7 @@ export {
  * WebVTT subtitle format
  * W3C standard for HTML5 video with cue settings and styling
  */
-export { parseVTT, parseVTTResult, toVTT } from './formats/text/vtt/index.ts'
+export { parseVTT, toVTT } from './formats/text/vtt/index.ts'
 export {
   parseTime as parseVTTTime,
   formatTime as formatVTTTime,
@@ -77,7 +78,7 @@ export {
  * YouTube SBV subtitle format
  * Simple comma-separated timestamp format used by YouTube
  */
-export { parseSBV, parseSBVResult, toSBV } from './formats/text/sbv/index.ts'
+export { parseSBV, toSBV } from './formats/text/sbv/index.ts'
 export {
   parseTime as parseSBVTime,
   formatTime as formatSBVTime,
@@ -87,7 +88,8 @@ export {
  * LRC lyric format
  * Text-based format for synchronized lyrics with metadata tags
  */
-export { parseLRC, parseLRCResult, toLRC } from './formats/text/lrc/index.ts'
+export { parseLRC, toLRC } from './formats/text/lrc/index.ts'
+export type { LRCSerializeOptions } from './formats/text/lrc/index.ts'
 export {
   parseTime as parseLRCTime,
   formatTime as formatLRCTime,
@@ -97,7 +99,9 @@ export {
  * MicroDVD subtitle format
  * Frame-based format with text formatting tags in curly braces
  */
-export { parseMicroDVD, parseMicroDVDResult, toMicroDVD } from './formats/text/microdvd/index.ts'
+export { parseMicroDVD, toMicroDVD } from './formats/text/microdvd/index.ts'
+export type { MicroDVDParseOptions } from './formats/text/microdvd/index.ts'
+export type { MicroDVDSerializeOptions } from './formats/text/microdvd/index.ts'
 export {
   parseTags as parseMicroDVDTags,
   serializeTags as serializeMicroDVDTags,
@@ -112,7 +116,7 @@ export {
  * Timed Text Markup Language (TTML) format
  * XML-based W3C standard for timed text with advanced styling
  */
-export { parseTTML, parseTTMLResult, toTTML } from './formats/xml/ttml/index.ts'
+export { parseTTML, toTTML } from './formats/xml/ttml/index.ts'
 export {
   parseTime as parseTTMLTime,
   formatTime as formatTTMLTime,
@@ -123,26 +127,26 @@ export {
  * DFXP format (Distribution Format Exchange Profile)
  * TTML profile for content distribution
  */
-export { parseDFXP, parseDFXPResult, toDFXP } from './formats/xml/ttml/index.ts'
+export { parseDFXP, toDFXP } from './formats/xml/ttml/index.ts'
 
 /**
  * SMPTE-TT format (SMPTE Timed Text)
  * TTML profile for broadcast television
  */
-export { parseSMPTETT, parseSMPTETTResult, toSMPTETT } from './formats/xml/ttml/index.ts'
+export { parseSMPTETT, toSMPTETT } from './formats/xml/ttml/index.ts'
 
 /**
  * SAMI subtitle format
  * Microsoft's Synchronized Accessible Media Interchange format with HTML and CSS
  */
-export { parseSAMI, parseSAMIResult, toSAMI } from './formats/xml/sami/index.ts'
+export { parseSAMI, toSAMI } from './formats/xml/sami/index.ts'
 export { parseCSS as parseSAMICSS, generateCSS as generateSAMICSS } from './formats/xml/sami/index.ts'
 
 /**
  * RealText subtitle format
  * XML-based format for RealPlayer streaming media
  */
-export { parseRealText, parseRealTextResult, toRealText } from './formats/xml/realtext/index.ts'
+export { parseRealText, toRealText } from './formats/xml/realtext/index.ts'
 export {
   parseTime as parseRealTextTime,
   formatTime as formatRealTextTime,
@@ -152,7 +156,7 @@ export {
  * QuickTime Text subtitle format
  * Text-based format for Apple QuickTime Player with directive-based formatting
  */
-export { parseQT, parseQTResult, toQT } from './formats/xml/qt/index.ts'
+export { parseQT, toQT } from './formats/xml/qt/index.ts'
 export type { QTSerializeOptions } from './formats/xml/qt/index.ts'
 
 // =============================================================================
@@ -163,19 +167,21 @@ export type { QTSerializeOptions } from './formats/xml/qt/index.ts'
  * EBU-STL subtitle format
  * Binary format for European broadcasting (teletext-based)
  */
-export { parseEBUSTL, parseEBUSTLResult, toEBUSTL } from './formats/binary/stl/index.ts'
+export { parseEBUSTL, toEBUSTL } from './formats/binary/stl/index.ts'
+export type { EBUSTLSerializeOptions } from './formats/binary/stl/index.ts'
 
 /**
  * Spruce STL subtitle format
  * Text-based format for Spruce Technologies DVD authoring
  */
-export { parseSpruceSTL, parseSpruceSTLResult, toSpruceSTL } from './formats/binary/stl/index.ts'
+export { parseSpruceSTL, toSpruceSTL } from './formats/binary/stl/index.ts'
+export type { SpruceSTLSerializeOptions } from './formats/binary/stl/index.ts'
 
 /**
  * Presentation Graphic Stream (PGS) format
  * Binary bitmap-based format used in Blu-ray discs
  */
-export { parsePGS, parsePGSResult, toPGS } from './formats/binary/pgs/index.ts'
+export { parsePGS, toPGS } from './formats/binary/pgs/index.ts'
 export {
   SegmentType,
   type SegmentHeader,
@@ -191,13 +197,13 @@ export {
  * DVB subtitle format
  * Binary bitmap-based format for Digital Video Broadcasting
  */
-export { parseDVB, parseDVBResult, toDVB } from './formats/binary/dvb/index.ts'
+export { parseDVB, toDVB } from './formats/binary/dvb/index.ts'
 
 /**
  * VobSub subtitle format
  * DVD bitmap subtitle format with separate .idx and .sub files
  */
-export { parseVobSub, parseVobSubResult, toVobSub } from './formats/binary/vobsub/index.ts'
+export { parseVobSub, toVobSub } from './formats/binary/vobsub/index.ts'
 export {
   parseTime as parseVobSubTime,
   formatTime as formatVobSubTime,
@@ -215,7 +221,8 @@ export type {
  * PAC subtitle format
  * Binary format by Screen Electronics (Cavena) for broadcast systems
  */
-export { parsePAC, parsePACResult, toPAC } from './formats/binary/pac/index.ts'
+export { parsePAC, toPAC } from './formats/binary/pac/index.ts'
+export type { PACSerializeOptions } from './formats/binary/pac/index.ts'
 
 // =============================================================================
 // Broadcast Formats
@@ -225,7 +232,7 @@ export { parsePAC, parsePACResult, toPAC } from './formats/binary/pac/index.ts'
  * Scenarist Closed Caption (SCC) format
  * CEA-608 closed caption format for broadcast television
  */
-export { parseSCC, parseSCCResult, toSCC } from './formats/broadcast/scc/index.ts'
+export { parseSCC, toSCC } from './formats/broadcast/scc/index.ts'
 export {
   decodeCEA608,
   encodeCEA608Text,
@@ -236,7 +243,7 @@ export {
  * Cheetah CAP subtitle format
  * Text-based format for Cheetah closed caption systems
  */
-export { parseCAP, parseCAPResult, toCAP } from './formats/broadcast/cap/index.ts'
+export { parseCAP, toCAP } from './formats/broadcast/cap/index.ts'
 export {
   parseTime as parseCAPTime,
   formatTime as formatCAPTime,
@@ -249,4 +256,4 @@ export type { CAPSerializerOptions, CAPTimecodeOptions } from './formats/broadca
  * Teletext subtitle format
  * Binary format for analog television teletext systems
  */
-export { parseTeletext, parseTeletextResult, toTeletext } from './formats/broadcast/teletext/index.ts'
+export { parseTeletext, toTeletext } from './formats/broadcast/teletext/index.ts'

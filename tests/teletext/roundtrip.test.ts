@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseTeletext, toTeletext } from '../../src/formats/broadcast/teletext/index.ts'
 import { createDocument } from '../../src/core/document.ts'
 
@@ -27,7 +28,7 @@ describe('Teletext Roundtrip', () => {
     expect(encoded.length).toBeGreaterThan(0)
 
     // Parse back
-    const parsed = parseTeletext(encoded)
+    const parsed = unwrap(parseTeletext(encoded))
     expect(parsed.events.length).toBeGreaterThan(0)
   })
 
@@ -53,7 +54,7 @@ describe('Teletext Roundtrip', () => {
     const encoded = toTeletext(doc)
     expect(encoded).toBeInstanceOf(Uint8Array)
 
-    const parsed = parseTeletext(encoded)
+    const parsed = unwrap(parseTeletext(encoded))
     expect(parsed.events.length).toBeGreaterThan(0)
     if (parsed.events.length > 0) {
       expect(parsed.events[0].text).toBeDefined()
@@ -84,7 +85,7 @@ describe('Teletext Roundtrip', () => {
     // Check packet size (45 bytes per packet)
     expect(encoded.length % 45).toBe(0)
 
-    const parsed = parseTeletext(encoded)
+    const parsed = unwrap(parseTeletext(encoded))
     expect(parsed).toBeDefined()
   })
 
@@ -94,7 +95,7 @@ describe('Teletext Roundtrip', () => {
     const encoded = toTeletext(doc)
     expect(encoded).toBeInstanceOf(Uint8Array)
 
-    const parsed = parseTeletext(encoded)
+    const parsed = unwrap(parseTeletext(encoded))
     expect(parsed.events).toHaveLength(0)
   })
 
@@ -121,7 +122,7 @@ describe('Teletext Roundtrip', () => {
     const encoded = toTeletext(doc)
     expect(encoded).toBeInstanceOf(Uint8Array)
 
-    const parsed = parseTeletext(encoded)
+    const parsed = unwrap(parseTeletext(encoded))
     expect(parsed.events.length).toBeGreaterThan(0)
   })
 })

@@ -14,10 +14,11 @@ Presentation Graphic Stream (PGS) is a bitmap subtitle format used by Blu-ray.
 ## Parsing
 
 ```ts
-import { parsePGS, parsePGSResult } from 'subforge/pgs'
+import { parsePGS } from 'subforge/pgs'
+import { unwrap } from 'subforge/core'
 
 const data = new Uint8Array(await fetch('/subs.pgs').then(r => r.arrayBuffer()))
-const doc = parsePGS(data)
+const doc = unwrap(parsePGS(data))
 ```
 
 ## Serialization

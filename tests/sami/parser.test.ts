@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSAMI, parseSAMIResult } from '../../src/formats/xml/sami/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseSAMI } from '../../src/formats/xml/sami/parser.ts'
 import { readFileSync } from 'node:fs'
 
 test('parseSAMI basic structure', () => {
@@ -13,7 +14,7 @@ test('parseSAMI basic structure', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
   expect(doc.events[0]!.start).toBe(1000)
@@ -33,7 +34,7 @@ test('parseSAMI with class', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
   expect(doc.events[0]!.style).toBe('ENCC')
@@ -51,7 +52,7 @@ test('parseSAMI multiple sync points', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(2)
   expect(doc.events[0]!.text).toBe('First')
@@ -72,7 +73,7 @@ test('parseSAMI skips empty markers', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
   expect(doc.events[0]!.text).toBe('Text')
@@ -86,7 +87,7 @@ test('parseSAMI inline bold tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments.length).toBe(1)
   expect(doc.events[0]!.segments[0]!.style?.bold).toBe(true)
@@ -100,7 +101,7 @@ test('parseSAMI inline italic tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments[0]!.style?.italic).toBe(true)
 })
@@ -113,7 +114,7 @@ test('parseSAMI inline underline tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments[0]!.style?.underline).toBe(true)
 })
@@ -126,7 +127,7 @@ test('parseSAMI inline strikeout tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments[0]!.style?.strikeout).toBe(true)
 })
@@ -139,7 +140,7 @@ test('parseSAMI inline font color', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments[0]!.style?.primaryColor).toBeDefined()
 })
@@ -152,7 +153,7 @@ test('parseSAMI nested tags', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments[0]!.style?.bold).toBe(true)
   expect(doc.events[0]!.segments[0]!.style?.italic).toBe(true)
@@ -166,7 +167,7 @@ test('parseSAMI HTML entities', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.text).toBe('<test> & "')
 })
@@ -174,14 +175,14 @@ test('parseSAMI HTML entities', () => {
 test('parseSAMI with BOM', () => {
   const input = '\uFEFF<SAMI><HEAD></HEAD><BODY><SYNC Start=1000><P>Test</P></BODY></SAMI>'
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
 })
 
 test('parseSAMI simple.smi fixture', () => {
   const content = readFileSync('/Users/uyakauleu/vivy/experiments/subforge/tests/fixtures/sami/simple.smi', 'utf-8')
-  const doc = parseSAMI(content)
+  const doc = unwrap(parseSAMI(content))
 
   expect(doc.events.length).toBe(2)
   expect(doc.events[0]!.text).toBe('Hello')
@@ -198,7 +199,7 @@ test('parseSAMI case insensitive tags', () => {
 </body>
 </sami>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
 })
@@ -212,7 +213,7 @@ test('parseSAMI without closing P tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(2)
 })
@@ -225,13 +226,13 @@ test('parseSAMI with multiple spaces in attributes', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events.length).toBe(1)
   expect(doc.events[0]!.style).toBe('TEST')
 })
 
-test('parseSAMIResult with errors option', () => {
+test('parseSAMI collect mode returns document', () => {
   const input = `<SAMI>
 <HEAD></HEAD>
 <BODY>
@@ -239,9 +240,10 @@ test('parseSAMIResult with errors option', () => {
 </BODY>
 </SAMI>`
 
-  const result = parseSAMIResult(input, { onError: 'collect' })
+  const result = parseSAMI(input, { onError: 'collect' })
 
   expect(result.document.events.length).toBe(1)
+  expect(result.ok).toBe(true)
   expect(result.errors.length).toBe(0)
 })
 
@@ -253,7 +255,7 @@ test('parseSAMI plain text without tags', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.text).toBe('Plain text')
   expect(doc.events[0]!.dirty).toBe(false)
@@ -267,7 +269,7 @@ test('parseSAMI mixed plain and styled', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.segments.length).toBe(3)
   expect(doc.events[0]!.dirty).toBe(true)
@@ -281,7 +283,7 @@ test('parseSAMI unclosed tag', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
 
   expect(doc.events[0]!.text).toBe('unclosed')
 })

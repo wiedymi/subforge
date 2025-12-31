@@ -1,6 +1,8 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect, PGSEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { toUint8Array } from '../../../core/binary.ts'
 import {
   SegmentType,
   type SegmentHeader,
@@ -83,7 +85,7 @@ class PGSParser {
   constructor(data: Uint8Array, opts: Partial<ParseOptions> = {}) {
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength)
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true,
     }
@@ -103,7 +105,7 @@ class PGSParser {
     // Convert display sets to events
     this.buildEvents()
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private processSegment(header: SegmentHeader, dataOffset: number): void {
@@ -260,38 +262,28 @@ class PGSParser {
 /**
  * Parse PGS (Presentation Graphic Stream) subtitle data
  * @param data - Binary PGS data
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  * @example
  * const pgsData = Bun.file('subtitles.sup').arrayBuffer()
- * const doc = parsePGS(new Uint8Array(pgsData))
+ * const result = parsePGS(new Uint8Array(pgsData))
  */
-export function parsePGS(data: Uint8Array): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parsePGSSynthetic(data, fastDoc)) return fastDoc
-  const parser = new PGSParser(data, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parse PGS subtitle data with error handling options
- * @param data - Binary PGS data
- * @param opts - Parse options controlling error handling behavior
- * @returns Parse result containing document and any errors/warnings
- * @example
- * const result = parsePGSResult(data, { onError: 'collect', strict: false })
- * if (result.errors.length > 0) {
- *   console.log('Parsing errors:', result.errors)
- * }
- */
-export function parsePGSResult(data: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parsePGSSynthetic(data, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parsePGS(data: Uint8Array | ArrayBuffer, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const input = toUint8Array(data)
+    const fastDoc = createDocument()
+    if (parsePGSSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new PGSParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new PGSParser(data, opts)
-  return parser.parse()
 }
 
 function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {

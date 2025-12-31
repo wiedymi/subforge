@@ -1,5 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTTML, parseTTMLResult } from '../../src/formats/xml/ttml/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseTTML } from '../../src/formats/xml/ttml/parser.ts'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -19,7 +20,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events.length).toBe(1)
     expect(doc.events[0].start).toBe(1000)
     expect(doc.events[0].end).toBe(5000)
@@ -37,7 +38,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].start).toBe(1 * 3600000 + 23 * 60000 + 45 * 1000 + 678)
     expect(doc.events[0].end).toBe(1 * 3600000 + 23 * 60000 + 50 * 1000)
   })
@@ -53,7 +54,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].start).toBe(1500)
     expect(doc.events[0].end).toBe(5500)
     expect(doc.events[1].start).toBe(100)
@@ -70,7 +71,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].start).toBe(1000)
     expect(doc.events[0].end).toBe(5000)
   })
@@ -85,7 +86,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].segments.length).toBe(3)
     expect(doc.events[0].segments[0].text).toBe('Normal ')
     expect(doc.events[0].segments[1].text).toBe('italic')
@@ -108,7 +109,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].segments[0].style?.bold).toBe(true)
   })
 
@@ -126,7 +127,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     // Segments include whitespace - span elements are at indices 1, 3, 5
     expect(doc.events[0].segments[1].style?.primaryColor).toBe(0xff0000ff) // Red in ABGR
     expect(doc.events[0].segments[3].style?.primaryColor).toBe(0xff00ff00) // Green in ABGR
@@ -148,28 +149,27 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
-    expect(doc.events[0].effect).toBe('top')
+    const doc = unwrap(parseTTML(ttml))
+    expect(doc.events[0].region).toBe('top')
   })
 
   test('parses fixture file', () => {
     const fixturePath = resolve(import.meta.dir, '../fixtures/ttml/simple.ttml')
     const ttml = readFileSync(fixturePath, 'utf-8')
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events.length).toBe(3)
     expect(doc.events[0].text).toBe('First subtitle')
     expect(doc.events[1].text).toBe('Second subtitle')
     expect(doc.events[2].text).toBe('Third subtitle with bold yellow text')
   })
 
-  test('handles error modes', () => {
+  test('collects errors on invalid input', () => {
     const invalidTtml = `<?xml version="1.0" encoding="UTF-8"?>
 <not-tt>Invalid</not-tt>`
 
-    expect(() => parseTTML(invalidTtml)).toThrow()
-
-    const result = parseTTMLResult(invalidTtml, { onError: 'collect' })
+    const result = parseTTML(invalidTtml, { onError: 'collect' })
+    expect(result.ok).toBe(false)
     expect(result.errors.length).toBeGreaterThan(0)
   })
 
@@ -185,7 +185,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events.length).toBe(3)
     expect(doc.events[0].text).toBe('First')
     expect(doc.events[1].text).toBe('Second')
@@ -205,7 +205,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     // Segments include whitespace - span elements are at indices 1 and 3
     expect(doc.events[0].segments[1].style?.underline).toBe(true)
     expect(doc.events[0].segments[3].style?.strikeout).toBe(true)
@@ -221,7 +221,7 @@ describe('TTML Parser', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(ttml)
+    const doc = unwrap(parseTTML(ttml))
     expect(doc.events[0].text).toBe('Line 1\nLine 2')
   })
 })

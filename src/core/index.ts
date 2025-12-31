@@ -18,7 +18,7 @@
  * doc.events.push(createEvent(3000, 6000, 'Welcome to Subforge'))
  *
  * // Convert to SRT
- * const { output } = convert(doc, 'srt')
+ * const { output } = convert(doc, { to: 'srt' })
  * console.log(output)
  * ```
  */
@@ -63,10 +63,12 @@ export type {
   ParseWarning,
   ErrorCode,
 } from './errors.ts'
-export { SubforgeError } from './errors.ts'
+export { SubforgeError, unwrap } from './errors.ts'
 
 // Encoding
 export { detectEncoding, decode, encode } from './encoding.ts'
+// Binary
+export { toUint8Array } from './binary.ts'
 
 // Color
 export { rgba, fromRGBA, withAlpha, blend, lighten, darken, Colors } from './color.ts'
@@ -118,5 +120,15 @@ export {
 } from './query.ts'
 
 // Convert
-export type { ConvertOptions, ConvertResult, LostFeature } from './convert.ts'
-export { convert } from './convert.ts'
+export type {
+  FormatId,
+  FormatOutputMap,
+  FormatOptionsMap,
+  FormatParseOptionsMap,
+  ConvertOptions,
+  ConvertResult,
+  TranscodeOptions,
+  TranscodeResult,
+  LostFeature
+} from './convert.ts'
+export { convert, transcode } from './convert.ts'

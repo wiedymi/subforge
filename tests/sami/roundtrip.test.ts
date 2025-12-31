@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSAMI } from '../../src/formats/xml/sami/parser.ts'
 import { toSAMI } from '../../src/formats/xml/sami/serializer.ts'
 import { readFileSync } from 'node:fs'
@@ -24,7 +25,7 @@ P { margin-left: 8pt; margin-right: 8pt; margin-bottom: 2pt; margin-top: 2pt;
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
 
   expect(output).toContain('Hello')
@@ -41,9 +42,9 @@ test('roundtrip with inline styles', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events[0]!.segments.length).toBe(3) // bold, space, italic
   expect(doc2.events[0]!.segments[0]!.style?.bold).toBe(true)
@@ -59,7 +60,7 @@ test('roundtrip preserves timing', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
 
   expect(output).toContain('SYNC Start=1234')
@@ -68,9 +69,9 @@ test('roundtrip preserves timing', () => {
 
 test('roundtrip simple.smi fixture', () => {
   const content = readFileSync('/Users/uyakauleu/vivy/experiments/subforge/tests/fixtures/sami/simple.smi', 'utf-8')
-  const doc = parseSAMI(content)
+  const doc = unwrap(parseSAMI(content))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events.length).toBe(doc.events.length)
   expect(doc2.events[0]!.text).toBe(doc.events[0]!.text)
@@ -87,9 +88,9 @@ test('roundtrip with font colors', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events[0]!.segments[0]!.style?.primaryColor).toBeDefined()
   expect(doc2.events[0]!.segments[0]!.style?.primaryColor).toBe(doc.events[0]!.segments[0]!.style?.primaryColor)
@@ -103,9 +104,9 @@ test('roundtrip preserves text content', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events[0]!.text).toBe(doc.events[0]!.text)
   expect(doc2.events[0]!.text).toBe('Test & "quotes" <tags>')
@@ -119,9 +120,9 @@ test('roundtrip nested styles', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events[0]!.segments[0]!.style?.bold).toBe(true)
   expect(doc2.events[0]!.segments[0]!.style?.italic).toBe(true)
@@ -141,9 +142,9 @@ test('roundtrip multiple events maintain order', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
-  const doc2 = parseSAMI(output)
+  const doc2 = unwrap(parseSAMI(output))
 
   expect(doc2.events.length).toBe(3)
   expect(doc2.events[0]!.text).toBe('First')
@@ -160,7 +161,7 @@ test('roundtrip handles out-of-order events', () => {
 </BODY>
 </SAMI>`
 
-  const doc = parseSAMI(input)
+  const doc = unwrap(parseSAMI(input))
   const output = toSAMI(doc)
 
   // toSAMI should sort by start time

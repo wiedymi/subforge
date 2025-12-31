@@ -92,7 +92,7 @@ group('PGS parse', () => {
 group('PGS serialize', () => {
   // PGS serialization requires image data, skip if no fixture
   if (pgsSimple) {
-    const pgsDoc = parsePGS(pgsSimple)
+    const pgsDoc = parsePGS(pgsSimple).document
     bench('roundtrip', () => toPGS(pgsDoc))
   }
 })
@@ -114,7 +114,7 @@ group('DVB parse', () => {
 
 group('DVB serialize', () => {
   if (dvbSimple) {
-    const dvbDoc = parseDVB(dvbSimple)
+    const dvbDoc = parseDVB(dvbSimple).document
     bench('roundtrip', () => toDVB(dvbDoc))
   }
 })

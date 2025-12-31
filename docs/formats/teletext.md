@@ -9,10 +9,11 @@ Teletext subtitles are broadcast packet data decoded into text.
 ## Parsing
 
 ```ts
-import { parseTeletext, parseTeletextResult } from 'subforge/teletext'
+import { parseTeletext } from 'subforge/teletext'
+import { unwrap } from 'subforge/core'
 
 const data = new Uint8Array(await fetch('/subs.t42').then(r => r.arrayBuffer()))
-const doc = parseTeletext(data)
+const doc = unwrap(parseTeletext(data))
 ```
 
 ## Serialization

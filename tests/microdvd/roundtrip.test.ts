@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseMicroDVD, toMicroDVD } from '../../src/formats/text/microdvd/index.ts'
 
 test('roundtrip - basic subtitles', () => {
@@ -6,15 +7,15 @@ test('roundtrip - basic subtitles', () => {
 {150}{300}Second subtitle
 {350}{500}Third subtitle
 `
-  const doc = parseMicroDVD(input, 25)
-  const output = toMicroDVD(doc, 25)
+  const doc = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output = toMicroDVD(doc, { fps: 25 })
   expect(output).toBe(input)
 })
 
 test('roundtrip - with line breaks', () => {
   const input = '{150}{300}Second subtitle|with line break\n'
-  const doc = parseMicroDVD(input, 25)
-  const output = toMicroDVD(doc, 25)
+  const doc = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output = toMicroDVD(doc, { fps: 25 })
   expect(output).toBe(input)
 })
 
@@ -25,20 +26,20 @@ test('roundtrip - with tags', () => {
 {600}{800}{f:Arial}Arial font
 {900}{1100}{s:24}Large text
 `
-  const doc = parseMicroDVD(input, 25)
-  const output = toMicroDVD(doc, 25)
+  const doc = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output = toMicroDVD(doc, { fps: 25 })
   expect(output).toBe(input)
 })
 
 test('roundtrip - fixture file', async () => {
   const file = Bun.file('./tests/fixtures/microdvd/simple.sub')
   const input = await file.text()
-  const doc = parseMicroDVD(input, 25)
-  const output = toMicroDVD(doc, 25)
+  const doc = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output = toMicroDVD(doc, { fps: 25 })
 
   // Parse both and compare events
-  const doc1 = parseMicroDVD(input, 25)
-  const doc2 = parseMicroDVD(output, 25)
+  const doc1 = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const doc2 = unwrap(parseMicroDVD(output, { fps: 25 }))
 
   expect(doc2.events.length).toBe(doc1.events.length)
 
@@ -52,18 +53,18 @@ test('roundtrip - fixture file', async () => {
 test('roundtrip - different framerates', () => {
   const input = '{0}{100}Text\n'
 
-  const doc25 = parseMicroDVD(input, 25)
-  const output25 = toMicroDVD(doc25, 25)
+  const doc25 = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output25 = toMicroDVD(doc25, { fps: 25 })
   expect(output25).toBe(input)
 
-  const doc30 = parseMicroDVD(input, 30)
-  const output30 = toMicroDVD(doc30, 30)
+  const doc30 = unwrap(parseMicroDVD(input, { fps: 30 }))
+  const output30 = toMicroDVD(doc30, { fps: 30 })
   expect(output30).toBe(input)
 })
 
 test('roundtrip - empty document', () => {
   const input = ''
-  const doc = parseMicroDVD(input, 25)
-  const output = toMicroDVD(doc, 25)
+  const doc = unwrap(parseMicroDVD(input, { fps: 25 }))
+  const output = toMicroDVD(doc, { fps: 25 })
   expect(output).toBe('')
 })

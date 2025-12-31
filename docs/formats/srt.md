@@ -16,7 +16,10 @@ Supported HTML-like tags:
 ## Parsing
 
 ```ts
-import { parseSRT, parseSRTResult } from 'subforge/srt'
+import { parseSRT } from 'subforge/srt'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseSRT(srtText))
 ```
 
 ## Serialization

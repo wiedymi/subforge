@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseASS } from '../../src/formats/text/ass/parser.ts'
 import { toASS } from '../../src/formats/text/ass/serializer.ts'
 import { createDocument, createEvent, createDefaultStyle } from '../../src/core/document.ts'
@@ -63,9 +64,9 @@ Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello world`
 
-  const doc = parseASS(original)
+  const doc = unwrap(parseASS(original))
   const output = toASS(doc)
-  const reparsed = parseASS(output)
+  const reparsed = unwrap(parseASS(output))
 
   expect(reparsed.events.length).toBe(doc.events.length)
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)

@@ -11,7 +11,9 @@
  * @module stl
  */
 
-export { parseEBUSTL, parseEBUSTLResult } from './ebu/parser.ts'
+export { parseEBUSTL } from './ebu/parser.ts'
 export { toEBUSTL } from './ebu/serializer.ts'
-export { parseSpruceSTL, parseSpruceSTLResult } from './spruce/parser.ts'
+export type { EBUSTLSerializeOptions } from './ebu/serializer.ts'
+export { parseSpruceSTL } from './spruce/parser.ts'
 export { toSpruceSTL } from './spruce/serializer.ts'
+export type { SpruceSTLSerializeOptions } from './spruce/serializer.ts'

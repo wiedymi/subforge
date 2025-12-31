@@ -14,7 +14,10 @@ Common metadata tags include `[ti:]`, `[ar:]`, `[al:]`, `[au:]`, `[offset:]`.
 ## Parsing
 
 ```ts
-import { parseLRC, parseLRCResult } from 'subforge/lrc'
+import { parseLRC } from 'subforge/lrc'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseLRC(lrcText))
 ```
 
 ## Serialization

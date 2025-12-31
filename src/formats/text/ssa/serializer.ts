@@ -127,8 +127,9 @@ function serializeEvent(event: SubtitleEvent): string {
   const text = event.dirty && event.segments.length > 0
     ? serializeTags(event.segments)
     : event.text
+  const effect = event.effect ?? ''
 
   // SSA v4 Event format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   // Marked is always 0 (unmarked)
-  return `Dialogue: 0,${formatTime(event.start)},${formatTime(event.end)},${event.style},${event.actor},${event.marginL},${event.marginR},${event.marginV},${event.effect},${text}`
+  return `Dialogue: 0,${formatTime(event.start)},${formatTime(event.end)},${event.style},${event.actor},${event.marginL},${event.marginR},${event.marginV},${effect},${text}`
 }

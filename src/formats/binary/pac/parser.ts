@@ -1,7 +1,8 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { toUint8Array } from '../../../core/binary.ts'
 
 /**
  * PAC (Screen Electronics/Cavena) binary subtitle format parser.
@@ -36,7 +37,7 @@ class PACParser {
     this.data = data
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength)
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -47,13 +48,13 @@ class PACParser {
   parse(): ParseResult {
     if (this.data.length < 24) {
       this.addError('INVALID_FORMAT', 'PAC file too small (minimum 24 bytes for header)')
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     this.parseHeader()
     this.parseSubtitleBlocks()
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseHeader(): void {
@@ -276,10 +277,7 @@ class PACParser {
       message
     }
 
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: 0, column: 0 })
-    }
-
+    if (this.opts.onError === 'skip') return
     this.errors.push(error)
   }
 }
@@ -301,41 +299,23 @@ class PACParser {
  * const doc = parsePAC(new Uint8Array(pacData));
  * ```
  */
-export function parsePAC(data: Uint8Array): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parsePACSynthetic(data, fastDoc)) return fastDoc
-  const parser = new PACParser(data, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses PAC binary subtitle format with detailed error reporting.
- *
- * Similar to parsePAC but returns a ParseResult object containing the document,
- * errors, and warnings. Allows customization of error handling behavior.
- *
- * @param data - PAC binary data as Uint8Array
- * @param opts - Parse options for error handling and parsing behavior
- * @returns Parse result containing document, errors array, and warnings array
- *
- * @example
- * ```ts
- * const result = parsePACResult(pacData, {
- *   onError: 'collect',
- *   strict: false
- * });
- * console.log(`Parsed ${result.document.events.length} events`);
- * console.log(`Found ${result.errors.length} errors`);
- * ```
- */
-export function parsePACResult(data: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parsePACSynthetic(data, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parsePAC(data: Uint8Array | ArrayBuffer, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const input = toUint8Array(data)
+    const fastDoc = createDocument()
+    if (parsePACSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new PACParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new PACParser(data, opts)
-  return parser.parse()
 }
 
 function parsePACSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {

@@ -1,7 +1,8 @@
 import type { SubtitleDocument, SubtitleEvent, ImageEffect } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { toUint8Array } from '../../../core/binary.ts'
 
 const SYNC_BYTE = 0x0F
 const END_OF_DISPLAY_SET = 0x80
@@ -74,7 +75,7 @@ class DVBParser {
     this.view = new DataView(input.buffer, input.byteOffset, input.byteLength)
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -94,7 +95,7 @@ class DVBParser {
       this.doc.events.push(this.currentDisplaySet)
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private readSegment(): DVBSegment | null {
@@ -358,9 +359,7 @@ class DVBParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: 0, column: this.pos })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: 0, column: this.pos, code, message, raw })
   }
 }
@@ -368,38 +367,28 @@ class DVBParser {
 /**
  * Parse DVB (Digital Video Broadcasting) subtitle data
  * @param input - Binary DVB subtitle data
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  * @example
  * const dvbData = Bun.file('subtitles.dvb').arrayBuffer()
- * const doc = parseDVB(new Uint8Array(dvbData))
+ * const result = parseDVB(new Uint8Array(dvbData))
  */
-export function parseDVB(input: Uint8Array): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseDVBSynthetic(input, fastDoc)) return fastDoc
-  const parser = new DVBParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parse DVB subtitle data with error handling options
- * @param input - Binary DVB subtitle data
- * @param opts - Parse options controlling error handling behavior
- * @returns Parse result containing document and any errors/warnings
- * @example
- * const result = parseDVBResult(data, { onError: 'collect', strict: false })
- * if (result.errors.length > 0) {
- *   console.log('Parsing errors:', result.errors)
- * }
- */
-export function parseDVBResult(input: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseDVBSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseDVB(input: Uint8Array | ArrayBuffer, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const data = toUint8Array(input)
+    const fastDoc = createDocument()
+    if (parseDVBSynthetic(data, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new DVBParser(data, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new DVBParser(input, opts)
-  return parser.parse()
 }
 
 function parseDVBSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {

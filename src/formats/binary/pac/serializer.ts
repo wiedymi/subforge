@@ -1,5 +1,10 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 
+export interface PACSerializeOptions {
+  /** Frame rate for timecode encoding (defaults to 25) */
+  fps?: number
+}
+
 /**
  * Converts a subtitle document to PAC (Screen Electronics/Cavena) binary format.
  *
@@ -8,7 +13,7 @@ import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
  * with control codes for styling (italic, underline).
  *
  * @param doc - Subtitle document to convert
- * @param frameRate - Frame rate for timecode encoding (25 for PAL, 29.97 for NTSC, defaults to 25)
+ * @param opts - Serialization options including fps
  * @returns Binary PAC data as Uint8Array
  *
  * @example
@@ -21,11 +26,12 @@ import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
  *   marginV: 10, // Vertical position
  *   // ... other event properties
  * });
- * const pacData = toPAC(doc, 25);
+ * const pacData = toPAC(doc, { fps: 25 });
  * await Bun.write('output.pac', pacData);
  * ```
  */
-export function toPAC(doc: SubtitleDocument, frameRate: number = 25): Uint8Array {
+export function toPAC(doc: SubtitleDocument, opts: PACSerializeOptions = {}): Uint8Array {
+  const frameRate = opts.fps ?? 25
   // Calculate required buffer size
   // Header: 24 bytes
   // Each event: 11 bytes + text length

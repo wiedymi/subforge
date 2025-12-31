@@ -174,7 +174,7 @@ describe('TTML Serializer', () => {
       marginL: 0,
       marginR: 0,
       marginV: 0,
-      effect: 'top',
+      region: 'top',
       text: 'Top text',
       segments: [],
       dirty: false

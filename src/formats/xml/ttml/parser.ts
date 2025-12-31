@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, Style, InlineStyle, TextSegment } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseTime, parseDuration } from './time.ts'
 import { parseXML, querySelector, querySelectorAll, getAttribute, getAttributeNS, type XMLElement } from './xml.ts'
@@ -363,7 +363,6 @@ function parseTTMLUltraFast(input: string, doc: SubtitleDocument): boolean {
         marginL: 0,
         marginR: 0,
         marginV: 0,
-        effect: '',
         text,
         segments: EMPTY_SEGMENTS,
         dirty: false
@@ -493,7 +492,7 @@ function parseTTMLFast(input: string, doc: SubtitleDocument): boolean {
         marginL: 0,
         marginR: 0,
         marginV: 0,
-        effect: regionRef || '',
+        region: regionRef || undefined,
         text,
         segments: EMPTY_SEGMENTS,
         dirty: false
@@ -554,7 +553,7 @@ class TTMLParser {
 
   constructor(opts: Partial<ParseOptions> = {}) {
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -563,7 +562,7 @@ class TTMLParser {
 
   parse(input: string): ParseResult {
     if (parseTTMLUltraFast(input, this.doc) || parseTTMLFast(input, this.doc)) {
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     // Parse XML using our simple parser
@@ -572,12 +571,12 @@ class TTMLParser {
       ttElement = parseXML(input)
     } catch (e) {
       this.addError('INVALID_SECTION', 'Invalid XML: ' + String(e))
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     if (ttElement.name !== 'tt') {
       this.addError('INVALID_SECTION', 'Root element must be <tt>')
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     // Parse head section
@@ -592,7 +591,7 @@ class TTMLParser {
       this.parseBody(body)
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseHead(head: XMLElement): void {
@@ -729,7 +728,7 @@ class TTMLParser {
       marginL: 0,
       marginR: 0,
       marginV: 0,
-      effect: regionRef || '',
+      region: regionRef || undefined,
       text,
       segments,
       dirty: false
@@ -968,9 +967,7 @@ class TTMLParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: 1, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: 1, column: 1, code, message, raw })
   }
 }
@@ -990,39 +987,25 @@ class TTMLParser {
  *     <p begin="00:00:01.000" end="00:00:03.000">Hello world</p>
  *   </div></body>
  * </tt>`
- * const doc = parseTTML(ttml)
+ * const result = parseTTML(ttml)
  * ```
  */
-export function parseTTML(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseTTMLSynthetic(input, fastDoc)) return fastDoc
-  const parser = new TTMLParser({ onError: 'throw' })
-  const result = parser.parse(input)
-  return result.document
-}
-
-/**
- * Parse TTML format with detailed error reporting
- *
- * @param input - TTML file content as string
- * @param opts - Parsing options
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseTTMLResult(ttmlContent, { onError: 'collect' })
- * if (result.errors.length > 0) {
- *   console.error('Parsing errors:', result.errors)
- * }
- * ```
- */
-export function parseTTMLResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseTTMLSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseTTML(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseTTMLSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new TTMLParser(opts)
+    return parser.parse(input)
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new TTMLParser(opts)
-  return parser.parse(input)
 }
 
 function parseTTMLSynthetic(input: string, doc: SubtitleDocument): boolean {
@@ -1065,7 +1048,6 @@ function parseTTMLSynthetic(input: string, doc: SubtitleDocument): boolean {
       marginL: 0,
       marginR: 0,
       marginV: 0,
-      effect: '',
       text: `Line number ${i + 1}`,
       segments: EMPTY_SEGMENTS,
       dirty: false

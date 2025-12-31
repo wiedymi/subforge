@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseVTT, parseVTTResult } from '../../src/formats/text/vtt/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseVTT } from '../../src/formats/text/vtt/parser.ts'
 
 const simpleVTT = `WEBVTT
 
@@ -10,19 +11,19 @@ Hello world
 Goodbye world`
 
 test('parseVTT parses basic file', () => {
-  const doc = parseVTT(simpleVTT)
+  const doc = unwrap(parseVTT(simpleVTT))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseVTT parses first cue', () => {
-  const doc = parseVTT(simpleVTT)
+  const doc = unwrap(parseVTT(simpleVTT))
   expect(doc.events[0]!.start).toBe(1000)
   expect(doc.events[0]!.end).toBe(5000)
   expect(doc.events[0]!.text).toBe('Hello world')
 })
 
 test('parseVTT parses second cue', () => {
-  const doc = parseVTT(simpleVTT)
+  const doc = unwrap(parseVTT(simpleVTT))
   expect(doc.events[1]!.start).toBe(6000)
   expect(doc.events[1]!.end).toBe(10000)
   expect(doc.events[1]!.text).toBe('Goodbye world')
@@ -35,7 +36,7 @@ test('parseVTT handles multiline text', () => {
 Line one
 Line two`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events[0]!.text).toBe('Line one\nLine two')
 })
 
@@ -46,7 +47,7 @@ cue-1
 00:00:01.000 --> 00:00:05.000
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
 })
 
@@ -56,7 +57,7 @@ test('parseVTT handles cue settings', () => {
 00:00:01.000 --> 00:00:05.000 line:0 position:50%
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
   expect(doc.events[0]!.text).toBe('Hello')
 })
@@ -67,7 +68,7 @@ test('parseVTT handles styling tags', () => {
 00:00:01.000 --> 00:00:05.000
 <b>Bold</b> text`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events[0]!.text).toBe('<b>Bold</b> text')
 })
 
@@ -79,7 +80,7 @@ NOTE This is a comment
 00:00:01.000 --> 00:00:05.000
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
 })
 
@@ -92,7 +93,7 @@ STYLE
 00:00:01.000 --> 00:00:05.000
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
 })
 
@@ -107,7 +108,7 @@ lines:3
 00:00:01.000 --> 00:00:05.000
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
   expect(doc.regions).toBeDefined()
 })
@@ -118,27 +119,28 @@ test('parseVTT handles short time format', () => {
 01:30.500 --> 01:35.500
 Hello`
 
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events[0]!.start).toBe(90500)
 })
 
 test('parseVTT creates unique IDs', () => {
-  const doc = parseVTT(simpleVTT)
+  const doc = unwrap(parseVTT(simpleVTT))
   expect(doc.events[0]!.id).not.toBe(doc.events[1]!.id)
 })
 
 test('parseVTT handles BOM', () => {
   const vtt = "\uFEFFWEBVTT\n\n00:00:01.000 --> 00:00:05.000\nHello"
-  const doc = parseVTT(vtt)
+  const doc = unwrap(parseVTT(vtt))
   expect(doc.events).toHaveLength(1)
 })
 
-test('parseVTTResult collects errors', () => {
+test('parseVTT collects errors', () => {
   const vtt = `WEBVTT
 
 invalid --> 00:00:05.000
 Hello`
 
-  const result = parseVTTResult(vtt, { onError: 'collect' })
+  const result = parseVTT(vtt, { onError: 'collect' })
+  expect(result.ok).toBe(false)
   expect(result.errors.length).toBeGreaterThan(0)
 })

@@ -166,8 +166,10 @@ export interface SubtitleEvent {
   marginR: number
   /** Override vertical margin in pixels (0 = use style default) */
   marginV: number
-  /** Effect name or parameters (format-specific) */
-  effect: string
+  /** ASS/SSA Effect field (format-specific legacy string) */
+  effect?: string
+  /** Region identifier for formats that support regions (TTML/VTT) */
+  region?: string
 
   /** Plain text content (may be stale if dirty=true) */
   text: string

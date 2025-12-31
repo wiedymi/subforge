@@ -4,8 +4,8 @@ import type { SubtitleDocument } from './types.ts'
  * Options for parsing subtitle files.
  */
 export interface ParseOptions {
-  /** How to handle parse errors: throw exception, skip invalid entries, or collect errors */
-  onError: 'throw' | 'skip' | 'collect'
+  /** How to handle parse errors: skip invalid entries or collect errors */
+  onError?: 'skip' | 'collect'
   /** Enable strict validation of format compliance */
   strict?: boolean
   /** Character encoding (auto-detects if not specified) */
@@ -18,6 +18,8 @@ export interface ParseOptions {
  * Result of parsing a subtitle file.
  */
 export interface ParseResult {
+  /** Whether parsing succeeded without errors */
+  ok: boolean
   /** Parsed subtitle document */
   document: SubtitleDocument
   /** Errors encountered during parsing */
@@ -91,4 +93,44 @@ export class SubforgeError extends Error {
     this.line = position.line
     this.column = position.column
   }
+}
+
+/**
+ * Convert an unknown error into a ParseError.
+ */
+export function toParseError(err: unknown): ParseError {
+  if (err instanceof SubforgeError) {
+    return {
+      line: err.line,
+      column: err.column,
+      code: err.code,
+      message: err.message,
+    }
+  }
+  if (err instanceof Error) {
+    return {
+      line: 1,
+      column: 1,
+      code: 'MALFORMED_EVENT',
+      message: err.message,
+    }
+  }
+  return {
+    line: 1,
+    column: 1,
+    code: 'MALFORMED_EVENT',
+    message: String(err),
+  }
+}
+
+/**
+ * Throw on parse failure and return the parsed document otherwise.
+ */
+export function unwrap(result: ParseResult): SubtitleDocument {
+  if (result.ok) return result.document
+  const first = result.errors[0]
+  if (first) {
+    throw new SubforgeError(first.code, first.message, { line: first.line, column: first.column })
+  }
+  throw new Error('Parse failed')
 }

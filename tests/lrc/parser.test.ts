@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseLRC, parseLRCResult } from '../../src/formats/text/lrc/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseLRC } from '../../src/formats/text/lrc/parser.ts'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -9,24 +10,24 @@ const simpleLRC = `[ar:Artist Name]
 [00:15.67]Second line`
 
 test('parseLRC parses basic file', () => {
-  const doc = parseLRC(simpleLRC)
+  const doc = unwrap(parseLRC(simpleLRC))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseLRC parses metadata', () => {
-  const doc = parseLRC(simpleLRC)
+  const doc = unwrap(parseLRC(simpleLRC))
   expect(doc.info.title).toBe('Song Title')
   expect(doc.info.author).toBe('Artist Name')
 })
 
 test('parseLRC parses timestamps', () => {
-  const doc = parseLRC(simpleLRC)
+  const doc = unwrap(parseLRC(simpleLRC))
   expect(doc.events[0]!.start).toBe(12340)
   expect(doc.events[1]!.start).toBe(15670)
 })
 
 test('parseLRC parses lyrics', () => {
-  const doc = parseLRC(simpleLRC)
+  const doc = unwrap(parseLRC(simpleLRC))
   expect(doc.events[0]!.text).toBe('First line')
   expect(doc.events[1]!.text).toBe('Second line')
 })
@@ -43,7 +44,7 @@ test('parseLRC handles all metadata tags', () => {
 [ve:1.0]
 [00:00.00]Test`
 
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.info.title).toBe('Title')
   expect(doc.info.author).toBe('Author')
 })
@@ -52,14 +53,14 @@ test('parseLRC parses offset metadata', () => {
   const lrc = `[offset:500]
 [00:10.00]Test line`
 
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   // Offset is not applied to event times during parsing
   expect(doc.events[0]!.start).toBe(10000)
 })
 
 test('parseLRC handles multiple timestamps per line', () => {
   const lrc = `[00:10.00][00:20.00]Same lyrics`
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.events).toHaveLength(2)
   expect(doc.events[0]!.text).toBe('Same lyrics')
   expect(doc.events[1]!.text).toBe('Same lyrics')
@@ -67,7 +68,7 @@ test('parseLRC handles multiple timestamps per line', () => {
 
 test('parseLRC parses enhanced LRC', () => {
   const lrc = `[00:12.00]<00:12.50>Word<00:13.00>by<00:13.50>word`
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
 
   expect(doc.events).toHaveLength(1)
   expect(doc.events[0]!.segments).toHaveLength(3)
@@ -78,7 +79,7 @@ test('parseLRC parses enhanced LRC', () => {
 
 test('parseLRC creates karaoke effects for enhanced LRC', () => {
   const lrc = `[00:12.00]<00:12.50>Word<00:13.00>by`
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
 
   const segment = doc.events[0]!.segments[0]!
   expect(segment.effects).toHaveLength(1)
@@ -88,7 +89,7 @@ test('parseLRC creates karaoke effects for enhanced LRC', () => {
 
 test('parseLRC sets dirty flag for enhanced LRC', () => {
   const lrc = `[00:12.00]<00:12.50>Word<00:13.00>by`
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.events[0]!.dirty).toBe(true)
 })
 
@@ -96,13 +97,13 @@ test('parseLRC handles empty lines', () => {
   const lrc = `[00:10.00]First
 
 [00:20.00]Second`
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseLRC handles BOM', () => {
   const lrc = "\uFEFF[00:10.00]Test"
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.events).toHaveLength(1)
 })
 
@@ -111,7 +112,7 @@ test('parseLRC adjusts end times', () => {
 [00:15.00]Second
 [00:20.00]Third`
 
-  const doc = parseLRC(lrc)
+  const doc = unwrap(parseLRC(lrc))
   expect(doc.events[0]!.end).toBe(15000)
   expect(doc.events[1]!.end).toBe(20000)
 })
@@ -119,7 +120,7 @@ test('parseLRC adjusts end times', () => {
 test('parseLRC from fixture file', () => {
   const path = resolve(import.meta.dir, '../fixtures/lrc/simple.lrc')
   const content = readFileSync(path, 'utf-8')
-  const doc = parseLRC(content)
+  const doc = unwrap(parseLRC(content))
 
   expect(doc.events).toHaveLength(4)
   expect(doc.info.title).toBe('Song Title')
@@ -129,15 +130,17 @@ test('parseLRC from fixture file', () => {
 test('parseLRC enhanced from fixture file', () => {
   const path = resolve(import.meta.dir, '../fixtures/lrc/enhanced.lrc')
   const content = readFileSync(path, 'utf-8')
-  const doc = parseLRC(content)
+  const doc = unwrap(parseLRC(content))
 
   expect(doc.events).toHaveLength(3)
   expect(doc.events[0]!.segments.length).toBeGreaterThan(0)
   expect(doc.events[0]!.dirty).toBe(true)
 })
 
-test('parseLRCResult collects errors', () => {
+test('parseLRC collects errors', () => {
   const lrc = `[invalid]Test`
-  const result = parseLRCResult(lrc, { onError: 'collect' })
-  expect(result.errors.length).toBeGreaterThanOrEqual(0)
+  const result = parseLRC(lrc, { onError: 'collect' })
+  expect(result.ok).toBe(true)
+  expect(result.errors).toHaveLength(0)
+  expect(result.document.events).toHaveLength(0)
 })

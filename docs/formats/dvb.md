@@ -13,10 +13,11 @@ DVB subtitles are bitmap-based and commonly used in broadcast streams.
 ## Parsing
 
 ```ts
-import { parseDVB, parseDVBResult } from 'subforge/dvb'
+import { parseDVB } from 'subforge/dvb'
+import { unwrap } from 'subforge/core'
 
 const data = new Uint8Array(await fetch('/subs.dvb').then(r => r.arrayBuffer()))
-const doc = parseDVB(data)
+const doc = unwrap(parseDVB(data))
 ```
 
 ## Serialization

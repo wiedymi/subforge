@@ -12,5 +12,5 @@
  */
 
 export { parseTime, formatTime } from './time.ts'
-export { parseSBV, parseSBVResult } from './parser.ts'
+export { parseSBV } from './parser.ts'
 export { toSBV } from './serializer.ts'

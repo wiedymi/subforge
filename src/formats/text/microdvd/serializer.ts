@@ -1,6 +1,11 @@
 import type { SubtitleDocument } from '../../../core/types.ts'
 import { serializeTags } from './tags.ts'
 
+export interface MicroDVDSerializeOptions {
+  /** Frame rate (frames per second) for converting time to frame numbers */
+  fps: number
+}
+
 /**
  * Serializes a subtitle document to MicroDVD format.
  *
@@ -8,18 +13,19 @@ import { serializeTags } from './tags.ts'
  * Line breaks are converted to pipe (|) characters.
  *
  * @param doc - The subtitle document to serialize
- * @param fps - Frame rate (frames per second) for converting time to frame numbers
+ * @param opts - Serialization options including fps
  * @returns MicroDVD formatted string
  *
  * @example
  * ```ts
- * const mdvd = toMicroDVD(document, 23.976);
+ * const mdvd = toMicroDVD(document, { fps: 23.976 });
  * console.log(mdvd);
  * // {0}{100}First subtitle
  * // {100}{200}Second subtitle
  * ```
  */
-export function toMicroDVD(doc: SubtitleDocument, fps: number): string {
+export function toMicroDVD(doc: SubtitleDocument, opts: MicroDVDSerializeOptions): string {
+  const fps = opts.fps
   let result = ''
   const events = doc.events
   const len = events.length

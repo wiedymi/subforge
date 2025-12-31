@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseEBUSTL } from '../../src/formats/binary/stl/ebu/parser.ts'
 import { toEBUSTL } from '../../src/formats/binary/stl/ebu/serializer.ts'
 import { parseSpruceSTL } from '../../src/formats/binary/stl/spruce/parser.ts'
@@ -29,7 +30,7 @@ describe('EBU-STL Roundtrip', () => {
     doc1.events.push(event)
 
     const binary = toEBUSTL(doc1)
-    const doc2 = parseEBUSTL(binary)
+    const doc2 = unwrap(parseEBUSTL(binary))
 
     expect(doc2.events.length).toBe(1)
     expect(doc2.events[0].text).toBe('Hello World')
@@ -60,7 +61,7 @@ describe('EBU-STL Roundtrip', () => {
     }
 
     const binary = toEBUSTL(doc1)
-    const doc2 = parseEBUSTL(binary)
+    const doc2 = unwrap(parseEBUSTL(binary))
 
     expect(doc2.events.length).toBe(5)
     for (let i = 0; i < 5; i++) {
@@ -90,7 +91,7 @@ describe('EBU-STL Roundtrip', () => {
     doc1.events.push(event)
 
     const binary = toEBUSTL(doc1)
-    const doc2 = parseEBUSTL(binary)
+    const doc2 = unwrap(parseEBUSTL(binary))
 
     expect(doc2.events.length).toBe(1)
     expect(doc2.events[0].text).toBe('Line 1\nLine 2\nLine 3')
@@ -119,7 +120,7 @@ describe('Spruce STL Roundtrip', () => {
     doc1.events.push(event)
 
     const text = toSpruceSTL(doc1)
-    const doc2 = parseSpruceSTL(text)
+    const doc2 = unwrap(parseSpruceSTL(text))
 
     expect(doc2.events.length).toBe(1)
     expect(doc2.events[0].text).toBe('Hello World')
@@ -150,7 +151,7 @@ describe('Spruce STL Roundtrip', () => {
     }
 
     const text = toSpruceSTL(doc1)
-    const doc2 = parseSpruceSTL(text)
+    const doc2 = unwrap(parseSpruceSTL(text))
 
     expect(doc2.events.length).toBe(5)
     for (let i = 0; i < 5; i++) {
@@ -179,7 +180,7 @@ describe('Spruce STL Roundtrip', () => {
     doc1.events.push(event)
 
     const text = toSpruceSTL(doc1)
-    const doc2 = parseSpruceSTL(text)
+    const doc2 = unwrap(parseSpruceSTL(text))
 
     expect(doc2.events.length).toBe(1)
     expect(doc2.events[0].text).toBe('Hello, World!')

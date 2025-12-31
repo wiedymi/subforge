@@ -14,10 +14,11 @@ PAC is a binary subtitle format used by Screen Electronics/Cavena.
 ## Parsing
 
 ```ts
-import { parsePAC, parsePACResult } from 'subforge/pac'
+import { parsePAC } from 'subforge/pac'
+import { unwrap } from 'subforge/core'
 
 const data = new Uint8Array(await fetch('/subs.pac').then(r => r.arrayBuffer()))
-const doc = parsePAC(data)
+const doc = unwrap(parsePAC(data))
 ```
 
 ## Serialization
@@ -25,5 +26,5 @@ const doc = parsePAC(data)
 ```ts
 import { toPAC } from 'subforge/pac'
 
-const pac = toPAC(doc, 25) // Uint8Array
+const pac = toPAC(doc, { fps: 25 }) // Uint8Array
 ```

@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 /**
@@ -49,7 +49,7 @@ class LRCParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -78,7 +78,7 @@ class LRCParser {
     // The offset is a playback adjustment and should be handled by the player
     // or serializer if needed. We just store it in metadata for roundtripping.
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private skipEmptyLines(): void {
@@ -456,9 +456,7 @@ class LRCParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
@@ -903,64 +901,34 @@ function parseLRCFastSimple(input: string, doc: SubtitleDocument): boolean {
  * [ar:Artist Name]
  * [00:12.00]First line
  * [00:17.20]Second line`;
- * const doc = parseLRC(lrc);
- * console.log(doc.info.title); // "Song Title"
- * console.log(doc.events[0].text); // "First line"
+ * const result = parseLRC(lrc);
+ * console.log(result.document.info.title); // "Song Title"
+ * console.log(result.document.events[0].text); // "First line"
  * ```
  */
-export function parseLRC(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseLRCSynthetic(input, fastDoc)) {
-    return fastDoc
+export function parseLRC(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseLRCSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    if (parseLRCFastBenchmark(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    if (parseLRCFastSimple(input, fastDoc)) {
+      fixEndTimes(fastDoc, true)
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new LRCParser(input, opts)
+    const result = parser.parse()
+    if (!parser.isOrdered()) fixEndTimes(result.document)
+    return result
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  if (parseLRCFastBenchmark(input, fastDoc)) {
-    return fastDoc
-  }
-  if (parseLRCFastSimple(input, fastDoc)) {
-    fixEndTimes(fastDoc, true)
-    return fastDoc
-  }
-  const parser = new LRCParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  if (!parser.isOrdered()) fixEndTimes(result.document)
-  return result.document
-}
-
-/**
- * Parses an LRC file with detailed error reporting.
- *
- * This function provides more control over error handling and returns
- * detailed parse results including errors and warnings.
- *
- * @param input - The LRC file content as a string
- * @param opts - Parse options controlling error handling and strictness
- * @returns Parse result containing the document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseLRCResult(lrcContent, {
- *   onError: 'collect',
- *   strict: false
- * });
- * if (result.errors.length > 0) {
- *   console.error('Parse errors:', result.errors);
- * }
- * ```
- */
-export function parseLRCResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseLRCSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  if (parseLRCFastBenchmark(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  if (parseLRCFastSimple(input, fastDoc)) {
-    fixEndTimes(fastDoc, true)
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  const parser = new LRCParser(input, opts)
-  const result = parser.parse()
-  if (!parser.isOrdered()) fixEndTimes(result.document)
-  return result
 }

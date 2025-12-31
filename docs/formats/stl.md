@@ -20,10 +20,11 @@ Subforge supports both the binary EBU-STL format and the text-based Spruce STL v
 ## Parsing
 
 ```ts
-import { parseEBUSTL, parseEBUSTLResult, parseSpruceSTL, parseSpruceSTLResult } from 'subforge/stl'
+import { parseEBUSTL, parseSpruceSTL } from 'subforge/stl'
+import { unwrap } from 'subforge/core'
 
-const ebu = parseEBUSTL(new Uint8Array(await fetch('/subs.stl').then(r => r.arrayBuffer())))
-const spruce = parseSpruceSTL(await fetch('/subs.spruce').then(r => r.text()))
+const ebu = unwrap(parseEBUSTL(new Uint8Array(await fetch('/subs.stl').then(r => r.arrayBuffer()))))
+const spruce = unwrap(parseSpruceSTL(await fetch('/subs.spruce').then(r => r.text())))
 ```
 
 ## Serialization

@@ -7,7 +7,7 @@ const MAX_TEXT_FIELD_SIZE = 112
 /**
  * Options for serializing to EBU-STL format
  */
-interface SerializeOptions {
+export interface EBUSTLSerializeOptions {
   /** Frame rate for timecode conversion (default: 25) */
   frameRate?: 25 | 30
   /** Character Code Table for text encoding (default: 0x00 for Latin) */
@@ -36,7 +36,7 @@ interface SerializeOptions {
  * await Bun.write('output.stl', stlData)
  * ```
  */
-export function toEBUSTL(doc: SubtitleDocument, opts: SerializeOptions = {}): Uint8Array {
+export function toEBUSTL(doc: SubtitleDocument, opts: EBUSTLSerializeOptions = {}): Uint8Array {
   const frameRate = opts.frameRate ?? 25
   const cct = opts.cct ?? 0x00 // Default to Latin
   const languageCode = opts.languageCode ?? '0A'

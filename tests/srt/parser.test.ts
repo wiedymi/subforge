@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseSRT, parseSRTResult } from '../../src/formats/text/srt/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseSRT } from '../../src/formats/text/srt/parser.ts'
 
 const simpleSRT = `1
 00:00:01,000 --> 00:00:05,000
@@ -10,19 +11,19 @@ Hello world
 Goodbye world`
 
 test('parseSRT parses basic file', () => {
-  const doc = parseSRT(simpleSRT)
+  const doc = unwrap(parseSRT(simpleSRT))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseSRT parses first subtitle', () => {
-  const doc = parseSRT(simpleSRT)
+  const doc = unwrap(parseSRT(simpleSRT))
   expect(doc.events[0]!.start).toBe(1000)
   expect(doc.events[0]!.end).toBe(5000)
   expect(doc.events[0]!.text).toBe('Hello world')
 })
 
 test('parseSRT parses second subtitle', () => {
-  const doc = parseSRT(simpleSRT)
+  const doc = unwrap(parseSRT(simpleSRT))
   expect(doc.events[1]!.start).toBe(6000)
   expect(doc.events[1]!.end).toBe(10000)
   expect(doc.events[1]!.text).toBe('Goodbye world')
@@ -34,7 +35,7 @@ test('parseSRT handles multiline text', () => {
 Line one
 Line two`
 
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events[0]!.text).toBe('Line one\nLine two')
 })
 
@@ -43,7 +44,7 @@ test('parseSRT handles styling tags', () => {
 00:00:01,000 --> 00:00:05,000
 <b>Bold</b> text`
 
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events[0]!.text).toBe('<b>Bold</b> text')
 })
 
@@ -57,39 +58,40 @@ First
 00:00:06,000 --> 00:00:10,000
 Second`
 
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseSRT handles Windows line endings', () => {
   const srt = "1\r\n00:00:01,000 --> 00:00:05,000\r\nHello world\r\n"
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events).toHaveLength(1)
   expect(doc.events[0]!.text).toBe('Hello world')
 })
 
 test('parseSRT creates unique IDs', () => {
-  const doc = parseSRT(simpleSRT)
+  const doc = unwrap(parseSRT(simpleSRT))
   expect(doc.events[0]!.id).not.toBe(doc.events[1]!.id)
 })
 
 test('parseSRT sets default style', () => {
-  const doc = parseSRT(simpleSRT)
+  const doc = unwrap(parseSRT(simpleSRT))
   expect(doc.events[0]!.style).toBe('Default')
 })
 
-test('parseSRTResult collects errors', () => {
+test('parseSRT collects errors', () => {
   const srt = `1
 invalid --> 00:00:05,000
 Hello`
 
-  const result = parseSRTResult(srt, { onError: 'collect' })
+  const result = parseSRT(srt, { onError: 'collect' })
+  expect(result.ok).toBe(false)
   expect(result.errors.length).toBeGreaterThan(0)
 })
 
 test('parseSRT handles BOM', () => {
   const srt = "\uFEFF1\n00:00:01,000 --> 00:00:05,000\nHello"
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events).toHaveLength(1)
 })
 
@@ -98,6 +100,6 @@ test('parseSRT handles trailing whitespace', () => {
 00:00:01,000 --> 00:00:05,000
 Hello world   `
 
-  const doc = parseSRT(srt)
+  const doc = unwrap(parseSRT(srt))
   expect(doc.events[0]!.text).toBe('Hello world')
 })

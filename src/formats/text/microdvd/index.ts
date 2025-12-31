@@ -17,5 +17,7 @@
  */
 
 export { parseTags, serializeTags, stripTags } from './tags.ts'
-export { parseMicroDVD, parseMicroDVDResult } from './parser.ts'
+export { parseMicroDVD } from './parser.ts'
+export type { MicroDVDParseOptions } from './parser.ts'
 export { toMicroDVD } from './serializer.ts'
+export type { MicroDVDSerializeOptions } from './serializer.ts'

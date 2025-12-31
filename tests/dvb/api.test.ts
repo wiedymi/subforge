@@ -1,31 +1,34 @@
 import { test, expect } from 'bun:test'
-import { parseDVB, parseDVBResult, toDVB } from '../../src/formats/binary/dvb/index.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 import type { SubtitleDocument, ImageEffect } from '../../src/core/types.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 
-test('parseDVB API throws on invalid sync byte by default', () => {
+test('parseDVB API throws on invalid sync byte via unwrap', () => {
   const invalidData = new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
-  expect(() => parseDVB(invalidData)).toThrow()
+  expect(() => unwrap(parseDVB(invalidData))).toThrow()
 })
 
-test('parseDVBResult API collects errors on invalid data', () => {
+test('parseDVB collects errors on invalid data', () => {
   const invalidData = new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
-  const result = parseDVBResult(invalidData, { onError: 'collect' })
+  const result = parseDVB(invalidData, { onError: 'collect' })
 
   expect(result.document).toBeDefined()
+  expect(result.ok).toBe(false)
   expect(result.errors.length).toBeGreaterThan(0)
   expect(result.warnings).toBeDefined()
   expect(result.document.events).toHaveLength(0)
 })
 
-test('parseDVBResult API can ignore errors', () => {
+test('parseDVB can skip errors', () => {
   const invalidData = new Uint8Array([0xFF, 0xFF, 0xFF])
 
-  const result = parseDVBResult(invalidData, { onError: 'ignore' })
+  const result = parseDVB(invalidData, { onError: 'skip' })
 
   expect(result.document).toBeDefined()
+  expect(result.ok).toBe(true)
   expect(result.errors).toHaveLength(0)
 })
 
@@ -115,7 +118,7 @@ test('parseDVB creates SubtitleDocument', () => {
     0x0F, 0x80, 0x00, 0x00, 0x00, 0x00
   ])
 
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   expect(doc).toBeDefined()
   expect(doc.info).toBeDefined()
@@ -160,7 +163,7 @@ test('ImageEffect format is "indexed"', () => {
   })
 
   const data = toDVB(doc)
-  const reparsed = parseDVB(data)
+  const reparsed = unwrap(parseDVB(data))
 
   const effect = reparsed.events[0].segments[0].effects[0]
   if (effect.type === 'image') {

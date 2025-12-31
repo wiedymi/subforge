@@ -10,7 +10,7 @@
  */
 
 export { parseTime, formatTime, videoStandardToFps, fpsToVideoStandard } from './time.ts'
-export { parseCAP, parseCAPResult } from './parser.ts'
+export { parseCAP } from './parser.ts'
 export { toCAP } from './serializer.ts'
 export type { CAPSerializerOptions } from './serializer.ts'
 export type { CAPTimecodeOptions } from './time.ts'

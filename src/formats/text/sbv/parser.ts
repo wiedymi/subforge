@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 class SBVParser {
@@ -21,7 +21,7 @@ class SBVParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -38,7 +38,7 @@ class SBVParser {
         this.doc.events[this.doc.events.length] = event
       }
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private skipEmptyLines(): void {
@@ -199,9 +199,7 @@ class SBVParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
@@ -223,46 +221,26 @@ class SBVParser {
  *
  * 0:00:05.000,0:00:08.000
  * Second subtitle line`;
- * const doc = parseSBV(sbv);
- * console.log(doc.events[0].text); // "First subtitle line"
+ * const result = parseSBV(sbv);
+ * console.log(result.document.events[0].text); // "First subtitle line"
  * ```
  */
-export function parseSBV(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseSBVSynthetic(input, fastDoc)) return fastDoc
-  const parser = new SBVParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses an SBV file with detailed error reporting.
- *
- * This function provides more control over error handling and returns
- * detailed parse results including errors and warnings.
- *
- * @param input - The SBV file content as a string
- * @param opts - Parse options controlling error handling and strictness
- * @returns Parse result containing the document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseSBVResult(sbvContent, {
- *   onError: 'collect',
- *   strict: false
- * });
- * if (result.errors.length > 0) {
- *   console.error('Parse errors:', result.errors);
- * }
- * ```
- */
-export function parseSBVResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseSBVSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseSBV(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseSBVSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new SBVParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new SBVParser(input, opts)
-  return parser.parse()
 }
 
 function parseSBVSynthetic(input: string, doc: SubtitleDocument): boolean {

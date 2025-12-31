@@ -44,7 +44,7 @@ const ttml1k = generateTTML(SIZES.medium)
 group('ASS roundtrip', () => {
   if (assRailgun) {
     bench('railgun_op (real)', () => {
-      const doc = parseASS(assRailgun)
+      const doc = parseASS(assRailgun).document
       const str = toASS(doc)
       parseASS(str)
     })
@@ -52,14 +52,14 @@ group('ASS roundtrip', () => {
 
   if (assAOT) {
     bench('aot3p2_op (real)', () => {
-      const doc = parseASS(assAOT)
+      const doc = parseASS(assAOT).document
       const str = toASS(doc)
       parseASS(str)
     })
   }
 
   bench('1k synthetic', () => {
-    const doc = parseASS(ass1k)
+    const doc = parseASS(ass1k).document
     const str = toASS(doc)
     parseASS(str)
   })
@@ -71,7 +71,7 @@ group('ASS roundtrip', () => {
 
 group('SRT roundtrip', () => {
   bench('1k events', () => {
-    const doc = parseSRT(srt1k)
+    const doc = parseSRT(srt1k).document
     const str = toSRT(doc)
     parseSRT(str)
   })
@@ -83,7 +83,7 @@ group('SRT roundtrip', () => {
 
 group('VTT roundtrip', () => {
   bench('1k events', () => {
-    const doc = parseVTT(vtt1k)
+    const doc = parseVTT(vtt1k).document
     const str = toVTT(doc)
     parseVTT(str)
   })
@@ -95,7 +95,7 @@ group('VTT roundtrip', () => {
 
 group('TTML roundtrip', () => {
   bench('1k events', () => {
-    const doc = parseTTML(ttml1k)
+    const doc = parseTTML(ttml1k).document
     const str = toTTML(doc)
     parseTTML(str)
   })
@@ -107,27 +107,27 @@ group('TTML roundtrip', () => {
 
 group('ASS → SRT → ASS', () => {
   bench('1k events', () => {
-    const doc = parseASS(ass1k)
+    const doc = parseASS(ass1k).document
     const srt = toSRT(doc)
-    const doc2 = parseSRT(srt)
+    const doc2 = parseSRT(srt).document
     toASS(doc2)
   })
 })
 
 group('ASS → VTT → ASS', () => {
   bench('1k events', () => {
-    const doc = parseASS(ass1k)
+    const doc = parseASS(ass1k).document
     const vtt = toVTT(doc)
-    const doc2 = parseVTT(vtt)
+    const doc2 = parseVTT(vtt).document
     toASS(doc2)
   })
 })
 
 group('SRT → VTT → SRT', () => {
   bench('1k events', () => {
-    const doc = parseSRT(srt1k)
+    const doc = parseSRT(srt1k).document
     const vtt = toVTT(doc)
-    const doc2 = parseVTT(vtt)
+    const doc2 = parseVTT(vtt).document
     toSRT(doc2)
   })
 })
@@ -138,11 +138,11 @@ group('SRT → VTT → SRT', () => {
 
 group('ASS → SRT → VTT → TTML', () => {
   bench('1k events', () => {
-    const doc1 = parseASS(ass1k)
+    const doc1 = parseASS(ass1k).document
     const srt = toSRT(doc1)
-    const doc2 = parseSRT(srt)
+    const doc2 = parseSRT(srt).document
     const vtt = toVTT(doc2)
-    const doc3 = parseVTT(vtt)
+    const doc3 = parseVTT(vtt).document
     toTTML(doc3)
   })
 })

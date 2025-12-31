@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parsePGS } from '../../src/formats/binary/pgs/parser.ts'
 import { toPGS } from '../../src/formats/binary/pgs/serializer.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
@@ -69,7 +70,7 @@ describe('PGS Roundtrip', () => {
     expect(pgsData[1]).toBe(0x47) // 'G'
 
     // Parse back
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
 
     expect(parsed.events).toHaveLength(1)
     expect(parsed.events[0].start).toBeCloseTo(1000, 5)
@@ -137,7 +138,7 @@ describe('PGS Roundtrip', () => {
     }
 
     const pgsData = toPGS(doc)
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
 
     expect(parsed.events).toHaveLength(3)
     expect(parsed.events[0].start).toBeCloseTo(0, 5)
@@ -151,7 +152,7 @@ describe('PGS Roundtrip', () => {
 
     expect(pgsData.length).toBe(0)
 
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
     expect(parsed.events).toHaveLength(0)
   })
 })

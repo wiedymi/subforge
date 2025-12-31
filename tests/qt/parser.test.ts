@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseQT, parseQTResult } from '../../src/formats/xml/qt/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseQT } from '../../src/formats/xml/qt/parser.ts'
 
 const simpleQT = `{QTtext} {font:Helvetica}
 {plain} {size:12} {textColor: 65535, 65535, 65535}
@@ -19,19 +20,19 @@ Second subtitle text
 `
 
 test('parseQT parses basic file', () => {
-  const doc = parseQT(simpleQT)
+  const doc = unwrap(parseQT(simpleQT))
   expect(doc.events).toHaveLength(2)
 })
 
 test('parseQT parses first subtitle', () => {
-  const doc = parseQT(simpleQT)
+  const doc = unwrap(parseQT(simpleQT))
   expect(doc.events[0]!.start).toBe(1000)
   expect(doc.events[0]!.end).toBe(5000)
   expect(doc.events[0]!.text).toBe('First subtitle text')
 })
 
 test('parseQT parses second subtitle', () => {
-  const doc = parseQT(simpleQT)
+  const doc = unwrap(parseQT(simpleQT))
   expect(doc.events[1]!.start).toBe(5000)
   expect(doc.events[1]!.end).toBe(10000)
   expect(doc.events[1]!.text).toBe('Second subtitle text')
@@ -49,7 +50,7 @@ Line two
 [00:00:05.000]
 `
 
-  const doc = parseQT(qt)
+  const doc = unwrap(parseQT(qt))
   expect(doc.events[0]!.text).toBe('Line one\nLine two')
 })
 
@@ -64,7 +65,7 @@ Test subtitle
 [00:00:02.000]
 `
 
-  const doc = parseQT(qt)
+  const doc = unwrap(parseQT(qt))
   // With timeScale 600, times should still be converted to milliseconds correctly
   expect(doc.events[0]!.start).toBe(1000)
   expect(doc.events[0]!.end).toBe(2000)
@@ -81,7 +82,7 @@ Test at 5 seconds
 [00:10.000]
 `
 
-  const doc = parseQT(qt)
+  const doc = unwrap(parseQT(qt))
   expect(doc.events[0]!.start).toBe(5000)
   expect(doc.events[0]!.end).toBe(10000)
 })
@@ -89,7 +90,7 @@ Test at 5 seconds
 test('parseQT from fixture file', async () => {
   const file = Bun.file('/Users/uyakauleu/vivy/experiments/subforge/tests/fixtures/qt/simple.qt')
   const content = await file.text()
-  const doc = parseQT(content)
+  const doc = unwrap(parseQT(content))
 
   expect(doc.events).toHaveLength(3)
   expect(doc.events[0]!.text).toBe('First subtitle text')
@@ -97,8 +98,9 @@ test('parseQT from fixture file', async () => {
   expect(doc.events[2]!.text).toBe('Third subtitle text')
 })
 
-test('parseQTResult returns errors array', () => {
-  const result = parseQTResult(simpleQT)
+test('parseQT returns errors and warnings arrays', () => {
+  const result = parseQT(simpleQT)
+  expect(result.ok).toBe(true)
   expect(result.errors).toBeDefined()
   expect(result.warnings).toBeDefined()
   expect(result.document).toBeDefined()
@@ -120,7 +122,7 @@ More text
 [00:00:15.000]
 `
 
-  const doc = parseQT(qt)
+  const doc = unwrap(parseQT(qt))
   expect(doc.events).toHaveLength(2)
   expect(doc.events[0]!.text).toBe('Some text')
   expect(doc.events[1]!.text).toBe('More text')

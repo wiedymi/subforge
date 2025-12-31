@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parsePAC, parsePACResult } from '../../src/formats/binary/pac/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parsePAC } from '../../src/formats/binary/pac/parser.ts'
 
 // Helper to create a simple PAC file in memory
 function createSimplePAC(): Uint8Array {
@@ -42,14 +43,14 @@ function createSimplePAC(): Uint8Array {
 
 test('parsePAC parses header', () => {
   const data = createSimplePAC()
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
   expect(doc).toBeDefined()
   expect(doc.events).toBeDefined()
 })
 
 test('parsePAC parses simple subtitle', () => {
   const data = createSimplePAC()
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events).toHaveLength(1)
   expect(doc.events[0]!.text).toBe('Hello world')
@@ -90,7 +91,7 @@ test('parsePAC handles BCD timecodes correctly', () => {
   buffer[pos++] = 0x74  // 't'
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events).toHaveLength(1)
   // 1:30:45.480 = (1*3600 + 30*60 + 45) * 1000 + (12/25)*1000 = 5445480
@@ -129,7 +130,7 @@ test('parsePAC handles NTSC frame rate', () => {
   buffer[pos++] = 0x69  // 'i'
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events).toHaveLength(1)
   expect(doc.events[0]!.start).toBe(1000)
@@ -166,7 +167,7 @@ test('parsePAC decodes italic formatting', () => {
   buffer[pos++] = 0x0B  // Italic off
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events[0]!.text).toBe('{\\i1}Hi{\\i0}')
 })
@@ -209,7 +210,7 @@ test('parsePAC decodes line breaks', () => {
   buffer[pos++] = 0x32  // '2'
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events[0]!.text).toBe('Line 1\\NLine 2')
 })
@@ -241,7 +242,7 @@ test('parsePAC handles special characters', () => {
   buffer[pos++] = 0x29  // Copyright symbol
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events[0]!.text).toBe('©')
 })
@@ -292,7 +293,7 @@ test('parsePAC handles multiple subtitle blocks', () => {
   buffer[pos++] = 0x64  // 'd'
 
   const data = buffer.subarray(0, pos)
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
 
   expect(doc.events).toHaveLength(2)
   expect(doc.events[0]!.text).toBe('First')
@@ -301,9 +302,10 @@ test('parsePAC handles multiple subtitle blocks', () => {
   expect(doc.events[1]!.start).toBe(3000)
 })
 
-test('parsePACResult returns errors for invalid data', () => {
+test('parsePAC collects errors for invalid data', () => {
   const data = new Uint8Array(10)  // Too small
-  const result = parsePACResult(data, { onError: 'collect' })
+  const result = parsePAC(data, { onError: 'collect' })
 
+  expect(result.ok).toBe(false)
   expect(result.errors.length).toBeGreaterThan(0)
 })

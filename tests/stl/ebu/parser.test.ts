@@ -1,5 +1,6 @@
 import { test, expect, describe } from 'bun:test'
-import { parseEBUSTL, parseEBUSTLResult } from '../../../src/formats/binary/stl/ebu/parser.ts'
+import { unwrap } from '../../../src/core/errors.ts'
+import { parseEBUSTL } from '../../../src/formats/binary/stl/ebu/parser.ts'
 
 describe('EBU-STL Parser', () => {
   test('parse minimal valid EBU-STL file', () => {
@@ -73,7 +74,7 @@ describe('EBU-STL Parser', () => {
     data.set(new TextEncoder().encode('Hello World'), ttiOffset + 16)
     data[ttiOffset + 16 + 11] = 0x8f // End marker
 
-    const doc = parseEBUSTL(data)
+    const doc = unwrap(parseEBUSTL(data))
 
     expect(doc.info.title).toBe('Test Title')
     expect(doc.events.length).toBe(1)
@@ -123,7 +124,7 @@ describe('EBU-STL Parser', () => {
     ])
     data.set(text, ttiOffset + 16)
 
-    const doc = parseEBUSTL(data)
+    const doc = unwrap(parseEBUSTL(data))
 
     expect(doc.events.length).toBe(1)
     expect(doc.events[0].text).toBe('Hello\nWorld')
@@ -184,7 +185,7 @@ describe('EBU-STL Parser', () => {
     data.set(new TextEncoder().encode('Second'), ttiOffset + 16)
     data[ttiOffset + 16 + 6] = 0x8f
 
-    const doc = parseEBUSTL(data)
+    const doc = unwrap(parseEBUSTL(data))
 
     expect(doc.events.length).toBe(2)
     expect(doc.events[0].text).toBe('First')
@@ -221,17 +222,18 @@ describe('EBU-STL Parser', () => {
     data.set(new TextEncoder().encode('Subtitle'), ttiOffset + 16)
     data[ttiOffset + 16 + 8] = 0x8f
 
-    const doc = parseEBUSTL(data)
+    const doc = unwrap(parseEBUSTL(data))
 
     expect(doc.events.length).toBe(1)
     expect(doc.events[0].text).toBe('Subtitle')
   })
 
-  test('handle invalid file size', () => {
+  test('collects errors for invalid file size', () => {
     const data = new Uint8Array(512) // Too small
 
-    const result = parseEBUSTLResult(data, { onError: 'collect' })
+    const result = parseEBUSTL(data, { onError: 'collect' })
 
+    expect(result.ok).toBe(false)
     expect(result.errors.length).toBeGreaterThan(0)
     expect(result.errors[0].code).toBe('INVALID_FORMAT')
   })

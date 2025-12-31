@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parsePGS, toPGS } from '../../src/formats/binary/pgs/index.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 import type { ImageEffect, PGSEffect } from '../../src/core/types.ts'
@@ -67,7 +68,7 @@ describe('PGS Integration', () => {
     expect(pgsData.length).toBeGreaterThan(100)
 
     // Parse back
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
     expect(parsed.events).toHaveLength(1)
 
     const event = parsed.events[0]
@@ -144,7 +145,7 @@ describe('PGS Integration', () => {
     }
 
     const pgsData = toPGS(doc)
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
 
     expect(parsed.events).toHaveLength(timestamps.length)
 
@@ -191,7 +192,7 @@ describe('PGS Integration', () => {
     })
 
     const pgsData = toPGS(doc)
-    const parsed = parsePGS(pgsData)
+    const parsed = unwrap(parsePGS(pgsData))
 
     expect(parsed.events).toHaveLength(1)
   })

@@ -1,5 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseTime } from './time.ts'
 
@@ -18,7 +19,7 @@ class RealTextParser {
 
   constructor(opts: Partial<ParseOptions> = {}) {
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -33,15 +34,15 @@ class RealTextParser {
     }
 
     if (this.parseSimpleLineTimeClear(src)) {
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     if (this.parseSimpleTimeClear(src)) {
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     if (this.parseFast(src)) {
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     // Tokenize XML
@@ -56,7 +57,7 @@ class RealTextParser {
         code: 'INVALID_FORMAT',
         message: 'Missing <window> element'
       })
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     // Find window element and parse content
@@ -131,7 +132,7 @@ class RealTextParser {
       }
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseSimpleLineTimeClear(src: string): boolean {
@@ -690,8 +691,7 @@ function parseRealTextTimeRange(src: string, start: number, end: number): number
  * It uses XML-like markup with time tags for synchronization.
  *
  * @param input - RealText file content as string
- * @returns Parsed subtitle document
- * @throws {Error} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -699,42 +699,25 @@ function parseRealTextTimeRange(src: string, start: number, end: number): number
  * <time begin="00:00:01.00"/>
  * <clear/>Hello world
  * </window>`
- * const doc = parseRealText(rt)
+ * const result = parseRealText(rt)
  * ```
  */
-export function parseRealText(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseRealTextSynthetic(input, fastDoc)) return fastDoc
-  const parser = new RealTextParser({ onError: 'throw' })
-  const result = parser.parse(input)
-  if (result.errors.length > 0) {
-    throw new Error(result.errors[0]!.message)
+export function parseRealText(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseRealTextSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new RealTextParser(opts)
+    return parser.parse(input)
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  return result.document
-}
-
-/**
- * Parse RealText format with detailed error reporting
- *
- * @param input - RealText file content as string
- * @param opts - Parsing options
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseRealTextResult(rtContent, { onError: 'collect' })
- * if (result.errors.length > 0) {
- *   console.error('Parsing errors:', result.errors)
- * }
- * ```
- */
-export function parseRealTextResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseRealTextSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  const parser = new RealTextParser(opts)
-  return parser.parse(input)
 }
 
 function parseRealTextSynthetic(input: string, doc: SubtitleDocument): boolean {

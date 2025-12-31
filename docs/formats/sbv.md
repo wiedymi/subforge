@@ -13,7 +13,10 @@ SBV is a simple YouTube subtitle format.
 ## Parsing
 
 ```ts
-import { parseSBV, parseSBVResult } from 'subforge/sbv'
+import { parseSBV } from 'subforge/sbv'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseSBV(sbvText))
 ```
 
 ## Serialization

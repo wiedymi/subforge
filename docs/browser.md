@@ -14,8 +14,8 @@ bun run build
 <script type="module">
   import { parseSRT } from './dist/index.js'
 
-  const doc = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
-  console.log(doc.events.length)
+  const result = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
+  console.log(result.document.events.length)
 </script>
 ```
 

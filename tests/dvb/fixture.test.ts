@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
@@ -7,7 +8,7 @@ test('parseDVB handles fixture file', () => {
   const fixturePath = join(import.meta.dir, '../fixtures/dvb/simple.dvb')
   const data = new Uint8Array(readFileSync(fixturePath))
 
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   expect(doc.events.length).toBeGreaterThan(0)
 })
@@ -16,9 +17,9 @@ test('fixture roundtrip preserves structure', () => {
   const fixturePath = join(import.meta.dir, '../fixtures/dvb/simple.dvb')
   const original = new Uint8Array(readFileSync(fixturePath))
 
-  const doc = parseDVB(original)
+  const doc = unwrap(parseDVB(original))
   const serialized = toDVB(doc)
-  const reparsed = parseDVB(serialized)
+  const reparsed = unwrap(parseDVB(serialized))
 
   expect(reparsed.events.length).toBe(doc.events.length)
 })
@@ -27,7 +28,7 @@ test('fixture contains image effects', () => {
   const fixturePath = join(import.meta.dir, '../fixtures/dvb/simple.dvb')
   const data = new Uint8Array(readFileSync(fixturePath))
 
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   const hasImageEffect = doc.events.some(event =>
     event.segments.some(seg =>
@@ -42,7 +43,7 @@ test('fixture image has palette', () => {
   const fixturePath = join(import.meta.dir, '../fixtures/dvb/simple.dvb')
   const data = new Uint8Array(readFileSync(fixturePath))
 
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
     for (const segment of event.segments) {

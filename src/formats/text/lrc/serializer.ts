@@ -4,7 +4,7 @@ import { formatTime } from './time.ts'
 /**
  * Options for controlling LRC serialization output.
  */
-interface LRCOptions {
+export interface LRCSerializeOptions {
   /** Whether to include metadata tags (title, artist, etc.) in the output. Default: true */
   includeMetadata?: boolean
   /** Whether to use centiseconds (.xx) instead of milliseconds (.xxx). Default: true */
@@ -36,7 +36,7 @@ interface LRCOptions {
  * // [00:12.00]First line
  * ```
  */
-export function toLRC(doc: SubtitleDocument, opts: LRCOptions = {}): string {
+export function toLRC(doc: SubtitleDocument, opts: LRCSerializeOptions = {}): string {
   const {
     includeMetadata = true,
     useCentiseconds = true,

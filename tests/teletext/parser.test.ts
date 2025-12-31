@@ -1,10 +1,11 @@
 import { test, expect, describe } from 'bun:test'
-import { parseTeletext, parseTeletextResult } from '../../src/formats/broadcast/teletext/index.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseTeletext } from '../../src/formats/broadcast/teletext/index.ts'
 
 describe('Teletext Parser', () => {
   test('parses empty teletext data', () => {
     const data = new Uint8Array(0)
-    const doc = parseTeletext(data)
+    const doc = unwrap(parseTeletext(data))
 
     expect(doc).toBeDefined()
     expect(doc.events).toHaveLength(0)
@@ -14,7 +15,7 @@ describe('Teletext Parser', () => {
     // Create a minimal teletext page 888 with one subtitle row
     const packet = createTeletextPacket(888, 0, 'Test subtitle')
 
-    const doc = parseTeletext(packet)
+    const doc = unwrap(parseTeletext(packet))
 
     expect(doc).toBeDefined()
     expect(doc.events.length).toBeGreaterThan(0)
@@ -26,7 +27,7 @@ describe('Teletext Parser', () => {
     const withParity = charA | 0x80 // Add parity bit for odd parity
 
     const packet = createPacketWithChar(withParity)
-    const doc = parseTeletext(packet)
+    const doc = unwrap(parseTeletext(packet))
 
     expect(doc).toBeDefined()
   })
@@ -34,7 +35,7 @@ describe('Teletext Parser', () => {
   test('handles page 888 subtitle page', () => {
     const packet = createTeletextPacket(888, 0, 'Subtitle on page 888')
 
-    const doc = parseTeletext(packet)
+    const doc = unwrap(parseTeletext(packet))
 
     expect(doc).toBeDefined()
     if (doc.events.length > 0) {
@@ -55,18 +56,20 @@ describe('Teletext Parser', () => {
     packets.push(...createRowPacket(2, 'Second line'))
 
     const data = new Uint8Array(packets)
-    const doc = parseTeletext(data)
+    const doc = unwrap(parseTeletext(data))
 
     expect(doc).toBeDefined()
   })
 
-  test('parseTeletextResult returns errors on invalid data', () => {
+  test('parseTeletext collects errors on invalid data', () => {
     const data = new Uint8Array([0xFF, 0xFF, 0xFF])
 
-    const result = parseTeletextResult(data, { onError: 'collect' })
+    const result = parseTeletext(data, { onError: 'collect' })
 
     expect(result).toBeDefined()
     expect(result.document).toBeDefined()
+    expect(result.ok).toBe(true)
+    expect(result.errors).toHaveLength(0)
   })
 })
 

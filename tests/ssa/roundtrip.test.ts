@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSSA } from '../../src/formats/text/ssa/parser.ts'
 import { toSSA } from '../../src/formats/text/ssa/serializer.ts'
 import { readFileSync } from 'fs'
@@ -18,7 +19,7 @@ Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,1,2,3,2
 Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello world`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
 
   expect(output).toContain('[Script Info]')
@@ -35,9 +36,9 @@ Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,First line
 Dialogue: 0,0:00:05.50,0:00:10.00,Default,Alice,10,20,30,,Second line
 Dialogue: 0,0:00:11.00,0:00:15.00,Default,,0,0,0,Scroll up,Third line`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   expect(doc2.events).toHaveLength(3)
   expect(doc2.events[0]!.text).toBe('First line')
@@ -53,9 +54,9 @@ test('SSA roundtrip preserves style data', () => {
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding
 Style: Custom,Verdana,48,&H00FF0000,&H0000FF00,&H000000FF,&H00808080,-1,-1,1,3,4,10,25,30,35,0,1`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   const style = doc2.styles.get('Custom')!
   expect(style.fontName).toBe('Verdana')
@@ -75,9 +76,9 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour
 Style: Left,Arial,32,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,1,2,3,1,20,20,20,0,1
 Style: TopLeft,Arial,32,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,1,2,3,9,20,20,20,0,1`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   // SSA 1 -> ASS 1 -> SSA 1
   expect(doc2.styles.get('Left')!.alignment).toBe(1)
@@ -89,9 +90,9 @@ test('SSA roundtrip with fixture file', () => {
   const fixturePath = join(__dirname, '../fixtures/ssa/simple.ssa')
   const original = readFileSync(fixturePath, 'utf-8')
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   expect(doc2.info.title).toBe(doc.info.title)
   expect(doc2.events.length).toBe(doc.events.length)
@@ -110,9 +111,9 @@ Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,Comment line
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Dialogue line`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   expect(doc2.comments).toHaveLength(1)
   expect(doc2.comments[0]!.text).toBe('Comment line')
@@ -125,9 +126,9 @@ Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Text with {\\b1}tags{\\b0}
 Dialogue: 0,0:00:05.00,0:00:10.00,Default,,0,0,0,,Text, with, commas`
 
-  const doc = parseSSA(original)
+  const doc = unwrap(parseSSA(original))
   const output = toSSA(doc)
-  const doc2 = parseSSA(output)
+  const doc2 = unwrap(parseSSA(output))
 
   expect(doc2.events[0]!.text).toBe('Text with {\\b1}tags{\\b0}')
   expect(doc2.events[1]!.text).toBe('Text, with, commas')

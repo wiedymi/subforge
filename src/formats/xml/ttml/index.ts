@@ -9,8 +9,8 @@
  * @module ttml
  */
 
-export { parseTTML, parseTTMLResult } from './parser.ts'
+export { parseTTML } from './parser.ts'
 export { toTTML, type TTMLSerializeOptions } from './serializer.ts'
 export { parseTime, formatTime, parseDuration } from './time.ts'
-export { parseDFXP, parseDFXPResult, toDFXP } from './dfxp.ts'
-export { parseSMPTETT, parseSMPTETTResult, toSMPTETT } from './smpte.ts'
+export { parseDFXP, toDFXP } from './dfxp.ts'
+export { parseSMPTETT, toSMPTETT } from './smpte.ts'

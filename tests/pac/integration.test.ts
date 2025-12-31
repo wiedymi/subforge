@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parsePAC, toPAC } from '../../src/formats/binary/pac/index.ts'
 import { createDocument } from '../../src/core/document.ts'
 
@@ -40,12 +41,12 @@ test('PAC integration: create document, serialize, and parse', () => {
   })
 
   // Serialize to PAC
-  const pacData = toPAC(doc, 25)
+  const pacData = toPAC(doc, { fps: 25 })
   expect(pacData).toBeInstanceOf(Uint8Array)
   expect(pacData.length).toBeGreaterThan(24)  // At least header size
 
   // Parse back
-  const parsed = parsePAC(pacData)
+  const parsed = unwrap(parsePAC(pacData))
   expect(parsed.events).toHaveLength(2)
   expect(parsed.events[0]!.text).toBe('First subtitle')
   expect(parsed.events[0]!.start).toBe(1000)
@@ -61,7 +62,7 @@ test('PAC integration: read fixture file', async () => {
   const fixtureFile = await Bun.file(new URL('../fixtures/pac/simple.pac', import.meta.url))
   const data = new Uint8Array(await fixtureFile.arrayBuffer())
 
-  const doc = parsePAC(data)
+  const doc = unwrap(parsePAC(data))
   expect(doc.events).toHaveLength(2)
   expect(doc.events[0]!.text).toBe('Hello world')
   expect(doc.events[1]!.text).toContain('i1')
@@ -88,13 +89,13 @@ test('PAC integration: NTSC frame rate conversion', () => {
   })
 
   // Serialize with NTSC frame rate
-  const pacData = toPAC(doc, 29.97)
+  const pacData = toPAC(doc, { fps: 29.97 })
 
   // Verify header byte indicates NTSC
   expect(pacData[4]).toBe(0x02)  // NTSC flag
 
   // Parse back
-  const parsed = parsePAC(pacData)
+  const parsed = unwrap(parsePAC(pacData))
   expect(parsed.events).toHaveLength(1)
   expect(parsed.events[0]!.text).toBe('NTSC test')
   // Allow small rounding differences due to frame rate conversion

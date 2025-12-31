@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parsePAC } from '../../src/formats/binary/pac/parser.ts'
 import { toPAC } from '../../src/formats/binary/pac/serializer.ts'
 
@@ -34,12 +35,12 @@ test('roundtrip: simple subtitle', () => {
   }
 
   const original = buffer.subarray(0, pos)
-  const doc = parsePAC(original)
-  const output = toPAC(doc, 25)
+  const doc = unwrap(parsePAC(original))
+  const output = toPAC(doc, { fps: 25 })
 
   // Parse both and compare
-  const doc1 = parsePAC(original)
-  const doc2 = parsePAC(output)
+  const doc1 = unwrap(parsePAC(original))
+  const doc2 = unwrap(parsePAC(output))
 
   expect(doc2.events).toHaveLength(doc1.events.length)
   expect(doc2.events[0]!.text).toBe(doc1.events[0]!.text)
@@ -88,11 +89,11 @@ test('roundtrip: multiple subtitles', () => {
   }
 
   const original = buffer.subarray(0, pos)
-  const doc = parsePAC(original)
-  const output = toPAC(doc, 25)
+  const doc = unwrap(parsePAC(original))
+  const output = toPAC(doc, { fps: 25 })
 
-  const doc1 = parsePAC(original)
-  const doc2 = parsePAC(output)
+  const doc1 = unwrap(parsePAC(original))
+  const doc2 = unwrap(parsePAC(output))
 
   expect(doc2.events).toHaveLength(2)
   expect(doc2.events[0]!.text).toBe('First')
@@ -124,11 +125,11 @@ test('roundtrip: italic formatting', () => {
   buffer[pos++] = 0x0B  // Italic off
 
   const original = buffer.subarray(0, pos)
-  const doc = parsePAC(original)
-  const output = toPAC(doc, 25)
+  const doc = unwrap(parsePAC(original))
+  const output = toPAC(doc, { fps: 25 })
 
-  const doc1 = parsePAC(original)
-  const doc2 = parsePAC(output)
+  const doc1 = unwrap(parsePAC(original))
+  const doc2 = unwrap(parsePAC(output))
 
   expect(doc2.events[0]!.text).toBe(doc1.events[0]!.text)
   expect(doc2.events[0]!.text).toContain('\\i1')
@@ -159,11 +160,11 @@ test('roundtrip: line breaks', () => {
   buffer[pos++] = 0x0E  // Line break
 
   const original = buffer.subarray(0, pos)
-  const doc = parsePAC(original)
-  const output = toPAC(doc, 25)
+  const doc = unwrap(parsePAC(original))
+  const output = toPAC(doc, { fps: 25 })
 
-  const doc1 = parsePAC(original)
-  const doc2 = parsePAC(output)
+  const doc1 = unwrap(parsePAC(original))
+  const doc2 = unwrap(parsePAC(output))
 
   expect(doc2.events[0]!.text).toBe(doc1.events[0]!.text)
   expect(doc2.events[0]!.text).toContain('\\N')
@@ -194,11 +195,11 @@ test('roundtrip: NTSC frame rate', () => {
   buffer[pos++] = 0x74  // 't'
 
   const original = buffer.subarray(0, pos)
-  const doc = parsePAC(original)
-  const output = toPAC(doc, 29.97)
+  const doc = unwrap(parsePAC(original))
+  const output = toPAC(doc, { fps: 29.97 })
 
-  const doc1 = parsePAC(original)
-  const doc2 = parsePAC(output)
+  const doc1 = unwrap(parsePAC(original))
+  const doc2 = unwrap(parsePAC(output))
 
   expect(doc2.events[0]!.text).toBe('Test')
   expect(Math.abs(doc2.events[0]!.start - doc1.events[0]!.start)).toBeLessThan(50)

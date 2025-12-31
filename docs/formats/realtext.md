@@ -14,7 +14,10 @@ RealText is an XML-like format used by RealNetworks.
 ## Parsing
 
 ```ts
-import { parseRealText, parseRealTextResult } from 'subforge/realtext'
+import { parseRealText } from 'subforge/realtext'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseRealText(realText))
 ```
 
 ## Serialization

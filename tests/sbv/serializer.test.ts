@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSBV } from '../../src/formats/text/sbv/parser.ts'
 import { toSBV } from '../../src/formats/text/sbv/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
@@ -31,9 +32,9 @@ Hello world
 0:00:06.000,0:00:10.000
 Goodbye world`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events.length).toBe(doc.events.length)
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)

@@ -90,9 +90,9 @@ Events keep original `text` string. `segments` are lazily parsed only when acces
 ### Parser Pattern
 
 Each format follows this pattern:
-- `parse<Format>(input: string): SubtitleDocument` - throws on error
-- `parse<Format>Result(input: string, opts?: ParseOptions): ParseResult` - collects errors
-- `to<Format>(doc: SubtitleDocument, opts?): string` - serialize
+- `parse<Format>(input, opts?): ParseResult` - never throws; returns `ok`, `errors`, `warnings`, `document`
+- `unwrap(parse<Format>(...))` when you want a strict, throwing path
+- `to<Format>(doc: SubtitleDocument, opts?): string | Uint8Array` - serialize
 
 ### Performance Patterns
 

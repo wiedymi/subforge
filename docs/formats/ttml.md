@@ -10,15 +10,15 @@ TTML is the W3C timed text standard. Subforge supports TTML and its profiles DFX
 
 - Parses `<styling>` and `<layout>` sections
 - Supports style references and region placement
+- Region references are stored on `event.region`
 
 ## Parsing
 
 ```ts
 import { parseTTML, toTTML, parseDFXP, toDFXP, parseSMPTETT, toSMPTETT } from 'subforge/ttml'
-```
+import { unwrap } from 'subforge/core'
 
-```ts
-import { parseTTMLResult } from 'subforge/ttml'
+const doc = unwrap(parseTTML(ttmlText))
 ```
 
 ## Serialization options

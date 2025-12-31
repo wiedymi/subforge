@@ -3,7 +3,7 @@ import type { SubtitleDocument } from '../../../../core/types.ts'
 /**
  * Options for serializing to Spruce STL format
  */
-interface SerializeOptions {
+export interface SpruceSTLSerializeOptions {
   /** Frame rate for timecode conversion (default: 25) */
   frameRate?: number
 }
@@ -23,7 +23,7 @@ interface SerializeOptions {
  * await Bun.write('output.stl', stl)
  * ```
  */
-export function toSpruceSTL(doc: SubtitleDocument, opts: SerializeOptions = {}): string {
+export function toSpruceSTL(doc: SubtitleDocument, opts: SpruceSTLSerializeOptions = {}): string {
   const frameRate = opts.frameRate ?? 25
   const lines: string[] = []
 

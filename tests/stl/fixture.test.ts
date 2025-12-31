@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseEBUSTL } from '../../src/formats/binary/stl/ebu/parser.ts'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
@@ -8,7 +9,7 @@ describe('EBU-STL Fixture', () => {
     const fixturePath = resolve(__dirname, '../fixtures/stl/simple.stl')
     const data = new Uint8Array(readFileSync(fixturePath))
 
-    const doc = parseEBUSTL(data)
+    const doc = unwrap(parseEBUSTL(data))
 
     expect(doc.info.title).toBe('Simple Test Subtitle')
     expect(doc.events.length).toBe(2)

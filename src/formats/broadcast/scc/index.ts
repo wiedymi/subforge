@@ -8,6 +8,6 @@
  * @module scc
  */
 
-export { parseSCC, parseSCCResult } from './parser.ts'
+export { parseSCC } from './parser.ts'
 export { toSCC } from './serializer.ts'
 export { decodeCEA608, encodeCEA608Text, getControlCode } from './cea608.ts'

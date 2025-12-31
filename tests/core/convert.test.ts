@@ -1,18 +1,19 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { convert } from '../../src/core/convert.ts'
 import { parseASS } from '../../src/formats/text/ass/parser.ts'
 import { parseSRT } from '../../src/formats/text/srt/parser.ts'
 import { parseVTT } from '../../src/formats/text/vtt/parser.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
 
-const railgunOP = parseASS(await Bun.file('./tests/fixtures/ass/railgun_op.ass').text())
-const aot3p2OP = parseASS(await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text())
+const railgunOP = unwrap(parseASS(await Bun.file('./tests/fixtures/ass/railgun_op.ass').text()))
+const aot3p2OP = unwrap(parseASS(await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text()))
 
 test('convert ASS to SRT', () => {
   const doc = createDocument()
   doc.events.push(createEvent(1000, 5000, 'Hello world'))
 
-  const result = convert(doc, 'srt')
+  const result = convert(doc, { to: 'srt' })
 
   expect(result.output).toContain('00:00:01,000 --> 00:00:05,000')
   expect(result.output).toContain('Hello world')
@@ -22,7 +23,7 @@ test('convert ASS to VTT', () => {
   const doc = createDocument()
   doc.events.push(createEvent(1000, 5000, 'Hello world'))
 
-  const result = convert(doc, 'vtt')
+  const result = convert(doc, { to: 'vtt' })
 
   expect(result.output).toContain('WEBVTT')
   expect(result.output).toContain('00:00:01.000 --> 00:00:05.000')
@@ -32,7 +33,7 @@ test('convert ASS to ASS', () => {
   const doc = createDocument()
   doc.events.push(createEvent(1000, 5000, 'Hello world'))
 
-  const result = convert(doc, 'ass')
+  const result = convert(doc, { to: 'ass' })
 
   expect(result.output).toContain('[Script Info]')
   expect(result.output).toContain('[Events]')
@@ -45,7 +46,7 @@ test('convert reports lost positioning', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { reportLoss: true })
+  const result = convert(doc, { to: 'srt',  reportLoss: true })
 
   expect(result.lostFeatures.length).toBeGreaterThan(0)
 })
@@ -57,7 +58,7 @@ test('convert preserves basic formatting', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt')
+  const result = convert(doc, { to: 'srt' })
 
   expect(result.output).toContain('<b>')
 })
@@ -69,7 +70,7 @@ test('convert strips unsupported features', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { unsupported: 'drop', reportLoss: true })
+  const result = convert(doc, { to: 'srt',  unsupported: 'drop', reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'blur')).toBe(true)
 })
@@ -79,9 +80,9 @@ test('convert SRT roundtrip', () => {
 00:00:01,000 --> 00:00:05,000
 Hello world`
 
-  const doc = parseSRT(srt)
-  const result = convert(doc, 'srt')
-  const reparsed = parseSRT(result.output)
+  const doc = unwrap(parseSRT(srt))
+  const result = convert(doc, { to: 'srt' })
+  const reparsed = unwrap(parseSRT(result.output))
 
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)
 })
@@ -92,23 +93,23 @@ test('convert VTT roundtrip', () => {
 00:00:01.000 --> 00:00:05.000
 Hello world`
 
-  const doc = parseVTT(vtt)
-  const result = convert(doc, 'vtt')
-  const reparsed = parseVTT(result.output)
+  const doc = unwrap(parseVTT(vtt))
+  const result = convert(doc, { to: 'vtt' })
+  const reparsed = unwrap(parseVTT(result.output))
 
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)
 })
 
 describe('real file: railgun_op.ass conversion', () => {
   test('convert to SRT preserves event count', () => {
-    const result = convert(railgunOP, 'srt')
-    const reparsed = parseSRT(result.output)
+    const result = convert(railgunOP, { to: 'srt' })
+    const reparsed = unwrap(parseSRT(result.output))
     expect(reparsed.events.length).toBe(railgunOP.events.length)
   })
 
   test('convert to SRT produces valid timestamps', () => {
-    const result = convert(railgunOP, 'srt')
-    const reparsed = parseSRT(result.output)
+    const result = convert(railgunOP, { to: 'srt' })
+    const reparsed = unwrap(parseSRT(result.output))
     for (const event of reparsed.events) {
       expect(event.start).toBeGreaterThanOrEqual(0)
       expect(event.end).toBeGreaterThanOrEqual(event.start)
@@ -116,14 +117,14 @@ describe('real file: railgun_op.ass conversion', () => {
   })
 
   test('convert to VTT preserves event count', () => {
-    const result = convert(railgunOP, 'vtt')
-    const reparsed = parseVTT(result.output)
+    const result = convert(railgunOP, { to: 'vtt' })
+    const reparsed = unwrap(parseVTT(result.output))
     expect(reparsed.events.length).toBe(railgunOP.events.length)
   })
 
   test('convert to VTT produces valid timestamps', () => {
-    const result = convert(railgunOP, 'vtt')
-    const reparsed = parseVTT(result.output)
+    const result = convert(railgunOP, { to: 'vtt' })
+    const reparsed = unwrap(parseVTT(result.output))
     for (const event of reparsed.events) {
       expect(event.start).toBeGreaterThanOrEqual(0)
       expect(event.end).toBeGreaterThanOrEqual(event.start)
@@ -131,28 +132,28 @@ describe('real file: railgun_op.ass conversion', () => {
   })
 
   test('convert to ASS roundtrip preserves event count', () => {
-    const result = convert(railgunOP, 'ass')
-    const reparsed = parseASS(result.output)
+    const result = convert(railgunOP, { to: 'ass' })
+    const reparsed = unwrap(parseASS(result.output))
     expect(reparsed.events.length).toBe(railgunOP.events.length)
   })
 })
 
 describe('real file: aot3p2_op.ass conversion', () => {
   test('convert to SRT preserves event count', () => {
-    const result = convert(aot3p2OP, 'srt')
-    const reparsed = parseSRT(result.output)
+    const result = convert(aot3p2OP, { to: 'srt' })
+    const reparsed = unwrap(parseSRT(result.output))
     expect(reparsed.events.length).toBe(aot3p2OP.events.length)
   })
 
   test('convert to VTT preserves event count', () => {
-    const result = convert(aot3p2OP, 'vtt')
-    const reparsed = parseVTT(result.output)
+    const result = convert(aot3p2OP, { to: 'vtt' })
+    const reparsed = unwrap(parseVTT(result.output))
     expect(reparsed.events.length).toBe(aot3p2OP.events.length)
   })
 
   test('convert to ASS roundtrip preserves event count', () => {
-    const result = convert(aot3p2OP, 'ass')
-    const reparsed = parseASS(result.output)
+    const result = convert(aot3p2OP, { to: 'ass' })
+    const reparsed = unwrap(parseASS(result.output))
     expect(reparsed.events.length).toBe(aot3p2OP.events.length)
   })
 })
@@ -165,7 +166,7 @@ test('convert reports lost alignment', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { reportLoss: true })
+  const result = convert(doc, { to: 'srt',  reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'alignment')).toBe(true)
 })
@@ -178,7 +179,7 @@ test('convert reports lost fontName', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'vtt', { reportLoss: true })
+  const result = convert(doc, { to: 'vtt',  reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'fontName')).toBe(true)
 })
@@ -191,7 +192,7 @@ test('convert reports lost fontSize', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'vtt', { reportLoss: true })
+  const result = convert(doc, { to: 'vtt',  reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'fontSize')).toBe(true)
 })
@@ -204,7 +205,7 @@ test('convert reports lost karaoke', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { karaoke: 'strip', reportLoss: true })
+  const result = convert(doc, { to: 'srt',  karaoke: 'strip', reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'karaoke')).toBe(true)
 })
@@ -217,7 +218,7 @@ test('convert keeps unsupported effects in comment mode', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { unsupported: 'comment', reportLoss: true })
+  const result = convert(doc, { to: 'srt',  unsupported: 'comment', reportLoss: true })
 
   expect(result.lostFeatures.some(f => f.feature === 'blur')).toBe(true)
 })
@@ -230,7 +231,7 @@ test('convert passes through clean events without segments', () => {
   event.segments = []
   doc.events.push(event)
 
-  const result = convert(doc, 'srt')
+  const result = convert(doc, { to: 'srt' })
 
   expect(result.output).toContain('Hello')
 })
@@ -243,8 +244,8 @@ test('convert preserves karaoke effect with preserve and comment mode', () => {
   event.dirty = true
   doc.events.push(event)
 
-  const result = convert(doc, 'srt', { karaoke: 'preserve', unsupported: 'comment' })
-  const reparsed = parseSRT(result.output)
+  const result = convert(doc, { to: 'srt',  karaoke: 'preserve', unsupported: 'comment' })
+  const reparsed = unwrap(parseSRT(result.output))
 
   expect(reparsed.events).toHaveLength(1)
 })

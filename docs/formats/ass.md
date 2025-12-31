@@ -26,10 +26,11 @@ If you need the exact list, review `src/formats/text/ass/tags.ts`.
 ## Parsing
 
 ```ts
-import { parseASS, parseASSResult } from 'subforge/ass'
+import { parseASS } from 'subforge/ass'
+import { unwrap } from 'subforge/core'
 
-const doc = parseASS(assText)
-const result = parseASSResult(assText, { onError: 'collect' })
+const result = parseASS(assText)
+const doc = unwrap(result)
 ```
 
 ## Serialization

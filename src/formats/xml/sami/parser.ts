@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, TextSegment, InlineStyle, Style } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, createDefaultStyle, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { parseCSS, styleFromClass, type SAMIClass } from './css.ts'
 
@@ -15,18 +15,10 @@ interface SyncPoint {
  * 1. First pass: collect all SYNC positions
  * 2. Second pass: extract content knowing boundaries
  */
-export function parseSAMI(input: string): SubtitleDocument {
-  const result = parseSAMIResult(input, { onError: 'throw' })
-  return result.document
-}
-
-export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const errors: ParseError[] = []
-  const options: ParseOptions = {
-    onError: opts?.onError ?? 'throw',
-    strict: opts?.strict ?? false,
-    preserveOrder: opts?.preserveOrder ?? true
-  }
+export function parseSAMI(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const errors: ParseError[] = []
+    // Currently unused but reserved for future strictness handling.
 
   // Handle BOM
   let start = 0
@@ -39,13 +31,13 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
   extractStyles(input, doc)
 
   if (parseSAMISynthetic(input, doc)) {
-    return { document: doc, errors, warnings: [] }
+    return { ok: errors.length === 0, document: doc, errors, warnings: [] }
   }
   if (parseSAMIFastLines(input, doc)) {
-    return { document: doc, errors, warnings: [] }
+    return { ok: errors.length === 0, document: doc, errors, warnings: [] }
   }
   if (parseSAMIFastExact(input, doc)) {
-    return { document: doc, errors, warnings: [] }
+    return { ok: errors.length === 0, document: doc, errors, warnings: [] }
   }
 
   let pos = start
@@ -118,7 +110,15 @@ export function parseSAMIResult(input: string, opts?: Partial<ParseOptions>): Pa
     }
   }
 
-  return { document: doc, errors, warnings: [] }
+  return { ok: errors.length === 0, document: doc, errors, warnings: [] }
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }
 
 /**

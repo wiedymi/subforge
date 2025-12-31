@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 // Time parsing is inlined in parseSubtitle for performance
 
@@ -22,7 +22,7 @@ class SRTParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -39,7 +39,7 @@ class SRTParser {
         this.doc.events[this.doc.events.length] = event
       }
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private skipEmptyLines(): void {
@@ -185,22 +185,19 @@ class SRTParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
 
 /**
- * Parses an SRT subtitle file into a SubtitleDocument.
+ * Parses an SRT subtitle file into a ParseResult.
  *
  * SRT (SubRip Text) is a simple subtitle format with sequential numbering,
  * timestamps, and plain text with basic formatting tags (<b>, <i>, <u>, <s>, <font>).
  *
  * @param input - The SRT file content as a string
- * @returns A parsed subtitle document
- * @throws {SubforgeError} If the input contains invalid syntax or timestamps
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -212,37 +209,20 @@ class SRTParser {
  * 00:00:04,000 --> 00:00:06,000
  * <b>Bold text</b>`;
  *
- * const doc = parseSRT(srt);
- * console.log(doc.events.length); // 2
+ * const result = parseSRT(srt);
+ * console.log(result.document.events.length); // 2
  * ```
  */
-export function parseSRT(input: string): SubtitleDocument {
-  const parser = new SRTParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses an SRT subtitle file with detailed error reporting.
- *
- * Unlike parseSRT, this function returns a ParseResult object containing
- * the document, errors, and warnings. Useful when you need to handle
- * malformed files gracefully.
- *
- * @param input - The SRT file content as a string
- * @param opts - Parsing options controlling error handling and strictness
- * @returns A parse result containing the document and any errors/warnings
- *
- * @example
- * ```ts
- * const result = parseSRTResult(srt, { onError: 'collect' });
- * if (result.errors.length > 0) {
- *   console.log('Found errors:', result.errors);
- * }
- * console.log(result.document.events);
- * ```
- */
-export function parseSRTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const parser = new SRTParser(input, opts)
-  return parser.parse()
+export function parseSRT(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const parser = new SRTParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }

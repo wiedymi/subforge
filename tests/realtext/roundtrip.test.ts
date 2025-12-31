@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseRealText } from '../../src/formats/xml/realtext/parser.ts'
 import { toRealText } from '../../src/formats/xml/realtext/serializer.ts'
 
@@ -10,9 +11,9 @@ test('roundtrip preserves basic structure', () => {
 <clear/>Second subtitle
 </window>`
 
-  const doc = parseRealText(original)
+  const doc = unwrap(parseRealText(original))
   const serialized = toRealText(doc)
-  const doc2 = parseRealText(serialized)
+  const doc2 = unwrap(parseRealText(serialized))
 
   expect(doc2.events).toHaveLength(doc.events.length)
   expect(doc2.events[0]!.text).toBe(doc.events[0]!.text)
@@ -27,9 +28,9 @@ test('roundtrip preserves timestamps', () => {
 <clear/>Text at 5.25 seconds
 </window>`
 
-  const doc = parseRealText(original)
+  const doc = unwrap(parseRealText(original))
   const serialized = toRealText(doc)
-  const doc2 = parseRealText(serialized)
+  const doc2 = unwrap(parseRealText(serialized))
 
   expect(doc2.events[0]!.start).toBe(doc.events[0]!.start)
   expect(doc2.events[1]!.start).toBe(doc.events[1]!.start)
@@ -41,9 +42,9 @@ test('roundtrip preserves formatting', () => {
 <clear/><b>Bold</b> and <i>italic</i>
 </window>`
 
-  const doc = parseRealText(original)
+  const doc = unwrap(parseRealText(original))
   const serialized = toRealText(doc)
-  const doc2 = parseRealText(serialized)
+  const doc2 = unwrap(parseRealText(serialized))
 
   expect(doc2.events[0]!.text).toContain('<b>Bold</b>')
   expect(doc2.events[0]!.text).toContain('<i>italic</i>')
@@ -55,9 +56,9 @@ test('roundtrip preserves line breaks', () => {
 <clear/>Line one<br/>Line two
 </window>`
 
-  const doc = parseRealText(original)
+  const doc = unwrap(parseRealText(original))
   const serialized = toRealText(doc)
-  const doc2 = parseRealText(serialized)
+  const doc2 = unwrap(parseRealText(serialized))
 
   expect(doc2.events[0]!.text).toBe(doc.events[0]!.text)
 })
@@ -72,11 +73,11 @@ test('roundtrip handles multiple events', () => {
 <clear/>Third
 </window>`
 
-  const doc = parseRealText(original)
+  const doc = unwrap(parseRealText(original))
   expect(doc.events).toHaveLength(3)
 
   const serialized = toRealText(doc)
-  const doc2 = parseRealText(serialized)
+  const doc2 = unwrap(parseRealText(serialized))
 
   expect(doc2.events).toHaveLength(3)
   expect(doc2.events[0]!.text).toBe('First')

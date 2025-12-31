@@ -1,6 +1,7 @@
 import { test, expect, describe } from 'bun:test'
 import { parseEBUSTL, toEBUSTL } from '../../src/formats/binary/stl/index.ts'
 import { parseSpruceSTL, toSpruceSTL } from '../../src/formats/binary/stl/index.ts'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSRT, toSRT } from '../../src/formats/text/srt/index.ts'
 
 describe('STL Integration', () => {
@@ -14,13 +15,13 @@ Hello World
 Second subtitle
 `
 
-    const doc1 = parseSRT(srt)
+    const doc1 = unwrap(parseSRT(srt))
     expect(doc1.events.length).toBe(2)
 
     const binary = toEBUSTL(doc1)
     expect(binary.length).toBeGreaterThan(0)
 
-    const doc2 = parseEBUSTL(binary)
+    const doc2 = unwrap(parseEBUSTL(binary))
     expect(doc2.events.length).toBe(2)
     expect(doc2.events[0].text).toBe('Hello World')
     expect(doc2.events[1].text).toBe('Second subtitle')
@@ -36,9 +37,9 @@ Hello World
 Second subtitle
 `
 
-    const doc1 = parseSRT(srt)
+    const doc1 = unwrap(parseSRT(srt))
     const spruceText = toSpruceSTL(doc1)
-    const doc2 = parseSpruceSTL(spruceText)
+    const doc2 = unwrap(parseSpruceSTL(spruceText))
 
     expect(doc2.events.length).toBe(2)
     expect(doc2.events[0].text).toBe('Hello World')
@@ -56,12 +57,12 @@ Second subtitle
 Test subtitle
 `
 
-    const doc1 = parseSRT(srt)
+    const doc1 = unwrap(parseSRT(srt))
     doc1.info.title = 'Test Movie'
     doc1.info.author = 'Test Author'
 
     const binary = toEBUSTL(doc1)
-    const doc2 = parseEBUSTL(binary)
+    const doc2 = unwrap(parseEBUSTL(binary))
 
     expect(doc2.info.title).toBe('Test Movie')
   })

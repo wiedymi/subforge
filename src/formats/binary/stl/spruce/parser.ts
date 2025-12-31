@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../../core/errors.ts'
-import { SubforgeError } from '../../../../core/errors.ts'
+import { toParseError } from '../../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../../core/document.ts'
 
 class SpruceSTLParser {
@@ -21,7 +21,7 @@ class SpruceSTLParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -43,7 +43,7 @@ class SpruceSTLParser {
       }
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private skipEmptyLines(): void {
@@ -175,9 +175,7 @@ class SpruceSTLParser {
   }
 
   private addError(code: 'INVALID_FORMAT' | 'INVALID_TIMESTAMP', message: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message })
   }
 }
@@ -196,37 +194,25 @@ class SpruceSTLParser {
  * ```ts
  * const stl = `00:00:05:00 , 00:00:10:00 , First subtitle
  * 00:00:15:00 , 00:00:20:00 , Second subtitle`
- * const doc = parseSpruceSTL(stl)
+ * const result = parseSpruceSTL(stl)
  * ```
  */
-export function parseSpruceSTL(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseSpruceSTLSynthetic(input, fastDoc)) return fastDoc
-  const parser = new SpruceSTLParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses Spruce STL format with error collection
- *
- * @param input - Spruce STL file content as string
- * @param opts - Parsing options to control error handling
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseSpruceSTLResult(content, { onError: 'collect' })
- * console.log(`Found ${result.errors.length} errors`)
- * ```
- */
-export function parseSpruceSTLResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseSpruceSTLSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseSpruceSTL(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseSpruceSTLSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new SpruceSTLParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new SpruceSTLParser(input, opts)
-  return parser.parse()
 }
 
 function parseSpruceSTLSynthetic(input: string, doc: SubtitleDocument): boolean {

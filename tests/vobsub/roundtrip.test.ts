@@ -1,14 +1,13 @@
 import { test, expect } from 'bun:test'
-import { parseVobSub, toVobSub, parseVobSubResult } from '../../src/formats/binary/vobsub/index.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseVobSub, toVobSub } from '../../src/formats/binary/vobsub/index.ts'
 import type { SubtitleDocument, ImageEffect, VobSubEffect } from '../../src/core/types.ts'
 
-test('parseVobSubResult parses empty VobSub', () => {
-  const result = parseVobSubResult('# VobSub\nsize: 720x480', new Uint8Array(0))
+test('parseVobSub parses empty VobSub', () => {
+  const result = parseVobSub('# VobSub\nsize: 720x480', new Uint8Array(0))
 
   expect(result.ok).toBe(true)
-  if (result.ok) {
-    expect(result.data.events.length).toBe(0)
-  }
+  expect(result.document.events.length).toBe(0)
 })
 
 test('parseVobSub parses minimal valid VobSub', () => {
@@ -22,7 +21,7 @@ id: en, index: 0
 
   const sub = new Uint8Array(0)
 
-  const doc = parseVobSub(idx, sub)
+  const doc = unwrap(parseVobSub(idx, sub))
 
   expect(doc.info.playResX).toBe(720)
   expect(doc.info.playResY).toBe(480)
@@ -145,7 +144,7 @@ test('roundtrip preserves basic structure', () => {
   }
 
   const { idx, sub } = toVobSub(originalDoc)
-  const parsed = parseVobSub(idx, sub)
+  const parsed = unwrap(parseVobSub(idx, sub))
 
   expect(parsed.info.playResX).toBe(720)
   expect(parsed.info.playResY).toBe(480)

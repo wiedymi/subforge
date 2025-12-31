@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseVTT } from '../../src/formats/text/vtt/parser.ts'
 import { toVTT } from '../../src/formats/text/vtt/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
@@ -34,9 +35,9 @@ Hello world
 00:00:06.000 --> 00:00:10.000
 Goodbye world`
 
-  const doc = parseVTT(original)
+  const doc = unwrap(parseVTT(original))
   const output = toVTT(doc)
-  const reparsed = parseVTT(output)
+  const reparsed = unwrap(parseVTT(output))
 
   expect(reparsed.events.length).toBe(doc.events.length)
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)

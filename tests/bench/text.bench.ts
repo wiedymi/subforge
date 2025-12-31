@@ -210,16 +210,16 @@ group('LRC serialize', () => {
 // ============================================================================
 
 group('MicroDVD parse', () => {
-  if (microdvdSimple) bench('simple (real)', () => parseMicroDVD(microdvdSimple, 25))
-  bench('1k events', () => parseMicroDVD(microdvd1k, 25))
-  bench('10k events', () => parseMicroDVD(microdvd10k, 25))
-  bench('100k events', () => parseMicroDVD(microdvd100k, 25))
+  if (microdvdSimple) bench('simple (real)', () => parseMicroDVD(microdvdSimple, { fps: 25 }))
+  bench('1k events', () => parseMicroDVD(microdvd1k, { fps: 25 }))
+  bench('10k events', () => parseMicroDVD(microdvd10k, { fps: 25 }))
+  bench('100k events', () => parseMicroDVD(microdvd100k, { fps: 25 }))
 })
 
 group('MicroDVD serialize', () => {
-  bench('1k events', () => toMicroDVD(doc1k, 25))
-  bench('10k events', () => toMicroDVD(doc10k, 25))
-  bench('100k events', () => toMicroDVD(doc100k, 25))
+  bench('1k events', () => toMicroDVD(doc1k, { fps: 25 }))
+  bench('10k events', () => toMicroDVD(doc10k, { fps: 25 }))
+  bench('100k events', () => toMicroDVD(doc100k, { fps: 25 }))
 })
 
 // ============================================================================

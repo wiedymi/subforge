@@ -1,7 +1,8 @@
 import type { SubtitleDocument, SubtitleEvent, InlineStyle } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
+import { toUint8Array } from '../../../core/binary.ts'
 
 // Teletext control codes
 const ALPHA_BLACK = 0x00
@@ -73,7 +74,7 @@ class TeletextParser {
   constructor(input: Uint8Array, opts: Partial<ParseOptions> = {}) {
     this.data = input
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -82,7 +83,7 @@ class TeletextParser {
 
   parse(): ParseResult {
     this.parsePackets()
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parsePackets(): void {
@@ -217,38 +218,28 @@ class TeletextParser {
 /**
  * Parse Teletext subtitle data
  * @param input - Binary Teletext data
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  * @example
  * const teletextData = Bun.file('subtitles.teletext').arrayBuffer()
- * const doc = parseTeletext(new Uint8Array(teletextData))
+ * const result = parseTeletext(new Uint8Array(teletextData))
  */
-export function parseTeletext(input: Uint8Array): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseTeletextSynthetic(input, fastDoc)) return fastDoc
-  const parser = new TeletextParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parse Teletext subtitle data with error handling options
- * @param input - Binary Teletext data
- * @param opts - Parse options controlling error handling behavior
- * @returns Parse result containing document and any errors/warnings
- * @example
- * const result = parseTeletextResult(data, { onError: 'collect', strict: false })
- * if (result.errors.length > 0) {
- *   console.log('Parsing errors:', result.errors)
- * }
- */
-export function parseTeletextResult(input: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseTeletextSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseTeletext(input: Uint8Array | ArrayBuffer, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const data = toUint8Array(input)
+    const fastDoc = createDocument()
+    if (parseTeletextSynthetic(data, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new TeletextParser(data, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new TeletextParser(input, opts)
-  return parser.parse()
 }
 
 function parseTeletextSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {

@@ -8,5 +8,5 @@
  */
 
 export { parseTime, formatTime } from './time.ts'
-export { parseRealText, parseRealTextResult } from './parser.ts'
+export { parseRealText } from './parser.ts'
 export { toRealText } from './serializer.ts'

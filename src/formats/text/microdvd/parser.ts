@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 class MicroDVDParser {
@@ -23,7 +23,7 @@ class MicroDVDParser {
     this.len = input.length
     this.fps = fps
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -40,7 +40,7 @@ class MicroDVDParser {
         this.doc.events[this.doc.events.length] = event
       }
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private skipEmptyLines(): void {
@@ -71,6 +71,18 @@ class MicroDVDParser {
     if (this.src.charCodeAt(this.pos) !== 123) { // {
       // Skip to next line
       const nlPos = this.src.indexOf('\n', this.pos)
+      const endPos = nlPos === -1 ? this.len : nlPos
+      let hasContent = false
+      for (let i = this.pos; i < endPos; i++) {
+        const code = this.src.charCodeAt(i)
+        if (code !== 32 && code !== 9 && code !== 13) {
+          hasContent = true
+          break
+        }
+      }
+      if (hasContent) {
+        this.addError('INVALID_FORMAT', 'Expected {start}{end} frame markers')
+      }
       if (nlPos === -1) {
         this.pos = this.len
       } else {
@@ -155,61 +167,44 @@ class MicroDVDParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
 
+export interface MicroDVDParseOptions extends ParseOptions {
+  /** Frame rate (frames per second) for converting frame numbers to time */
+  fps: number
+}
+
 /**
- * Parses a MicroDVD subtitle file into a subtitle document.
+ * Parses a MicroDVD subtitle file into a ParseResult.
  *
  * MicroDVD is a frame-based subtitle format that uses curly braces for timing.
  * Format: {startFrame}{endFrame}Text
  *
  * @param input - The MicroDVD file content as a string
- * @param fps - Frame rate (frames per second) for converting frame numbers to time
- * @returns A parsed subtitle document
- * @throws {SubforgeError} If the input contains invalid frames or format errors
+ * @param opts - Parse options including fps
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
  * const mdvd = `{0}{100}First subtitle
  * {100}{200}Second subtitle`;
- * const doc = parseMicroDVD(mdvd, 23.976);
- * console.log(doc.events[0].text); // "First subtitle"
+ * const result = parseMicroDVD(mdvd, { fps: 23.976 });
+ * console.log(result.document.events[0].text); // "First subtitle"
  * ```
  */
-export function parseMicroDVD(input: string, fps: number): SubtitleDocument {
-  const parser = new MicroDVDParser(input, fps, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses a MicroDVD file with detailed error reporting.
- *
- * This function provides more control over error handling and returns
- * detailed parse results including errors and warnings.
- *
- * @param input - The MicroDVD file content as a string
- * @param fps - Frame rate (frames per second) for converting frame numbers to time
- * @param opts - Parse options controlling error handling and strictness
- * @returns Parse result containing the document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseMicroDVDResult(mdvdContent, 25.0, {
- *   onError: 'collect',
- *   strict: false
- * });
- * if (result.errors.length > 0) {
- *   console.error('Parse errors:', result.errors);
- * }
- * ```
- */
-export function parseMicroDVDResult(input: string, fps: number, opts?: Partial<ParseOptions>): ParseResult {
-  const parser = new MicroDVDParser(input, fps, opts)
-  return parser.parse()
+export function parseMicroDVD(input: string, opts: MicroDVDParseOptions): ParseResult {
+  try {
+    const parser = new MicroDVDParser(input, opts.fps, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }

@@ -14,7 +14,10 @@ SubStation Alpha v4 is the predecessor of ASS. It uses a similar structure with 
 ## Parsing
 
 ```ts
-import { parseSSA, parseSSAResult } from 'subforge/ssa'
+import { parseSSA } from 'subforge/ssa'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseSSA(ssaText))
 ```
 
 ## Serialization

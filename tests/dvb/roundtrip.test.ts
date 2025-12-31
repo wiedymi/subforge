@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
 import type { ImageEffect } from '../../src/core/types.ts'
@@ -50,7 +51,7 @@ function createSimpleDVB(): Uint8Array {
 
 test('roundtrip preserves basic structure', () => {
   const original = createSimpleDVB()
-  const doc = parseDVB(original)
+  const doc = unwrap(parseDVB(original))
   const serialized = toDVB(doc)
 
   expect(serialized).toBeInstanceOf(Uint8Array)
@@ -59,9 +60,9 @@ test('roundtrip preserves basic structure', () => {
 
 test('roundtrip preserves image effects', () => {
   const original = createSimpleDVB()
-  const doc = parseDVB(original)
+  const doc = unwrap(parseDVB(original))
   const serialized = toDVB(doc)
-  const reparsed = parseDVB(serialized)
+  const reparsed = unwrap(parseDVB(serialized))
 
   const originalImages = doc.events.flatMap(e =>
     e.segments.flatMap(s =>

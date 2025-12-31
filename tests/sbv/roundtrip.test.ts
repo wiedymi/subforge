@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSBV } from '../../src/formats/text/sbv/parser.ts'
 import { toSBV } from '../../src/formats/text/sbv/serializer.ts'
 
@@ -9,9 +10,9 @@ Hello world
 0:00:06.000,0:00:10.000
 Goodbye world`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events.length).toBe(2)
   expect(reparsed.events[0]!.start).toBe(1000)
@@ -28,9 +29,9 @@ First line
 Second line
 Third line`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events[0]!.text).toBe('First line\nSecond line\nThird line')
 })
@@ -39,9 +40,9 @@ test('roundtrip large timestamps', () => {
   const original = `123:45:06.789,124:56:17.890
 Very long video`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events[0]!.start).toBe(445506789)
   expect(reparsed.events[0]!.end).toBe(449777890)
@@ -56,9 +57,9 @@ test('roundtrip with many events', () => {
     original += `Subtitle ${i + 1}\n\n`
   }
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events.length).toBe(100)
   expect(reparsed.events[0]!.text).toBe('Subtitle 1')
@@ -69,9 +70,9 @@ test('roundtrip preserves millisecond precision', () => {
   const original = `0:00:01.123,0:00:05.456
 Test`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events[0]!.start).toBe(1123)
   expect(reparsed.events[0]!.end).toBe(5456)
@@ -83,9 +84,9 @@ Line 1
 Line 2
 Line 3`
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events[0]!.text).toContain('Line 1')
   expect(reparsed.events[0]!.text).toContain('Line 2')
@@ -96,9 +97,9 @@ test('roundtrip with fixture file', async () => {
   const fixture = Bun.file('tests/fixtures/sbv/simple.sbv')
   const original = await fixture.text()
 
-  const doc = parseSBV(original)
+  const doc = unwrap(parseSBV(original))
   const output = toSBV(doc)
-  const reparsed = parseSBV(output)
+  const reparsed = unwrap(parseSBV(output))
 
   expect(reparsed.events.length).toBe(3)
   expect(reparsed.events[0]!.text).toBe('Hello world')

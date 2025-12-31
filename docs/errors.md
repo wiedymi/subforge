@@ -1,17 +1,16 @@
 # Errors
 
-Parsing functions follow two patterns:
-
-- `parse<Format>(input)` throws `SubforgeError`.
-- `parse<Format>Result(input, opts)` returns a `ParseResult` containing errors and warnings.
+All parsing APIs return a `ParseResult` and never throw. If you want a strict path, use `unwrap` to turn parse errors into a `SubforgeError`.
 
 ## SubforgeError
 
 ```ts
-import { SubforgeError } from 'subforge/core'
+import { parseSRT } from 'subforge/srt'
+import { SubforgeError, unwrap } from 'subforge/core'
 
 try {
-  parseSRT(input)
+  const doc = unwrap(parseSRT(input))
+  console.log(doc.events.length)
 } catch (err) {
   if (err instanceof SubforgeError) {
     console.error(err.code, err.line, err.column)
@@ -22,7 +21,8 @@ try {
 ## ParseResult
 
 ```ts
-const result = parseSRTResult(input, { onError: 'collect' })
+const result = parseSRT(input, { onError: 'collect' })
+console.log(result.ok)
 console.log(result.errors)
 console.log(result.warnings)
 ```

@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { videoStandardToFps } from './time.ts'
 
@@ -34,7 +34,7 @@ class CAPParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -56,7 +56,7 @@ class CAPParser {
       }
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseHeader(): void {
@@ -200,9 +200,7 @@ class CAPParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 
@@ -269,7 +267,7 @@ class CAPParser {
  *
  * @param input - CAP file content as a string
  * @returns Parsed subtitle document
- * @throws {SubforgeError} If the input contains invalid timecodes or format errors
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -280,44 +278,25 @@ class CAPParser {
  * 00:00:01:00	00:00:04:00
  * Hello, World!
  * `;
- * const doc = parseCAP(capContent);
+ * const result = parseCAP(capContent);
  * ```
  */
-export function parseCAP(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseCAPSynthetic(input, fastDoc)) return fastDoc
-  const parser = new CAPParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses CAP format subtitle file with detailed error reporting.
- *
- * Similar to parseCAP but returns a ParseResult object containing the document,
- * errors, and warnings. Allows customization of error handling behavior.
- *
- * @param input - CAP file content as a string
- * @param opts - Parse options for error handling and parsing behavior
- * @returns Parse result containing document, errors array, and warnings array
- *
- * @example
- * ```ts
- * const result = parseCAPResult(capContent, {
- *   onError: 'collect',
- *   strict: false
- * });
- * console.log(`Parsed ${result.document.events.length} events`);
- * console.log(`FPS: ${parser.getFps()}`);
- * ```
- */
-export function parseCAPResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseCAPSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseCAP(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseCAPSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new CAPParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new CAPParser(input, opts)
-  return parser.parse()
 }
 
 function parseCAPSynthetic(input: string, doc: SubtitleDocument): boolean {

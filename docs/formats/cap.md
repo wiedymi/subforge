@@ -9,10 +9,11 @@ CAP (CaptionMAX) is a text-based subtitle format with frame-accurate timing.
 ## Parsing
 
 ```ts
-import { parseCAP, parseCAPResult } from 'subforge/cap'
+import { parseCAP } from 'subforge/cap'
+import { unwrap } from 'subforge/core'
 
 const text = await fetch('/subs.cap').then(r => r.text())
-const doc = parseCAP(text)
+const doc = unwrap(parseCAP(text))
 ```
 
 ## Serialization

@@ -1,4 +1,4 @@
-export { parsePGS, parsePGSResult } from './parser.ts'
+export { parsePGS } from './parser.ts'
 export { toPGS } from './serializer.ts'
 export {
   SegmentType,

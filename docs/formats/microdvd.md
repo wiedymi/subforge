@@ -14,9 +14,10 @@ Inline tags use `{y:...}` syntax and support basic formatting.
 ## Parsing
 
 ```ts
-import { parseMicroDVD, parseMicroDVDResult } from 'subforge/microdvd'
+import { parseMicroDVD } from 'subforge/microdvd'
+import { unwrap } from 'subforge/core'
 
-const doc = parseMicroDVD(mdvdText, 23.976)
+const doc = unwrap(parseMicroDVD(mdvdText, { fps: 23.976 }))
 ```
 
 ## Serialization
@@ -24,5 +25,5 @@ const doc = parseMicroDVD(mdvdText, 23.976)
 ```ts
 import { toMicroDVD } from 'subforge/microdvd'
 
-const out = toMicroDVD(doc, 25)
+const out = toMicroDVD(doc, { fps: 25 })
 ```

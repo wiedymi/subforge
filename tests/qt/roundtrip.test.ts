@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseQT } from '../../src/formats/xml/qt/parser.ts'
 import { toQT } from '../../src/formats/xml/qt/serializer.ts'
 
@@ -20,9 +21,9 @@ Second subtitle
 [00:00:10.000]
 `
 
-  const doc = parseQT(original)
+  const doc = unwrap(parseQT(original))
   const serialized = toQT(doc)
-  const reparsed = parseQT(serialized)
+  const reparsed = unwrap(parseQT(serialized))
 
   expect(reparsed.events).toHaveLength(doc.events.length)
   expect(reparsed.events[0]!.start).toBe(doc.events[0]!.start)
@@ -46,9 +47,9 @@ Line three
 [00:00:05.000]
 `
 
-  const doc = parseQT(original)
+  const doc = unwrap(parseQT(original))
   const serialized = toQT(doc)
-  const reparsed = parseQT(serialized)
+  const reparsed = unwrap(parseQT(serialized))
 
   expect(reparsed.events[0]!.text).toBe('Line one\nLine two\nLine three')
 })
@@ -67,9 +68,9 @@ Test 2
 [00:00:02.789]
 `
 
-  const doc = parseQT(original)
+  const doc = unwrap(parseQT(original))
   const serialized = toQT(doc)
-  const reparsed = parseQT(serialized)
+  const reparsed = unwrap(parseQT(serialized))
 
   expect(reparsed.events[0]!.start).toBe(123)
   expect(reparsed.events[0]!.end).toBe(1456)
@@ -81,9 +82,9 @@ test('roundtrip with fixture file', async () => {
   const file = Bun.file('/Users/uyakauleu/vivy/experiments/subforge/tests/fixtures/qt/simple.qt')
   const original = await file.text()
 
-  const doc = parseQT(original)
+  const doc = unwrap(parseQT(original))
   const serialized = toQT(doc)
-  const reparsed = parseQT(serialized)
+  const reparsed = unwrap(parseQT(serialized))
 
   expect(reparsed.events).toHaveLength(doc.events.length)
 
@@ -105,9 +106,9 @@ Long timestamp
 [01:45:30.123]
 `
 
-  const doc = parseQT(original)
+  const doc = unwrap(parseQT(original))
   const serialized = toQT(doc)
-  const reparsed = parseQT(serialized)
+  const reparsed = unwrap(parseQT(serialized))
 
   expect(reparsed.events[0]!.start).toBe(5445678)
   expect(reparsed.events[0]!.end).toBe(6330123)

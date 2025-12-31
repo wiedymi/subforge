@@ -20,8 +20,9 @@ pnpm add subforge
 
 ```ts
 import { parseSRT, toASS } from 'subforge'
+import { unwrap } from 'subforge/core'
 
-const doc = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
+const doc = unwrap(parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n'))
 const ass = toASS(doc)
 ```
 
@@ -32,7 +33,7 @@ Subpath entry points keep imports small:
 ```ts
 import { parseASS } from 'subforge/ass'
 import { parseSRT } from 'subforge/srt'
-import { SubtitleDocument } from 'subforge/core'
+import { SubtitleDocument, unwrap } from 'subforge/core'
 ```
 
 ## Build for browsers
@@ -48,8 +49,8 @@ Then import from `dist/` in the browser:
 ```html
 <script type="module">
   import { parseSRT } from './dist/index.js'
-  const doc = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
-  console.log(doc.events.length)
+  const result = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
+  console.log(result.document.events.length)
 </script>
 ```
 

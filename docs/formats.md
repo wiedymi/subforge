@@ -45,5 +45,8 @@ Example:
 
 ```ts
 import { parseVTT } from 'subforge/vtt'
+import { unwrap } from 'subforge/core'
 import { toPGS } from 'subforge/pgs'
+
+const doc = unwrap(parseVTT(vttText))
 ```

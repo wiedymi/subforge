@@ -1,7 +1,8 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError } from '../../../../core/errors.ts'
-import { SubforgeError } from '../../../../core/errors.ts'
+import { toParseError } from '../../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../../core/document.ts'
+import { toUint8Array } from '../../../../core/binary.ts'
 
 const GSI_BLOCK_SIZE = 1024
 const TTI_BLOCK_SIZE = 128
@@ -39,7 +40,7 @@ class EBUSTLParser {
     this.data = input
     this.view = new DataView(input.buffer, input.byteOffset, input.byteLength)
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -50,12 +51,12 @@ class EBUSTLParser {
   parse(): ParseResult {
     if (this.data.length < GSI_BLOCK_SIZE) {
       this.addError('INVALID_FORMAT', 'File too small to be valid EBU-STL')
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     this.gsi = this.parseGSI()
     if (!this.gsi) {
-      return { document: this.doc, errors: this.errors, warnings: [] }
+      return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
     }
 
     // Set decoder based on CCT
@@ -78,7 +79,7 @@ class EBUSTLParser {
       }
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseGSI(): GSIBlock | null {
@@ -272,9 +273,7 @@ class EBUSTLParser {
   }
 
   private addError(code: 'INVALID_FORMAT' | 'INVALID_TIMESTAMP', message: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: 0, column: 0 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: 0, column: 0, code, message })
   }
 }
@@ -287,35 +286,25 @@ class EBUSTLParser {
  * Text Timing Information (TTI) blocks containing the actual subtitles.
  *
  * @param input - Binary file data as Uint8Array
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails or file is invalid
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
  * const fileData = await Bun.file('subtitles.stl').arrayBuffer()
- * const doc = parseEBUSTL(new Uint8Array(fileData))
+ * const result = parseEBUSTL(new Uint8Array(fileData))
  * ```
  */
-export function parseEBUSTL(input: Uint8Array): SubtitleDocument {
-  const parser = new EBUSTLParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses EBU-STL format with error collection
- *
- * @param input - Binary file data as Uint8Array
- * @param opts - Parsing options to control error handling
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseEBUSTLResult(data, { onError: 'collect' })
- * console.log(`Found ${result.errors.length} errors`)
- * ```
- */
-export function parseEBUSTLResult(input: Uint8Array, opts?: Partial<ParseOptions>): ParseResult {
-  const parser = new EBUSTLParser(input, opts)
-  return parser.parse()
+export function parseEBUSTL(input: Uint8Array | ArrayBuffer, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const data = toUint8Array(input)
+    const parser = new EBUSTLParser(data, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }

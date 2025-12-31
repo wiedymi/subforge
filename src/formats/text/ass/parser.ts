@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, Style, ScriptInfo, Alignment, Comment, EmbeddedData } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, createDefaultStyle, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 // Time parsing is inlined below for performance
 import { parseColor } from './color.ts'
@@ -76,7 +76,7 @@ class ASSParser {
   constructor(input: string, opts: Partial<ParseOptions> = {}) {
     this.lexer = new ASSLexer(input)
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -92,7 +92,7 @@ class ASSParser {
         this.lexer.skipLine()
       }
     }
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseSection(): void {
@@ -531,9 +531,7 @@ class ASSParser {
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
     const pos = this.lexer.getPosition()
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, pos)
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ ...pos, code, message, raw })
   }
 
@@ -580,53 +578,31 @@ class ASSParser {
  * operations for maximum performance.
  *
  * @param input - The raw ASS file content as a string
- * @returns A parsed SubtitleDocument containing all subtitle data
- * @throws {SubforgeError} If parsing fails due to invalid format or syntax errors
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
  * const assContent = await Bun.file('subtitle.ass').text()
- * const doc = parseASS(assContent)
- * console.log(doc.events.length) // Number of dialogue lines
+ * const result = parseASS(assContent)
+ * console.log(result.document.events.length) // Number of dialogue lines
  * ```
  */
-export function parseASS(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseASSSynthetic(input, fastDoc)) return fastDoc
-  const parser = new ASSParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses an ASS subtitle file with detailed error handling options.
- *
- * This variant returns a ParseResult that includes the document, errors, and warnings,
- * allowing for fine-grained control over error handling and validation.
- *
- * @param input - The raw ASS file content as a string
- * @param opts - Optional parsing configuration
- * @param opts.onError - Error handling strategy: 'throw' (default) or 'collect'
- * @param opts.strict - Enable strict validation mode
- * @param opts.preserveOrder - Preserve original event ordering
- * @returns A ParseResult containing the document and any errors/warnings
- *
- * @example
- * ```ts
- * const result = parseASSResult(assContent, { onError: 'collect' })
- * if (result.errors.length > 0) {
- *   console.error('Parsing errors:', result.errors)
- * }
- * console.log('Parsed document:', result.document)
- * ```
- */
-export function parseASSResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseASSSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseASS(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseASSSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new ASSParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  const parser = new ASSParser(input, opts)
-  return parser.parse()
 }
 
 function parseASSSynthetic(input: string, doc: SubtitleDocument): boolean {

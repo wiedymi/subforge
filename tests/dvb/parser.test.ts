@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { parseDVB, parseDVBResult } from '../../src/formats/binary/dvb/parser.ts'
+import { unwrap } from '../../src/core/errors.ts'
+import { parseDVB } from '../../src/formats/binary/dvb/parser.ts'
 
 // Create a simple DVB subtitle with minimal segments
 function createSimpleDVB(): Uint8Array {
@@ -73,13 +74,13 @@ function createSimpleDVB(): Uint8Array {
 
 test('parseDVB parses basic file', () => {
   const data = createSimpleDVB()
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
   expect(doc.events.length).toBeGreaterThan(0)
 })
 
 test('parseDVB creates events with image effects', () => {
   const data = createSimpleDVB()
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   const hasImageEffect = doc.events.some(event =>
     event.segments.some(seg =>
@@ -92,19 +93,21 @@ test('parseDVB creates events with image effects', () => {
 
 test('parseDVB handles empty data', () => {
   const data = new Uint8Array(0)
-  const result = parseDVBResult(data, { onError: 'collect' })
+  const result = parseDVB(data, { onError: 'collect' })
+  expect(result.ok).toBe(true)
   expect(result.document.events).toHaveLength(0)
 })
 
 test('parseDVB handles invalid sync byte', () => {
   const data = new Uint8Array([0xFF, 0x10, 0x00, 0x00, 0x00, 0x00])
-  const result = parseDVBResult(data, { onError: 'collect' })
+  const result = parseDVB(data, { onError: 'collect' })
+  expect(result.ok).toBe(false)
   expect(result.errors.length).toBeGreaterThan(0)
 })
 
 test('parseDVB extracts palette from CLUT', () => {
   const data = createSimpleDVB()
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
     for (const segment of event.segments) {
@@ -122,7 +125,7 @@ test('parseDVB extracts palette from CLUT', () => {
 
 test('parseDVB parses RLE compressed pixel data', () => {
   const data = createSimpleDVB()
-  const doc = parseDVB(data)
+  const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
     for (const segment of event.segments) {
@@ -137,8 +140,8 @@ test('parseDVB parses RLE compressed pixel data', () => {
   }
 })
 
-test('parseDVBResult collects errors without throwing', () => {
+test('parseDVB collects errors without throwing', () => {
   const invalidData = new Uint8Array([0x0F, 0x10, 0x00, 0x00, 0xFF, 0xFF]) // Length exceeds bounds
-  const result = parseDVBResult(invalidData, { onError: 'collect' })
-  expect(() => result).not.toThrow()
+  const result = parseDVB(invalidData, { onError: 'collect' })
+  expect(result.ok).toBe(false)
 })

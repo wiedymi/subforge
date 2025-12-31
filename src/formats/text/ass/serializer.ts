@@ -111,6 +111,7 @@ function serializeEvent(event: SubtitleEvent): string {
   const text = event.dirty && event.segments.length > 0
     ? serializeTags(event.segments)
     : event.text
+  const effect = event.effect ?? ''
 
-  return `Dialogue: ${event.layer},${formatTime(event.start)},${formatTime(event.end)},${event.style},${event.actor},${event.marginL},${event.marginR},${event.marginV},${event.effect},${text}`
+  return `Dialogue: ${event.layer},${formatTime(event.start)},${formatTime(event.end)},${event.style},${event.actor},${event.marginL},${event.marginR},${event.marginV},${effect},${text}`
 }

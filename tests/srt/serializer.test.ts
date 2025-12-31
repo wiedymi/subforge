@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseSRT } from '../../src/formats/text/srt/parser.ts'
 import { toSRT } from '../../src/formats/text/srt/serializer.ts'
 import { createDocument, createEvent } from '../../src/core/document.ts'
@@ -36,9 +37,9 @@ Hello world
 00:00:06,000 --> 00:00:10,000
 Goodbye world`
 
-  const doc = parseSRT(original)
+  const doc = unwrap(parseSRT(original))
   const output = toSRT(doc)
-  const reparsed = parseSRT(output)
+  const reparsed = unwrap(parseSRT(output))
 
   expect(reparsed.events.length).toBe(doc.events.length)
   expect(reparsed.events[0]!.text).toBe(doc.events[0]!.text)

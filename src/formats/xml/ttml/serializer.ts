@@ -144,12 +144,12 @@ function extractRegions(doc: SubtitleDocument): string[] {
 
   // Extract unique regions from events
   for (const event of doc.events) {
-    if (!event.effect) continue
-    if (seenRegions.has(event.effect)) continue
-    seenRegions.add(event.effect)
+    if (!event.region) continue
+    if (seenRegions.has(event.region)) continue
+    seenRegions.add(event.region)
 
     const attrs: string[] = []
-    attrs.push(`xml:id="${escapeXml(event.effect)}"`)
+    attrs.push(`xml:id="${escapeXml(event.region)}"`)
 
     // Default region positioning
     attrs.push(`tts:origin="10% 80%"`)
@@ -174,8 +174,8 @@ function serializeEvent(event: SubtitleEvent, format: 'clock' | 'offset'): strin
   }
 
   // Region reference
-  if (event.effect) {
-    attrs.push(`region="${escapeXml(event.effect)}"`)
+  if (event.region) {
+    attrs.push(`region="${escapeXml(event.region)}"`)
   }
 
   // Serialize text with segments

@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
 
 /**
@@ -46,7 +46,7 @@ class QTParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -56,7 +56,7 @@ class QTParser {
   parse(): ParseResult {
     this.parseHeader()
     this.parseBody()
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private parseHeader(): void {
@@ -392,9 +392,7 @@ class QTParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
@@ -417,41 +415,28 @@ class QTParser {
  * First subtitle
  * [00:00:10.000]
  * Second subtitle`
- * const doc = parseQT(qt)
+ * const result = parseQT(qt)
  * ```
  */
-export function parseQT(input: string): SubtitleDocument {
-  const fastDoc = createDocument()
-  if (parseQTSynthetic(input, fastDoc)) return fastDoc
-  if (parseQTFastSimple(input, fastDoc)) return fastDoc
-  const parser = new QTParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses QuickTime Text format with error collection
- *
- * @param input - QuickTime Text file content as string
- * @param opts - Parsing options to control error handling
- * @returns Parse result containing document, errors, and warnings
- *
- * @example
- * ```ts
- * const result = parseQTResult(qtContent, { onError: 'collect' })
- * console.log(`Found ${result.errors.length} errors`)
- * ```
- */
-export function parseQTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const fastDoc = createDocument()
-  if (parseQTSynthetic(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
+export function parseQT(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const fastDoc = createDocument()
+    if (parseQTSynthetic(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    if (parseQTFastSimple(input, fastDoc)) {
+      return { ok: true, document: fastDoc, errors: [], warnings: [] }
+    }
+    const parser = new QTParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
   }
-  if (parseQTFastSimple(input, fastDoc)) {
-    return { document: fastDoc, errors: [], warnings: [] }
-  }
-  const parser = new QTParser(input, opts)
-  return parser.parse()
 }
 
 function parseQTSynthetic(input: string, doc: SubtitleDocument): boolean {

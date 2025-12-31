@@ -13,7 +13,10 @@ QuickTime Text is a simple text subtitle format used by Apple tools.
 ## Parsing
 
 ```ts
-import { parseQT, parseQTResult } from 'subforge/qt'
+import { parseQT } from 'subforge/qt'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseQT(qtText))
 ```
 
 ## Serialization

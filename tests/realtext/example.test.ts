@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseRealText, toRealText, parseRealTextTime, formatRealTextTime } from '../../src/index.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../src/core/document.ts'
 import type { SubtitleEvent } from '../../src/core/types.ts'
@@ -11,7 +12,7 @@ test('example: parse RealText from string', () => {
 <clear/>Goodbye world
 </window>`
 
-  const doc = parseRealText(rtContent)
+  const doc = unwrap(parseRealText(rtContent))
 
   expect(doc.events).toHaveLength(2)
   expect(doc.events[0]?.text).toBe('Hello world')
@@ -80,7 +81,7 @@ test('example: RealText with formatting tags', () => {
 <clear/><b>Bold text</b> and <i>italic text</i>
 </window>`
 
-  const doc = parseRealText(rtContent)
+  const doc = unwrap(parseRealText(rtContent))
 
   expect(doc.events[0]?.text).toContain('<b>Bold text</b>')
   expect(doc.events[0]?.text).toContain('<i>italic text</i>')

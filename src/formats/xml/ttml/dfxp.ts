@@ -2,8 +2,8 @@
 // DFXP is a profile of TTML used for content distribution
 
 import type { SubtitleDocument } from '../../../core/types.ts'
-import type { ParseOptions, ParseResult } from '../../../core/errors.ts'
-import { parseTTMLResult } from './parser.ts'
+import type { ParseResult } from '../../../core/errors.ts'
+import { parseTTML } from './parser.ts'
 import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
 
 /**
@@ -13,8 +13,7 @@ import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
  * It uses the same structure as TTML with some specific constraints.
  *
  * @param input - DFXP file content as string
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -24,23 +23,11 @@ import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
  *     <p begin="00:00:01.000" end="00:00:03.000">Hello world</p>
  *   </div></body>
  * </tt>`
- * const doc = parseDFXP(dfxp)
+ * const result = parseDFXP(dfxp)
  * ```
  */
-export function parseDFXP(input: string): SubtitleDocument {
-  const result = parseTTMLResult(input, { onError: 'throw' })
-  return result.document
-}
-
-/**
- * Parse DFXP format with detailed error reporting
- *
- * @param input - DFXP file content as string
- * @param opts - Parsing options
- * @returns Parse result containing document, errors, and warnings
- */
-export function parseDFXPResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  return parseTTMLResult(input, opts)
+export function parseDFXP(input: string): ParseResult {
+  return parseTTML(input)
 }
 
 /**

@@ -7,6 +7,6 @@
  * @module sami
  */
 
-export { parseSAMI, parseSAMIResult } from './parser.ts'
+export { parseSAMI } from './parser.ts'
 export { toSAMI } from './serializer.ts'
 export { parseCSS, generateCSS, type SAMIClass } from './css.ts'

@@ -2,8 +2,8 @@
 // SMPTE-TT is a profile of TTML used in broadcast and professional video
 
 import type { SubtitleDocument } from '../../../core/types.ts'
-import type { ParseOptions, ParseResult } from '../../../core/errors.ts'
-import { parseTTMLResult } from './parser.ts'
+import type { ParseResult } from '../../../core/errors.ts'
+import { parseTTML } from './parser.ts'
 import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
 
 /**
@@ -13,8 +13,7 @@ import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
  * It extends TTML with broadcast-specific features and uses timecode format.
  *
  * @param input - SMPTE-TT file content as string
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -24,23 +23,11 @@ import { toTTML, type TTMLSerializeOptions } from './serializer.ts'
  *     <p begin="00:00:01:00" end="00:00:03:00">Hello world</p>
  *   </div></body>
  * </tt>`
- * const doc = parseSMPTETT(smpte)
+ * const result = parseSMPTETT(smpte)
  * ```
  */
-export function parseSMPTETT(input: string): SubtitleDocument {
-  const result = parseTTMLResult(input, { onError: 'throw' })
-  return result.document
-}
-
-/**
- * Parse SMPTE-TT format with detailed error reporting
- *
- * @param input - SMPTE-TT file content as string
- * @param opts - Parsing options
- * @returns Parse result containing document, errors, and warnings
- */
-export function parseSMPTETTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  return parseTTMLResult(input, opts)
+export function parseSMPTETT(input: string): ParseResult {
+  return parseTTML(input)
 }
 
 /**

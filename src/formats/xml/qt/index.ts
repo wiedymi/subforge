@@ -8,6 +8,6 @@
  * @module qt
  */
 
-export { parseQT, parseQTResult } from './parser.ts'
+export { parseQT } from './parser.ts'
 export { toQT } from './serializer.ts'
 export type { QTSerializeOptions } from './serializer.ts'

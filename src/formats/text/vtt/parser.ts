@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent, VTTRegion } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 // Time parsing is inlined in parseCue for performance
 
@@ -21,7 +21,7 @@ class VTTParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -60,7 +60,7 @@ class VTTParser {
       }
     }
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private readLine(): string {
@@ -298,15 +298,13 @@ class VTTParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
 
 /**
- * Parses a WebVTT subtitle file into a SubtitleDocument.
+ * Parses a WebVTT subtitle file into a ParseResult.
  *
  * WebVTT (Web Video Text Tracks) is a modern subtitle format designed for HTML5.
  * Supports cues with timestamps, REGION blocks for positioning, STYLE blocks
@@ -314,8 +312,7 @@ class VTTParser {
  * for milliseconds and support both HH:MM:SS.mmm and MM:SS.mmm formats.
  *
  * @param input - The WebVTT file content as a string
- * @returns A parsed subtitle document with regions if defined
- * @throws {SubforgeError} If the input is missing the WEBVTT header or contains invalid syntax
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -327,38 +324,20 @@ class VTTParser {
  * 00:00:04.000 --> 00:00:06.000
  * <b>Bold text</b>`;
  *
- * const doc = parseVTT(vtt);
- * console.log(doc.events.length); // 2
+ * const result = parseVTT(vtt);
+ * console.log(result.document.events.length); // 2
  * ```
  */
-export function parseVTT(input: string): SubtitleDocument {
-  const parser = new VTTParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses a WebVTT subtitle file with detailed error reporting.
- *
- * Unlike parseVTT, this function returns a ParseResult object containing
- * the document, errors, and warnings. Useful when you need to handle
- * malformed files gracefully.
- *
- * @param input - The WebVTT file content as a string
- * @param opts - Parsing options controlling error handling and strictness
- * @returns A parse result containing the document and any errors/warnings
- *
- * @example
- * ```ts
- * const result = parseVTTResult(vtt, { onError: 'collect' });
- * if (result.errors.length > 0) {
- *   console.log('Found errors:', result.errors);
- * }
- * console.log(result.document.events);
- * console.log(result.document.regions);
- * ```
- */
-export function parseVTTResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const parser = new VTTParser(input, opts)
-  return parser.parse()
+export function parseVTT(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const parser = new VTTParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }

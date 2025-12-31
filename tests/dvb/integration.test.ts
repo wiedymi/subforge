@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseDVB, toDVB } from '../../src/formats/binary/dvb/index.ts'
 import type { ImageEffect } from '../../src/core/types.ts'
 import { createDocument, generateId } from '../../src/core/document.ts'
@@ -65,7 +66,7 @@ test('DVB end-to-end: create, serialize, parse', () => {
   expect(dvbData.length).toBeGreaterThan(0)
 
   // Parse back
-  const reparsed = parseDVB(dvbData)
+  const reparsed = unwrap(parseDVB(dvbData))
 
   expect(reparsed.events).toHaveLength(1)
 
@@ -131,7 +132,7 @@ test('DVB handles multiple subtitles', () => {
   }
 
   const dvbData = toDVB(doc)
-  const reparsed = parseDVB(dvbData)
+  const reparsed = unwrap(parseDVB(dvbData))
 
   expect(reparsed.events.length).toBe(3)
 })
@@ -179,7 +180,7 @@ test('DVB preserves RGBA colors in palette through YCrCb conversion', () => {
   })
 
   const dvbData = toDVB(doc)
-  const reparsed = parseDVB(dvbData)
+  const reparsed = unwrap(parseDVB(dvbData))
 
   const effect = reparsed.events[0].segments[0].effects[0]
   if (effect.type === 'image') {

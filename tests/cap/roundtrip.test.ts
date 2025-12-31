@@ -1,4 +1,5 @@
 import { test, expect } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseCAP } from '../../src/formats/broadcast/cap/parser.ts'
 import { toCAP } from '../../src/formats/broadcast/cap/serializer.ts'
 
@@ -13,9 +14,9 @@ Hello world
 Goodbye world`
 
 test('roundtrip preserves basic structure', () => {
-  const doc1 = parseCAP(simpleCAP)
+  const doc1 = unwrap(parseCAP(simpleCAP))
   const cap = toCAP(doc1)
-  const doc2 = parseCAP(cap)
+  const doc2 = unwrap(parseCAP(cap))
 
   expect(doc2.events).toHaveLength(2)
   expect(doc2.events[0]!.text).toBe('Hello world')
@@ -23,9 +24,9 @@ test('roundtrip preserves basic structure', () => {
 })
 
 test('roundtrip preserves timecodes', () => {
-  const doc1 = parseCAP(simpleCAP)
+  const doc1 = unwrap(parseCAP(simpleCAP))
   const cap = toCAP(doc1)
-  const doc2 = parseCAP(cap)
+  const doc2 = unwrap(parseCAP(cap))
 
   expect(doc2.events[0]!.start).toBe(doc1.events[0]!.start)
   expect(doc2.events[0]!.end).toBe(doc1.events[0]!.end)
@@ -41,9 +42,9 @@ Line one
 Line two
 Line three`
 
-  const doc1 = parseCAP(cap1)
+  const doc1 = unwrap(parseCAP(cap1))
   const cap2 = toCAP(doc1)
-  const doc2 = parseCAP(cap2)
+  const doc2 = unwrap(parseCAP(cap2))
 
   expect(doc2.events[0]!.text).toBe('Line one\nLine two\nLine three')
 })
@@ -54,9 +55,9 @@ test('roundtrip with NTSC framerate', () => {
 00:00:01:15	00:00:02:10
 Test`
 
-  const doc1 = parseCAP(cap1)
+  const doc1 = unwrap(parseCAP(cap1))
   const cap2 = toCAP(doc1, { fps: 29.97, videoStandard: 'NTSC' })
-  const doc2 = parseCAP(cap2)
+  const doc2 = unwrap(parseCAP(cap2))
 
   // Should be within 1ms due to floating point
   expect(Math.abs(doc2.events[0]!.start - doc1.events[0]!.start)).toBeLessThan(1)
@@ -69,9 +70,9 @@ test('roundtrip handles large timecodes', () => {
 01:23:45:12	02:34:56:18
 Long duration`
 
-  const doc1 = parseCAP(cap1)
+  const doc1 = unwrap(parseCAP(cap1))
   const cap2 = toCAP(doc1)
-  const doc2 = parseCAP(cap2)
+  const doc2 = unwrap(parseCAP(cap2))
 
   expect(doc2.events[0]!.start).toBe(doc1.events[0]!.start)
   expect(doc2.events[0]!.end).toBe(doc1.events[0]!.end)
@@ -89,9 +90,9 @@ Second
 00:00:05:00	00:00:06:00
 Third`
 
-  const doc1 = parseCAP(cap1)
+  const doc1 = unwrap(parseCAP(cap1))
   const cap2 = toCAP(doc1)
-  const doc2 = parseCAP(cap2)
+  const doc2 = unwrap(parseCAP(cap2))
 
   expect(doc2.events).toHaveLength(3)
   expect(doc2.events[0]!.text).toBe('First')
@@ -105,9 +106,9 @@ test('roundtrip with zero start time', () => {
 00:00:00:00	00:00:01:00
 Start from zero`
 
-  const doc1 = parseCAP(cap1)
+  const doc1 = unwrap(parseCAP(cap1))
   const cap2 = toCAP(doc1)
-  const doc2 = parseCAP(cap2)
+  const doc2 = unwrap(parseCAP(cap2))
 
   expect(doc2.events[0]!.start).toBe(0)
   expect(doc2.events[0]!.end).toBe(1000)

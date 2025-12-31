@@ -1,6 +1,6 @@
 import type { SubtitleDocument, SubtitleEvent } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
-import { SubforgeError } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, EMPTY_SEGMENTS } from '../../../core/document.ts'
 import { CONTROL_CODE_NAMES, PAC_ROWS, MID_ROW_CODES, SPECIAL_CHARS } from './cea608.ts'
 
@@ -37,7 +37,7 @@ class SCCParser {
     this.pos = start
     this.len = input.length
     this.opts = {
-      onError: opts.onError ?? 'throw',
+      onError: opts.onError ?? 'collect',
       strict: opts.strict ?? false,
       preserveOrder: opts.preserveOrder ?? true
     }
@@ -61,7 +61,7 @@ class SCCParser {
     // Flush any remaining caption
     this.flushCaption(this.len * 1000 / FRAME_RATE)
 
-    return { document: this.doc, errors: this.errors, warnings: [] }
+    return { ok: this.errors.length === 0, document: this.doc, errors: this.errors, warnings: [] }
   }
 
   private checkHeader(): boolean {
@@ -373,9 +373,7 @@ class SCCParser {
   }
 
   private addError(code: ErrorCode, message: string, raw?: string): void {
-    if (this.opts.onError === 'throw') {
-      throw new SubforgeError(code, message, { line: this.lineNum, column: 1 })
-    }
+    if (this.opts.onError === 'skip') return
     this.errors.push({ line: this.lineNum, column: 1, code, message, raw })
   }
 }
@@ -387,8 +385,7 @@ class SCCParser {
  * It encodes CEA-608 closed caption data with SMPTE timecodes at 29.97 fps (drop-frame).
  *
  * @param input - SCC file content as a string
- * @returns Parsed subtitle document
- * @throws {SubforgeError} If the input is not valid SCC format or missing required header
+ * @returns ParseResult containing the document and any errors/warnings
  *
  * @example
  * ```ts
@@ -398,36 +395,19 @@ class SCCParser {
  *
  * 00:00:03;00	942c 942c
  * `;
- * const doc = parseSCC(sccContent);
+ * const result = parseSCC(sccContent);
  * ```
  */
-export function parseSCC(input: string): SubtitleDocument {
-  const parser = new SCCParser(input, { onError: 'throw' })
-  const result = parser.parse()
-  return result.document
-}
-
-/**
- * Parses SCC format subtitle file with detailed error reporting.
- *
- * Similar to parseSCC but returns a ParseResult object containing the document,
- * errors, and warnings. Allows customization of error handling behavior.
- *
- * @param input - SCC file content as a string
- * @param opts - Parse options for error handling and parsing behavior
- * @returns Parse result containing document, errors array, and warnings array
- *
- * @example
- * ```ts
- * const result = parseSCCResult(sccContent, {
- *   onError: 'collect', // Collect errors instead of throwing
- *   strict: false
- * });
- * console.log(`Parsed ${result.document.events.length} events`);
- * console.log(`Found ${result.errors.length} errors`);
- * ```
- */
-export function parseSCCResult(input: string, opts?: Partial<ParseOptions>): ParseResult {
-  const parser = new SCCParser(input, opts)
-  return parser.parse()
+export function parseSCC(input: string, opts?: Partial<ParseOptions>): ParseResult {
+  try {
+    const parser = new SCCParser(input, opts)
+    return parser.parse()
+  } catch (err) {
+    return {
+      ok: false,
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
+    }
+  }
 }

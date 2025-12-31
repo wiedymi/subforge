@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseASS } from '../../src/formats/text/ass/parser.ts'
 import { toASS } from '../../src/formats/text/ass/serializer.ts'
 
@@ -6,7 +7,7 @@ const railgunOP = await Bun.file('./tests/fixtures/ass/railgun_op.ass').text()
 const aot3p2OP = await Bun.file('./tests/fixtures/ass/aot3p2_op.ass').text()
 
 describe('real file: railgun_op.ass', () => {
-  const doc = parseASS(railgunOP)
+  const doc = unwrap(parseASS(railgunOP))
 
   test('parses script info', () => {
     expect(doc.info.title).toBe('Default Aegisub file')
@@ -71,13 +72,13 @@ describe('real file: railgun_op.ass', () => {
 
   test('roundtrip serialization preserves event count', () => {
     const serialized = toASS(doc)
-    const reparsed = parseASS(serialized)
+    const reparsed = unwrap(parseASS(serialized))
     expect(reparsed.events.length).toBe(doc.events.length)
   })
 })
 
 describe('real file: aot3p2_op.ass', () => {
-  const doc = parseASS(aot3p2OP)
+  const doc = unwrap(parseASS(aot3p2OP))
 
   test('parses large file', () => {
     expect(doc.events.length).toBeGreaterThan(1000)
@@ -107,7 +108,7 @@ describe('real file: aot3p2_op.ass', () => {
 
   test('roundtrip serialization preserves event count', () => {
     const serialized = toASS(doc)
-    const reparsed = parseASS(serialized)
+    const reparsed = unwrap(parseASS(serialized))
     expect(reparsed.events.length).toBe(doc.events.length)
   })
 })
@@ -123,7 +124,7 @@ describe('stress test', () => {
     }
     const ass = lines.join('\n')
 
-    const doc = parseASS(ass)
+    const doc = unwrap(parseASS(ass))
     expect(doc.events.length).toBe(10000)
   })
 
@@ -133,7 +134,7 @@ describe('stress test', () => {
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,${longText}`
 
-    const doc = parseASS(ass)
+    const doc = unwrap(parseASS(ass))
     expect(doc.events[0]!.text).toBe(longText)
   })
 
@@ -143,7 +144,7 @@ Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,${longText}`
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,${commaText}`
 
-    const doc = parseASS(ass)
+    const doc = unwrap(parseASS(ass))
     expect(doc.events[0]!.text).toBe(commaText)
   })
 })

@@ -12,5 +12,6 @@
  * @module pac
  */
 
-export { parsePAC, parsePACResult } from './parser.ts'
+export { parsePAC } from './parser.ts'
 export { toPAC } from './serializer.ts'
+export type { PACSerializeOptions } from './serializer.ts'

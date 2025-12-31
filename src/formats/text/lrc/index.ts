@@ -13,5 +13,6 @@
  */
 
 export { parseTime, formatTime } from './time.ts'
-export { parseLRC, parseLRCResult } from './parser.ts'
+export { parseLRC } from './parser.ts'
 export { toLRC } from './serializer.ts'
+export type { LRCSerializeOptions } from './serializer.ts'

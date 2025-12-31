@@ -35,7 +35,7 @@ console.log('✓ sbv-10k.sbv')
 writeFileSync(join(__dirname, 'large/lrc-10k.lrc'), toLRC(doc, { includeMetadata: false }))
 console.log('✓ lrc-10k.lrc')
 
-writeFileSync(join(__dirname, 'large/microdvd-10k.sub'), toMicroDVD(doc, 25))
+writeFileSync(join(__dirname, 'large/microdvd-10k.sub'), toMicroDVD(doc, { fps: 25 }))
 console.log('✓ microdvd-10k.sub')
 
 writeFileSync(join(__dirname, 'large/sami-10k.smi'), toSAMI(doc))

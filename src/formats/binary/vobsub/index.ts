@@ -1,5 +1,9 @@
 // VobSub format support
 import type { SubtitleDocument, SubtitleEvent, ImageEffect, VobSubEffect } from '../../../core/types.ts'
+import type { ParseResult } from '../../../core/errors.ts'
+import { toParseError } from '../../../core/errors.ts'
+import { createDocument } from '../../../core/document.ts'
+import { toUint8Array } from '../../../core/binary.ts'
 import { parseIdx, serializeIdx, type VobSubIndex } from './parser.ts'
 import { parseSubPacket, createSubBinary, type SubtitlePacket } from './sub.ts'
 import { decodeRLE, encodeRLE } from './rle.ts'
@@ -10,68 +14,19 @@ export type { SubtitlePacket } from './sub.ts'
 export { decodeRLE, encodeRLE } from './rle.ts'
 
 /**
- * Successful VobSub parse result
- */
-export interface ParseVobSubResult {
-  /** Parse succeeded */
-  ok: true
-  /** Parsed subtitle document */
-  data: SubtitleDocument
-  /** Non-fatal parsing errors encountered */
-  errors: string[]
-}
-
-/**
- * Failed VobSub parse result
- */
-export interface ParseVobSubError {
-  /** Parse failed */
-  ok: false
-  /** Fatal parsing errors */
-  errors: string[]
-}
-
-/**
- * VobSub parse result type (success or error)
- */
-export type ParseVobSubResultType = ParseVobSubResult | ParseVobSubError
-
-/**
  * Parse VobSub subtitle files (.idx + .sub)
  * @param idx - Text content of .idx file
  * @param sub - Binary content of .sub file
- * @returns Parsed subtitle document
- * @throws {Error} If parsing fails
+ * @returns ParseResult containing the document and any errors/warnings
  * @example
  * const idxText = await Bun.file('movie.idx').text()
  * const subData = await Bun.file('movie.sub').arrayBuffer()
- * const doc = parseVobSub(idxText, new Uint8Array(subData))
+ * const result = parseVobSub(idxText, new Uint8Array(subData))
  */
-export function parseVobSub(idx: string, sub: Uint8Array): SubtitleDocument {
-  const result = parseVobSubResult(idx, sub)
-  if (!result.ok) {
-    throw new Error(`VobSub parse failed:\n${result.errors.join('\n')}`)
-  }
-  return result.data
-}
-
-/**
- * Parse VobSub subtitle files with error handling
- * @param idx - Text content of .idx file
- * @param sub - Binary content of .sub file
- * @returns Parse result with success/failure status and any errors
- * @example
- * const result = parseVobSubResult(idxText, subData)
- * if (result.ok) {
- *   console.log('Parsed', result.data.events.length, 'events')
- * } else {
- *   console.error('Parse failed:', result.errors)
- * }
- */
-export function parseVobSubResult(idx: string, sub: Uint8Array): ParseVobSubResultType {
-  const errors: string[] = []
-
+export function parseVobSub(idx: string, sub: Uint8Array | ArrayBuffer): ParseResult {
   try {
+    const data = toUint8Array(sub)
+    const errors: string[] = []
     const index = parseIdx(idx)
 
     const doc: SubtitleDocument = {
@@ -121,7 +76,7 @@ export function parseVobSubResult(idx: string, sub: Uint8Array): ParseVobSubResu
         const ts = track.timestamps[i]
 
         try {
-          const packet = parseSubPacket(sub, ts.filepos)
+          const packet = parseSubPacket(data, ts.filepos)
           if (!packet) {
             errors.push(`Failed to parse packet at filepos ${ts.filepos.toString(16)}`)
             continue
@@ -188,15 +143,25 @@ export function parseVobSubResult(idx: string, sub: Uint8Array): ParseVobSubResu
       }
     }
 
+    const parseErrors = errors.map(message => ({
+      line: 0,
+      column: 0,
+      code: 'MALFORMED_EVENT' as const,
+      message,
+    }))
+
     return {
-      ok: true,
-      data: doc,
-      errors,
+      ok: parseErrors.length === 0,
+      document: doc,
+      errors: parseErrors,
+      warnings: [],
     }
   } catch (err) {
     return {
       ok: false,
-      errors: [...errors, String(err)],
+      document: createDocument(),
+      errors: [toParseError(err)],
+      warnings: []
     }
   }
 }

@@ -24,7 +24,10 @@ VTT region blocks are parsed into `document.regions`.
 ## Parsing
 
 ```ts
-import { parseVTT, parseVTTResult } from 'subforge/vtt'
+import { parseVTT } from 'subforge/vtt'
+import { unwrap } from 'subforge/core'
+
+const doc = unwrap(parseVTT(vttText))
 ```
 
 ## Serialization

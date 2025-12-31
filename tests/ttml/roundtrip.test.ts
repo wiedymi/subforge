@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { unwrap } from '../../src/core/errors.ts'
 import { parseTTML } from '../../src/formats/xml/ttml/parser.ts'
 import { toTTML } from '../../src/formats/xml/ttml/serializer.ts'
 import { readFileSync } from 'node:fs'
@@ -21,11 +22,11 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
 
     // Parse again to verify structure
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events.length).toBe(doc.events.length)
     expect(doc2.events[0].start).toBe(doc.events[0].start)
@@ -44,9 +45,9 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc, { format: 'clock' })
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events[0].start).toBe(doc.events[0].start)
     expect(doc2.events[0].end).toBe(doc.events[0].end)
@@ -62,9 +63,9 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events[0].segments.length).toBe(doc.events[0].segments.length)
     expect(doc2.events[0].segments[1].style?.italic).toBe(true)
@@ -74,9 +75,9 @@ describe('TTML Roundtrip', () => {
     const fixturePath = resolve(import.meta.dir, '../fixtures/ttml/simple.ttml')
     const original = readFileSync(fixturePath, 'utf-8')
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events.length).toBe(doc.events.length)
     for (let i = 0; i < doc.events.length; i++) {
@@ -96,9 +97,9 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc, { format: 'offset' })
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events[0].start).toBe(1500)
     expect(doc2.events[0].end).toBe(5500)
@@ -119,11 +120,11 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
-    expect(doc2.events[0].effect).toBe('top')
+    expect(doc2.events[0].region).toBe('top')
   })
 
   test('roundtrip preserves colors', () => {
@@ -136,9 +137,9 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     // After roundtrip, there should be only one segment with the colored text
     expect(doc2.events[0].segments[0].style?.primaryColor).toBe(0xff0000ff) // Red in ABGR
@@ -156,9 +157,9 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events.length).toBe(3)
     expect(doc2.events[0].text).toBe('First')
@@ -176,11 +177,11 @@ describe('TTML Roundtrip', () => {
   </body>
 </tt>`
 
-    const doc = parseTTML(original)
+    const doc = unwrap(parseTTML(original))
     expect(doc.events[0].text).toBe('Text with <html> & "quotes"')
 
     const serialized = toTTML(doc)
-    const doc2 = parseTTML(serialized)
+    const doc2 = unwrap(parseTTML(serialized))
 
     expect(doc2.events[0].text).toBe('Text with <html> & "quotes"')
   })
