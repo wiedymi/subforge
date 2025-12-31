@@ -40,7 +40,7 @@ These numbers are from isolated runs (each format executed in its own process) u
 | VobSub | 40.93 |
 
 Results vary by hardware and Bun version. Re-run the command to refresh numbers.
-VobSub full parses include sub-packet processing and image handling; use `decode: 'none'` or `parseIdx` for timing-only workflows.
+All formats hit the 20ms target at 100k events except full VobSub image decode; use `decode: 'none'` or `parseIdx` for timing-only workflows.
 
 Quick 100k parse matrix:
 
