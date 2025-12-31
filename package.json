@@ -15,86 +15,107 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "browser": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./core": {
       "types": "./src/core/index.ts",
+      "browser": "./dist/core/index.js",
       "default": "./dist/core/index.js"
     },
     "./ass": {
       "types": "./src/formats/text/ass/index.ts",
+      "browser": "./dist/formats/text/ass/index.js",
       "default": "./dist/formats/text/ass/index.js"
     },
     "./ssa": {
       "types": "./src/formats/text/ssa/index.ts",
+      "browser": "./dist/formats/text/ssa/index.js",
       "default": "./dist/formats/text/ssa/index.js"
     },
     "./srt": {
       "types": "./src/formats/text/srt/index.ts",
+      "browser": "./dist/formats/text/srt/index.js",
       "default": "./dist/formats/text/srt/index.js"
     },
     "./vtt": {
       "types": "./src/formats/text/vtt/index.ts",
+      "browser": "./dist/formats/text/vtt/index.js",
       "default": "./dist/formats/text/vtt/index.js"
     },
     "./sbv": {
       "types": "./src/formats/text/sbv/index.ts",
+      "browser": "./dist/formats/text/sbv/index.js",
       "default": "./dist/formats/text/sbv/index.js"
     },
     "./lrc": {
       "types": "./src/formats/text/lrc/index.ts",
+      "browser": "./dist/formats/text/lrc/index.js",
       "default": "./dist/formats/text/lrc/index.js"
     },
     "./microdvd": {
       "types": "./src/formats/text/microdvd/index.ts",
+      "browser": "./dist/formats/text/microdvd/index.js",
       "default": "./dist/formats/text/microdvd/index.js"
     },
     "./ttml": {
       "types": "./src/formats/xml/ttml/index.ts",
+      "browser": "./dist/formats/xml/ttml/index.js",
       "default": "./dist/formats/xml/ttml/index.js"
     },
     "./sami": {
       "types": "./src/formats/xml/sami/index.ts",
+      "browser": "./dist/formats/xml/sami/index.js",
       "default": "./dist/formats/xml/sami/index.js"
     },
     "./realtext": {
       "types": "./src/formats/xml/realtext/index.ts",
+      "browser": "./dist/formats/xml/realtext/index.js",
       "default": "./dist/formats/xml/realtext/index.js"
     },
     "./qt": {
       "types": "./src/formats/xml/qt/index.ts",
+      "browser": "./dist/formats/xml/qt/index.js",
       "default": "./dist/formats/xml/qt/index.js"
     },
     "./stl": {
       "types": "./src/formats/binary/stl/index.ts",
+      "browser": "./dist/formats/binary/stl/index.js",
       "default": "./dist/formats/binary/stl/index.js"
     },
     "./pgs": {
       "types": "./src/formats/binary/pgs/index.ts",
+      "browser": "./dist/formats/binary/pgs/index.js",
       "default": "./dist/formats/binary/pgs/index.js"
     },
     "./dvb": {
       "types": "./src/formats/binary/dvb/index.ts",
+      "browser": "./dist/formats/binary/dvb/index.js",
       "default": "./dist/formats/binary/dvb/index.js"
     },
     "./vobsub": {
       "types": "./src/formats/binary/vobsub/index.ts",
+      "browser": "./dist/formats/binary/vobsub/index.js",
       "default": "./dist/formats/binary/vobsub/index.js"
     },
     "./pac": {
       "types": "./src/formats/binary/pac/index.ts",
+      "browser": "./dist/formats/binary/pac/index.js",
       "default": "./dist/formats/binary/pac/index.js"
     },
     "./scc": {
       "types": "./src/formats/broadcast/scc/index.ts",
+      "browser": "./dist/formats/broadcast/scc/index.js",
       "default": "./dist/formats/broadcast/scc/index.js"
     },
     "./cap": {
       "types": "./src/formats/broadcast/cap/index.ts",
+      "browser": "./dist/formats/broadcast/cap/index.js",
       "default": "./dist/formats/broadcast/cap/index.js"
     },
     "./teletext": {
       "types": "./src/formats/broadcast/teletext/index.ts",
+      "browser": "./dist/formats/broadcast/teletext/index.js",
       "default": "./dist/formats/broadcast/teletext/index.js"
     }
   },

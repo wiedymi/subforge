@@ -12,7 +12,7 @@ To run tests:
 bun test
 ```
 
-To build (bundled ESM to `dist/`):
+To build (bundled ESM to `dist/` for Node/Bun/browsers):
 
 ```bash
 bun run build
@@ -36,6 +36,16 @@ const ass = toASS(doc)
 ```ts
 import { parseASS, toASS } from 'subforge/ass'
 import { SubtitleDocument } from 'subforge/core'
+```
+
+Browser (ESM) usage (after `bun run build`):
+
+```html
+<script type="module">
+  import { parseSRT } from './dist/index.js'
+  const doc = parseSRT('1\n00:00:01,000 --> 00:00:02,000\nHello\n')
+  console.log(doc.events.length)
+</script>
 ```
 
 Subpath entry points:

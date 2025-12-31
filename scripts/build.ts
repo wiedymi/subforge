@@ -31,7 +31,7 @@ const result = await Bun.build({
   entrypoints,
   outdir: 'dist',
   format: 'esm',
-  target: 'node',
+  target: 'browser',
   root: 'src',
   splitting: false,
   sourcemap: 'external',

@@ -13,7 +13,7 @@ High-performance TypeScript subtitle library. ASS-first format, others degrade g
 
 ## Package Structure
 
-Single package with multiple entry points, bundled with Bun to `dist/`:
+Single package with multiple entry points, bundled with Bun to a universal ESM `dist/`:
 
 ```
 subforge/
