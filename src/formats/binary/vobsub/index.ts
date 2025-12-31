@@ -23,9 +23,11 @@ export type VobSubParseOptions = ParseOptions & {
 }
 export { decodeRLE, encodeRLE } from './rle.ts'
 
+type VobSubDecodeMode = NonNullable<VobSubParseOptions['decode']>
+
 /**
  * Parse VobSub subtitle files (.idx + .sub)
- * @param idx - Text content of .idx file
+ * @param idx - Text content of .idx file or a pre-parsed index
  * @param sub - Binary content of .sub file
  * @returns ParseResult containing the document and any errors/warnings
  * @example
@@ -34,15 +36,17 @@ export { decodeRLE, encodeRLE } from './rle.ts'
  * const result = parseVobSub(idxText, new Uint8Array(subData))
  */
 export function parseVobSub(
-  idx: string,
+  idx: string | VobSubIndex,
   sub: Uint8Array | ArrayBuffer,
   opts: Partial<VobSubParseOptions> = {}
 ): ParseResult {
   try {
     const data = toUint8Array(sub)
     const errors: string[] = []
-    const decodeMode = opts.decode ?? 'full'
-    const index = decodeMode === 'none' ? parseIdxTimings(idx) : parseIdx(idx)
+    const decodeMode: VobSubDecodeMode = opts.decode ?? 'full'
+    const index = typeof idx === 'string'
+      ? (decodeMode === 'none' ? parseIdxTimings(idx) : parseIdx(idx))
+      : idx
     let totalEvents = 0
     for (const track of index.tracks) totalEvents += track.timestamps.length
 
@@ -86,14 +90,19 @@ export function parseVobSub(
     }
 
     let eventId = 0
+    const palette = index.palette
+    const defaultStyle = 'Default'
 
     // Parse all tracks
     for (const track of index.tracks) {
-      for (let i = 0; i < track.timestamps.length; i++) {
-        const ts = track.timestamps[i]
+      const timestamps = track.timestamps
+      const tlen = timestamps.length
+      const trackIndex = track.index
+      for (let i = 0; i < tlen; i++) {
+        const ts = timestamps[i]!
 
         if (decodeMode === 'none') {
-          const next = i + 1 < track.timestamps.length ? track.timestamps[i + 1]!.time : ts.time + 2000
+          const next = i + 1 < tlen ? timestamps[i + 1]!.time : ts.time + 2000
           const endTime = next > ts.time ? next : ts.time + 2000
           const id = eventId++
           const event: SubtitleEvent = {
@@ -101,7 +110,7 @@ export function parseVobSub(
             start: ts.time,
             end: endTime,
             layer: 0,
-            style: 'Default',
+            style: defaultStyle,
             actor: '',
             marginL: 0,
             marginR: 0,
@@ -123,45 +132,11 @@ export function parseVobSub(
 
         // Determine end time (use next timestamp or add duration)
         let endTime = ts.time + packet.duration
-        if (packet.duration === 0 && i + 1 < track.timestamps.length) {
-          endTime = track.timestamps[i + 1].time
+        if (packet.duration === 0 && i + 1 < tlen) {
+          endTime = timestamps[i + 1]!.time
         }
         if (endTime <= ts.time) {
           endTime = ts.time + 2000  // Default 2 second duration
-        }
-
-        const imageEffect: ImageEffect = decodeMode === 'rle'
-          ? {
-            type: 'image',
-            params: {
-              format: 'rle',
-              width: packet.width,
-              height: packet.height,
-              x: packet.x,
-              y: packet.y,
-              data: packet.rleData,
-              palette: index.palette,
-            },
-          }
-          : {
-            type: 'image',
-            params: {
-              format: 'indexed',
-              width: packet.width,
-              height: packet.height,
-              x: packet.x,
-              y: packet.y,
-              data: decodeRLE(packet.rleData, packet.width, packet.height).data,
-              palette: index.palette,
-            },
-          }
-
-        const vobsubEffect: VobSubEffect = {
-          type: 'vobsub',
-          params: {
-            forced: packet.forced,
-            originalIndex: track.index,
-          },
         }
 
         const id = eventId++
@@ -170,19 +145,42 @@ export function parseVobSub(
           start: ts.time,
           end: endTime,
           layer: 0,
-          style: 'Default',
+          style: defaultStyle,
           actor: '',
           marginL: 0,
           marginR: 0,
           marginV: 0,
           effect: '',
           text: '',
-          segments: [{
-            text: '',
-            style: null,
-            effects: [imageEffect, vobsubEffect],
-          }],
+          segments: EMPTY_SEGMENTS,
           dirty: false,
+        }
+
+        if (decodeMode !== 'none') {
+          event.image = decodeMode === 'rle'
+            ? {
+              format: 'rle',
+              width: packet.width,
+              height: packet.height,
+              x: packet.x,
+              y: packet.y,
+              data: packet.rleData,
+              palette,
+            }
+            : {
+              format: 'indexed',
+              width: packet.width,
+              height: packet.height,
+              x: packet.x,
+              y: packet.y,
+              data: decodeRLE(packet.rleData, packet.width, packet.height).data,
+              palette,
+            }
+
+          event.vobsub = {
+            forced: packet.forced,
+            originalIndex: trackIndex,
+          }
         }
 
         doc.events[id] = event
@@ -379,29 +377,31 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
   let filepos = 0
 
   for (const event of doc.events) {
-    // Find image effect
-    const imageEffect = event.segments
-      .flatMap(seg => seg.effects)
-      .find(eff => eff.type === 'image') as ImageEffect | undefined
+    const imageParams = event.image
+      ?? event.segments
+        .flatMap(seg => seg.effects)
+        .find(eff => eff.type === 'image') as ImageEffect | undefined
 
-    if (!imageEffect) {
+    if (!imageParams) {
       continue
     }
 
-    const params = imageEffect.params
+    const params = 'type' in imageParams ? imageParams.params : imageParams
 
     // Extract palette (use first event's palette for the whole file)
     if (index.palette.length === 0 && params.palette) {
       index.palette = params.palette
     }
 
-    // Find vobsub effect for metadata
-    const vobsubEffect = event.segments
-      .flatMap(seg => seg.effects)
-      .find(eff => eff.type === 'vobsub') as VobSubEffect | undefined
+    const vobsubMeta = event.vobsub
+      ?? (event.segments
+        .flatMap(seg => seg.effects)
+        .find(eff => eff.type === 'vobsub') as VobSubEffect | undefined)?.params
 
     // Encode bitmap to RLE
-    const rleData = encodeRLE(params.data, params.width, params.height)
+    const rleData = params.format === 'rle'
+      ? params.data
+      : encodeRLE(params.data, params.width, params.height)
 
     const packet: SubtitlePacket = {
       pts: event.start,
@@ -411,7 +411,7 @@ export function toVobSub(doc: SubtitleDocument): { idx: string; sub: Uint8Array 
       width: params.width,
       height: params.height,
       rleData,
-      forced: vobsubEffect?.params.forced || false,
+      forced: vobsubMeta?.forced || false,
     }
 
     packets.push(packet)

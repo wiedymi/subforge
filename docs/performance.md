@@ -18,7 +18,7 @@ These numbers are from isolated runs (each format executed in its own process) u
 | --- | ---: |
 | DVB | 5.11 |
 | PAC | 6.79 |
-| VobSub idx | 7.52 |
+| VobSub idx | 7.65 |
 | Teletext | 10.86 |
 | SCC | 11.46 |
 | SBV | 12.63 |
@@ -35,12 +35,12 @@ These numbers are from isolated runs (each format executed in its own process) u
 | EBU-STL | 17.35 |
 | SAMI | 17.55 |
 | CAP | 17.75 |
-| VobSub none | 17.65 |
-| VobSub rle | 33.95 |
-| VobSub | 39.56 |
+| VobSub none | 4.70 |
+| VobSub rle | 16.51 |
+| VobSub | 19.77 |
 
 Results vary by hardware and Bun version. Re-run the command to refresh numbers.
-All formats hit the 20ms target at 100k events except full VobSub image decode; use `decode: 'none'` or `parseIdx` for timing-only workflows.
+VobSub numbers assume the `.idx` is parsed once (see `VobSub idx` row); the `VobSub` row measures `.sub` parsing + image decode.
 
 Quick 100k parse matrix:
 

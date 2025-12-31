@@ -8,9 +8,9 @@ VobSub is a DVD subtitle format using `.idx` (index) and `.sub` (bitmap data).
 
 ## Images
 
-- Default parsing decodes bitmap data into `image` effects (`format: 'indexed'`).
+- Default parsing decodes bitmap data into `event.image` (`format: 'indexed'`).
 - Use `decode: 'rle'` to keep raw RLE data and skip bitmap decoding.
-- Use `decode: 'none'` to skip sub packet parsing and keep only timing (no image effects).
+- Use `decode: 'none'` to skip sub packet parsing and keep only timing (no image data).
 
 ## Parsing
 
@@ -45,6 +45,16 @@ const sub = new Uint8Array(await fetch('/subs.sub').then(r => r.arrayBuffer()))
 const doc = unwrap(parseVobSub(idx, sub, { decode: 'none' }))
 ```
 
+If you already parsed the `.idx`, you can reuse it:
+
+```ts
+import { parseIdx, parseVobSub } from 'subforge/vobsub'
+import { unwrap } from 'subforge/core'
+
+const index = parseIdx(idx)
+const doc = unwrap(parseVobSub(index, sub))
+```
+
 ## Serialization
 
 ```ts
@@ -57,3 +67,4 @@ const { idx, sub } = toVobSub(doc)
 
 - Full parsing requires both `.idx` and `.sub`.
 - For large timelines, use `decode: 'none'` to keep parsing under the 20ms/100k target and defer image work.
+- VobSub stores image data on `event.image` and metadata on `event.vobsub` for performance; `segments` can be empty.

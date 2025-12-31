@@ -60,6 +60,9 @@ class PGSSerializer {
   }
 
   private findImageEffect(event: SubtitleEvent): ImageEffect | null {
+    if (event.image) {
+      return { type: 'image', params: event.image }
+    }
     for (const segment of event.segments) {
       for (const effect of segment.effects) {
         if (effect.type === 'image') {
@@ -71,6 +74,9 @@ class PGSSerializer {
   }
 
   private findPGSEffect(event: SubtitleEvent): PGSEffect | null {
+    if (event.pgs) {
+      return { type: 'pgs', params: event.pgs }
+    }
     for (const segment of event.segments) {
       for (const effect of segment.effects) {
         if (effect.type === 'pgs') {

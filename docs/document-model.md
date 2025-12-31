@@ -35,13 +35,41 @@ interface SubtitleEvent {
   region?: string
   text: string
   segments: TextSegment[]
+  image?: ImageData
+  vobsub?: VobSubMeta
+  pgs?: PGSMeta
   dirty: boolean
+}
+```
+
+```ts
+interface ImageData {
+  format: 'rle' | 'png' | 'raw' | 'indexed'
+  width: number
+  height: number
+  x?: number
+  y?: number
+  data: Uint8Array
+  palette?: number[]
+}
+
+interface VobSubMeta {
+  forced: boolean
+  originalIndex: number
+}
+
+interface PGSMeta {
+  compositionNumber: number
+  windowId: number
 }
 ```
 
 Notes:
 - `effect` is the raw ASS/SSA Effect field when present.
 - `region` holds TTML region references.
+- `image` holds bitmap data for image-based formats.
+- `vobsub` and `pgs` hold format metadata for bitmap subtitles.
+- For bitmap formats, `segments` can be empty even when `image` is present.
 
 ## Colors
 

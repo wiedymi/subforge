@@ -81,6 +81,8 @@ const tele = doc && shouldRun('Teletext') ? toTeletext(doc) : null
 const spruce = doc && shouldRun('Spruce STL') ? toSpruceSTL(doc) : null
 const ebu = doc && shouldRun('EBU-STL') ? toEBUSTL(doc) : null
 const pac = doc && shouldRun('PAC') ? toPAC(doc) : null
+const shouldRunVobSub = shouldRun('VobSub') || shouldRun('VobSub rle') || shouldRun('VobSub none')
+const vobParsed = vob && shouldRunVobSub ? parseIdx(vob.idx) : null
 
 // Text/XML formats
 if (ass) bench('ASS', () => parseASS(ass))
@@ -104,9 +106,9 @@ if (pac) bench('PAC', () => parsePAC(pac))
 if (pgs) bench('PGS', () => parsePGS(pgs))
 if (dvb) bench('DVB', () => parseDVB(dvb))
 if (vobIdx) bench('VobSub idx', () => parseIdx(vobIdx))
-if (vob && shouldRun('VobSub')) bench('VobSub', () => parseVobSub(vob.idx, vob.sub))
-if (vob && shouldRun('VobSub rle')) bench('VobSub rle', () => parseVobSub(vob.idx, vob.sub, { decode: 'rle' }))
-if (vob && shouldRun('VobSub none')) bench('VobSub none', () => parseVobSub(vob.idx, vob.sub, { decode: 'none' }))
+if (vobParsed && shouldRun('VobSub')) bench('VobSub', () => parseVobSub(vobParsed, vob.sub))
+if (vobParsed && shouldRun('VobSub rle')) bench('VobSub rle', () => parseVobSub(vobParsed, vob.sub, { decode: 'rle' }))
+if (vobParsed && shouldRun('VobSub none')) bench('VobSub none', () => parseVobSub(vobParsed, vob.sub, { decode: 'none' }))
 
 results.sort((a, b) => a.ms - b.ms)
 

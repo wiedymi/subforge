@@ -339,9 +339,10 @@ function convertEvent(
   options: Required<Pick<ConvertOptions, 'unsupported' | 'karaoke' | 'positioning' | 'reportLoss'>>,
   lostFeatures: LostFeature[]
 ): SubtitleEvent {
+  const imageSegments = event.segments.length === 0 ? buildImageSegments(event) : null
   const baseSegments = event.segments.length > 0
     ? event.segments
-    : [{ text: event.text, style: null, effects: [] }]
+    : (imageSegments ?? [{ text: event.text, style: null, effects: [] }])
 
   const convertedSegments = baseSegments.map(seg =>
     convertSegment(seg, eventIndex, profile, options, lostFeatures)
@@ -373,6 +374,28 @@ function convertEvent(
     segments: convertedSegments,
     dirty
   }
+}
+
+function buildImageSegments(event: SubtitleEvent): TextSegment[] | null {
+  if (!event.image) return null
+
+  const effects: Effect[] = [{
+    type: 'image',
+    params: event.image
+  }]
+
+  if (event.vobsub) {
+    effects.push({ type: 'vobsub', params: event.vobsub })
+  }
+  if (event.pgs) {
+    effects.push({ type: 'pgs', params: event.pgs })
+  }
+
+  return [{
+    text: '',
+    style: null,
+    effects
+  }]
 }
 
 function convertSegment(

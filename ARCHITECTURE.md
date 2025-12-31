@@ -202,9 +202,32 @@ interface SubtitleEvent {
   // Text content
   text: string            // Raw text with tags
   segments: TextSegment[] // Parsed (lazy populated)
+  image?: ImageData       // Bitmap data for image-based formats
+  vobsub?: VobSubMeta      // VobSub metadata
+  pgs?: PGSMeta            // PGS metadata
 
   // Lossless roundtrip
   dirty: boolean
+}
+
+interface ImageData {
+  format: 'rle' | 'png' | 'raw' | 'indexed'
+  width: number
+  height: number
+  x?: number
+  y?: number
+  data: Uint8Array
+  palette?: number[]
+}
+
+interface VobSubMeta {
+  forced: boolean
+  originalIndex: number
+}
+
+interface PGSMeta {
+  compositionNumber: number
+  windowId: number
 }
 
 // === Text Segments ===

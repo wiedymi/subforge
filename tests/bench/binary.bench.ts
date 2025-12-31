@@ -79,6 +79,9 @@ const vobsubIdx100k = generateVobSubIdx(SIZES.stress)
 const vobsub1k = generateVobSub(SIZES.medium)
 const vobsub10k = generateVobSub(SIZES.large)
 const vobsub100k = generateVobSub(SIZES.stress)
+const vobsub1kIndex = parseIdx(vobsub1k.idx)
+const vobsub10kIndex = parseIdx(vobsub10k.idx)
+const vobsub100kIndex = parseIdx(vobsub100k.idx)
 
 // ============================================================================
 // PGS (Blu-ray) Parsing
@@ -164,21 +167,21 @@ if (vobsubIdx) {
 }
 
 group('VobSub parse (full)', () => {
-  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub))
-  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub))
-  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub))
+  bench('1k events', () => parseVobSub(vobsub1kIndex, vobsub1k.sub))
+  bench('10k events', () => parseVobSub(vobsub10kIndex, vobsub10k.sub))
+  bench('100k events', () => parseVobSub(vobsub100kIndex, vobsub100k.sub))
 })
 
 group('VobSub parse (rle)', () => {
-  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub, { decode: 'rle' }))
-  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub, { decode: 'rle' }))
-  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub, { decode: 'rle' }))
+  bench('1k events', () => parseVobSub(vobsub1kIndex, vobsub1k.sub, { decode: 'rle' }))
+  bench('10k events', () => parseVobSub(vobsub10kIndex, vobsub10k.sub, { decode: 'rle' }))
+  bench('100k events', () => parseVobSub(vobsub100kIndex, vobsub100k.sub, { decode: 'rle' }))
 })
 
 group('VobSub parse (none)', () => {
-  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub, { decode: 'none' }))
-  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub, { decode: 'none' }))
-  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub, { decode: 'none' }))
+  bench('1k events', () => parseVobSub(vobsub1kIndex, vobsub1k.sub, { decode: 'none' }))
+  bench('10k events', () => parseVobSub(vobsub10kIndex, vobsub10k.sub, { decode: 'none' }))
+  bench('100k events', () => parseVobSub(vobsub100kIndex, vobsub100k.sub, { decode: 'none' }))
 })
 
 // ============================================================================

@@ -33,6 +33,9 @@ class DVBSerializer {
   private serializeEvent(event: SubtitleEvent): void {
     // Extract image effects from segments
     const imageEffects: ImageEffect[] = []
+    if (event.image) {
+      imageEffects.push({ type: 'image', params: event.image })
+    }
     for (const segment of event.segments) {
       for (const effect of segment.effects) {
         if (effect.type === 'image') {

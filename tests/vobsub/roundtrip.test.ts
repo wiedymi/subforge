@@ -206,11 +206,11 @@ test('roundtrip preserves basic structure', () => {
   const event = parsed.events[0]
   expect(event.start).toBe(2000)
 
-  const imageEffect = event.segments[0].effects.find(e => e.type === 'image') as ImageEffect | undefined
-  expect(imageEffect).toBeDefined()
-  if (imageEffect) {
-    expect(imageEffect.params.width).toBe(50)
-    expect(imageEffect.params.height).toBe(30)
-    expect(imageEffect.params.palette?.length).toBe(16)
+  const image = event.image
+  expect(image).toBeDefined()
+  if (image) {
+    expect(image.width).toBe(50)
+    expect(image.height).toBe(30)
+    expect(image.palette?.length).toBe(16)
   }
 })

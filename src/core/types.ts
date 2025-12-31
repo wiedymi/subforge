@@ -141,6 +141,46 @@ export interface Style {
  */
 export type Alignment = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
+/**
+ * Bitmap image data payload.
+ */
+export interface ImageData {
+  /** Image data format */
+  format: 'rle' | 'png' | 'raw' | 'indexed'
+  /** Image width in pixels */
+  width: number
+  /** Image height in pixels */
+  height: number
+  /** Horizontal position offset */
+  x?: number
+  /** Vertical position offset */
+  y?: number
+  /** Binary image data */
+  data: Uint8Array
+  /** Color palette for indexed formats (RGBA values) */
+  palette?: number[]
+}
+
+/**
+ * VobSub-specific metadata.
+ */
+export interface VobSubMeta {
+  /** Whether this is a forced subtitle */
+  forced: boolean
+  /** Original index in .idx file */
+  originalIndex: number
+}
+
+/**
+ * PGS (Blu-ray) subtitle metadata.
+ */
+export interface PGSMeta {
+  /** Composition number */
+  compositionNumber: number
+  /** Window identifier */
+  windowId: number
+}
+
 // === Events ===
 
 /**
@@ -175,6 +215,12 @@ export interface SubtitleEvent {
   text: string
   /** Rich text segments with inline styles and effects */
   segments: TextSegment[]
+  /** Bitmap image data for image-based formats */
+  image?: ImageData
+  /** VobSub metadata for image-based formats */
+  vobsub?: VobSubMeta
+  /** PGS metadata for image-based formats */
+  pgs?: PGSMeta
 
   /** Whether segments have been modified and text needs regeneration */
   dirty: boolean
@@ -337,42 +383,17 @@ export type ResetEffect = Effect<'reset', { style?: string }>
 /**
  * Bitmap image subtitle (for VobSub, PGS, DVB, etc.)
  */
-export type ImageEffect = Effect<'image', {
-  /** Image data format */
-  format: 'rle' | 'png' | 'raw' | 'indexed'
-  /** Image width in pixels */
-  width: number
-  /** Image height in pixels */
-  height: number
-  /** Horizontal position offset */
-  x?: number
-  /** Vertical position offset */
-  y?: number
-  /** Binary image data */
-  data: Uint8Array
-  /** Color palette for indexed formats (RGBA values) */
-  palette?: number[]
-}>
+export type ImageEffect = Effect<'image', ImageData>
 
 /**
  * VobSub-specific metadata.
  */
-export type VobSubEffect = Effect<'vobsub', {
-  /** Whether this is a forced subtitle */
-  forced: boolean
-  /** Original index in .idx file */
-  originalIndex: number
-}>
+export type VobSubEffect = Effect<'vobsub', VobSubMeta>
 
 /**
  * PGS (Blu-ray) subtitle metadata.
  */
-export type PGSEffect = Effect<'pgs', {
-  /** Composition number */
-  compositionNumber: number
-  /** Window identifier */
-  windowId: number
-}>
+export type PGSEffect = Effect<'pgs', PGSMeta>
 
 /** Unparsed or unrecognized effect */
 export type UnknownEffect = Effect<'unknown', { format: string; raw: string }>
