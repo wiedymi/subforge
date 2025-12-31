@@ -194,3 +194,40 @@ test('DVB preserves RGBA colors in palette through YCrCb conversion', () => {
     }
   }
 })
+
+test('toDVB accepts event.image payloads', () => {
+  const doc = createDocument()
+
+  doc.events.push({
+    id: generateId(),
+    start: 0,
+    end: 2000,
+    layer: 0,
+    style: 'Default',
+    actor: '',
+    marginL: 0,
+    marginR: 0,
+    marginV: 0,
+    effect: '',
+    text: '',
+    segments: [],
+    image: {
+      format: 'indexed',
+      width: 2,
+      height: 2,
+      x: 5,
+      y: 6,
+      data: new Uint8Array([1, 1, 1, 1]),
+      palette: [0x000000FF, 0xFFFFFFFF],
+    },
+    dirty: false
+  })
+
+  const dvbData = toDVB(doc)
+  expect(dvbData.length).toBeGreaterThan(0)
+
+  const reparsed = unwrap(parseDVB(dvbData))
+  expect(reparsed.events).toHaveLength(1)
+  expect(reparsed.events[0].image).toBeDefined()
+  expect(reparsed.events[0].image?.data.length).toBeGreaterThan(0)
+})

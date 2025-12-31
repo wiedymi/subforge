@@ -196,4 +196,49 @@ describe('PGS Integration', () => {
 
     expect(parsed.events).toHaveLength(1)
   })
+
+  test('toPGS accepts event.image payloads', () => {
+    const doc = createDocument()
+
+    const imageData = new Uint8Array(4)
+    imageData.fill(1)
+
+    doc.events.push({
+      id: generateId(),
+      start: 1000,
+      end: 2000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments: [],
+      image: {
+        format: 'indexed',
+        width: 2,
+        height: 2,
+        x: 10,
+        y: 20,
+        data: imageData,
+        palette: [0x000000FF, 0xFFFFFFFF],
+      },
+      pgs: {
+        compositionNumber: 1,
+        windowId: 0,
+      },
+      dirty: false,
+    })
+
+    const pgsData = toPGS(doc)
+    expect(pgsData.length).toBeGreaterThan(0)
+
+    const parsed = unwrap(parsePGS(pgsData))
+    expect(parsed.events).toHaveLength(1)
+    expect(parsed.events[0].image?.width).toBe(2)
+    expect(parsed.events[0].image?.height).toBe(2)
+    expect(parsed.events[0].pgs?.compositionNumber).toBe(1)
+  })
 })
