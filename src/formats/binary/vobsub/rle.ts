@@ -13,6 +13,18 @@ export interface RLEDecodedImage {
   data: Uint8Array
 }
 
+const LITERAL_TABLE = (() => {
+  const table = new Uint8Array(256 * 4)
+  for (let byte = 0; byte < 256; byte++) {
+    const idx = byte << 2
+    table[idx] = (byte >> 6) & 0x03
+    table[idx + 1] = (byte >> 4) & 0x03
+    table[idx + 2] = (byte >> 2) & 0x03
+    table[idx + 3] = byte & 0x03
+  }
+  return table
+})()
+
 /**
  * Decode VobSub RLE-compressed image data
  * @param rleData - RLE-compressed data
@@ -27,8 +39,9 @@ export function decodeRLE(rleData: Uint8Array, width: number, height: number): R
   const output = new Uint8Array(width * height)
   let outputPos = 0
   let inputPos = 0
+  const outputLen = output.length
 
-  while (inputPos < rleData.length && outputPos < output.length) {
+  while (inputPos < rleData.length && outputPos < outputLen) {
     const byte = rleData[inputPos++]
 
     // Check for RLE escape sequence
@@ -39,47 +52,52 @@ export function decodeRLE(rleData: Uint8Array, width: number, height: number): R
 
       if (next === 0x00) {
         // 00 00: End of line - pad to next line if not already there
-        if (outputPos % width !== 0) {
-          const currentLine = Math.floor(outputPos / width)
-          outputPos = (currentLine + 1) * width
+        const remainder = outputPos % width
+        if (remainder !== 0) {
+          outputPos += width - remainder
         }
       } else {
         // RLE run - decode count and color
         const color = next & 0x03  // Color is in bits 0-1
         let count = 0
 
-        if ((next & 0xC0) === 0x00) {
+        const mode = next & 0xC0
+        if (mode === 0x00) {
           // 00 0x or 00 3x: Short/medium run (count in bits 2-7, color in bits 0-1)
           count = (next >> 2) & 0x3F
-        } else if ((next & 0xC0) === 0x40) {
+        } else if (mode === 0x40) {
           // 00 4x yy: Long run (count from bits 2-7 of next + yy byte)
           if (inputPos < rleData.length) {
             const extraByte = rleData[inputPos++]
             count = ((next & 0x3F) << 2) | ((extraByte >> 6) & 0x03)
           }
-        } else if ((next & 0xC0) === 0x80 || (next & 0xC0) === 0xC0) {
+        } else {
           // 00 8x or 00 Cx: Medium/long run (count in bits 2-7)
           count = (next >> 2) & 0x3F
         }
 
-        for (let i = 0; i < count && outputPos < output.length; i++) {
-          output[outputPos++] = color
+        if (count > 0 && outputPos < outputLen) {
+          let end = outputPos + count
+          if (end > outputLen) end = outputLen
+          output.fill(color, outputPos, end)
+          outputPos = end
         }
       }
     } else {
       // Not an escape - decode nibbles directly
       // Each byte contains 4 2-bit pixels
-      const nibbles = [
-        (byte >> 6) & 0x03,
-        (byte >> 4) & 0x03,
-        (byte >> 2) & 0x03,
-        byte & 0x03,
-      ]
-
-      for (const nibble of nibbles) {
-        if (outputPos < output.length) {
-          output[outputPos++] = nibble
-        }
+      const idx = byte << 2
+      if (outputPos + 4 <= outputLen) {
+        output[outputPos] = LITERAL_TABLE[idx]
+        output[outputPos + 1] = LITERAL_TABLE[idx + 1]
+        output[outputPos + 2] = LITERAL_TABLE[idx + 2]
+        output[outputPos + 3] = LITERAL_TABLE[idx + 3]
+        outputPos += 4
+      } else {
+        if (outputPos < outputLen) output[outputPos++] = LITERAL_TABLE[idx]
+        if (outputPos < outputLen) output[outputPos++] = LITERAL_TABLE[idx + 1]
+        if (outputPos < outputLen) output[outputPos++] = LITERAL_TABLE[idx + 2]
+        if (outputPos < outputLen) output[outputPos++] = LITERAL_TABLE[idx + 3]
       }
     }
   }
