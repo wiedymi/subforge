@@ -30,13 +30,9 @@ test('fixture contains image effects', () => {
 
   const doc = unwrap(parseDVB(data))
 
-  const hasImageEffect = doc.events.some(event =>
-    event.segments.some(seg =>
-      seg.effects.some(eff => eff.type === 'image')
-    )
-  )
+  const hasImage = doc.events.some(event => event.image)
 
-  expect(hasImageEffect).toBe(true)
+  expect(hasImage).toBe(true)
 })
 
 test('fixture image has palette', () => {
@@ -46,15 +42,9 @@ test('fixture image has palette', () => {
   const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
-    for (const segment of event.segments) {
-      for (const effect of segment.effects) {
-        if (effect.type === 'image') {
-          const imageEffect = effect as any
-          if (imageEffect.params.palette) {
-            expect(imageEffect.params.palette.length).toBeGreaterThan(0)
-          }
-        }
-      }
+    const image = event.image
+    if (image?.palette) {
+      expect(image.palette.length).toBeGreaterThan(0)
     }
   }
 })

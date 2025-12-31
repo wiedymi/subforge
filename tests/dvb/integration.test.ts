@@ -70,24 +70,19 @@ test('DVB end-to-end: create, serialize, parse', () => {
 
   expect(reparsed.events).toHaveLength(1)
 
-  const event = reparsed.events[0]
-  // DVB subtitles don't preserve absolute timing, just duration
-  expect(event.end - event.start).toBe(5000) // 5 seconds duration
-  expect(event.segments).toHaveLength(1)
+    const event = reparsed.events[0]
+    // DVB subtitles don't preserve absolute timing, just duration
+    expect(event.end - event.start).toBe(5000) // 5 seconds duration
 
-  const segment = event.segments[0]
-  expect(segment.effects).toHaveLength(1)
-
-  const effect = segment.effects[0]
-  expect(effect.type).toBe('image')
-
-  if (effect.type === 'image') {
-    expect(effect.params.format).toBe('indexed')
-    expect(effect.params.data).toBeInstanceOf(Uint8Array)
-    expect(effect.params.data.length).toBeGreaterThan(0)
-    expect(effect.params.palette).toBeDefined()
-    expect(effect.params.palette!.length).toBeGreaterThan(0)
-  }
+    const image = event.image
+    expect(image).toBeDefined()
+    if (image) {
+      expect(image.format).toBe('indexed')
+      expect(image.data).toBeInstanceOf(Uint8Array)
+      expect(image.data.length).toBeGreaterThan(0)
+      expect(image.palette).toBeDefined()
+      expect(image.palette!.length).toBeGreaterThan(0)
+    }
 })
 
 test('DVB handles multiple subtitles', () => {
@@ -182,16 +177,16 @@ test('DVB preserves RGBA colors in palette through YCrCb conversion', () => {
   const dvbData = toDVB(doc)
   const reparsed = unwrap(parseDVB(dvbData))
 
-  const effect = reparsed.events[0].segments[0].effects[0]
-  if (effect.type === 'image') {
-    expect(effect.params.palette).toBeDefined()
-    expect(effect.params.palette!.length).toBe(testColors.length)
+  const image = reparsed.events[0].image
+  if (image) {
+    expect(image.palette).toBeDefined()
+    expect(image.palette!.length).toBe(testColors.length)
 
     // Colors should be reasonably close after YCrCb roundtrip
     // We allow some tolerance due to color space conversion
     for (let i = 0; i < testColors.length; i++) {
       const original = testColors[i]
-      const converted = effect.params.palette![i]
+      const converted = image.palette![i]
 
       expect(converted).toBeDefined()
       // Just check that we got some color back

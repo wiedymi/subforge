@@ -1,4 +1,4 @@
-import type { SubtitleDocument, SubtitleEvent, ImageEffect } from '../../../core/types.ts'
+import type { SubtitleDocument, SubtitleEvent, ImageData } from '../../../core/types.ts'
 import type { ParseOptions, ParseResult, ParseError, ErrorCode } from '../../../core/errors.ts'
 import { toParseError } from '../../../core/errors.ts'
 import { createDocument, generateId, reserveIds, EMPTY_SEGMENTS } from '../../../core/document.ts'
@@ -254,26 +254,19 @@ class DVBParser {
       offset = result.nextOffset
     }
 
-    // Create ImageEffect for this object
+    // Create image data for this object
     if (pixelData.length > 0) {
       const imageData = new Uint8Array(pixelData)
 
-      const imageEffect: ImageEffect = {
-        type: 'image',
-        params: {
-          format: 'indexed',
-          width: 0, // Width/height determined from region
-          height: 0,
-          data: imageData,
-          palette: this.clutMap.get(0)?.colors || []
-        }
+      const image: ImageData = {
+        format: 'indexed',
+        width: 0, // Width/height determined from region
+        height: 0,
+        data: imageData,
+        palette: this.clutMap.get(0)?.colors || []
       }
 
-      this.currentDisplaySet.segments.push({
-        text: '',
-        style: null,
-        effects: [imageEffect]
-      })
+      this.currentDisplaySet.image = image
     }
   }
 

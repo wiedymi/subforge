@@ -64,17 +64,8 @@ test('roundtrip preserves image effects', () => {
   const serialized = toDVB(doc)
   const reparsed = unwrap(parseDVB(serialized))
 
-  const originalImages = doc.events.flatMap(e =>
-    e.segments.flatMap(s =>
-      s.effects.filter(eff => eff.type === 'image')
-    )
-  )
-
-  const reparsedImages = reparsed.events.flatMap(e =>
-    e.segments.flatMap(s =>
-      s.effects.filter(eff => eff.type === 'image')
-    )
-  )
+  const originalImages = doc.events.flatMap(e => e.image ? [e.image] : [])
+  const reparsedImages = reparsed.events.flatMap(e => e.image ? [e.image] : [])
 
   expect(reparsedImages.length).toBe(originalImages.length)
 })

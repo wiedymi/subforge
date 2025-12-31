@@ -82,13 +82,9 @@ test('parseDVB creates events with image effects', () => {
   const data = createSimpleDVB()
   const doc = unwrap(parseDVB(data))
 
-  const hasImageEffect = doc.events.some(event =>
-    event.segments.some(seg =>
-      seg.effects.some(eff => eff.type === 'image')
-    )
-  )
+  const hasImage = doc.events.some(event => event.image)
 
-  expect(hasImageEffect).toBe(true)
+  expect(hasImage).toBe(true)
 })
 
 test('parseDVB handles empty data', () => {
@@ -110,15 +106,9 @@ test('parseDVB extracts palette from CLUT', () => {
   const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
-    for (const segment of event.segments) {
-      for (const effect of segment.effects) {
-        if (effect.type === 'image') {
-          const imageEffect = effect as any
-          if (imageEffect.params.palette) {
-            expect(imageEffect.params.palette.length).toBeGreaterThan(0)
-          }
-        }
-      }
+    const image = event.image
+    if (image?.palette) {
+      expect(image.palette.length).toBeGreaterThan(0)
     }
   }
 })
@@ -128,14 +118,9 @@ test('parseDVB parses RLE compressed pixel data', () => {
   const doc = unwrap(parseDVB(data))
 
   for (const event of doc.events) {
-    for (const segment of event.segments) {
-      for (const effect of segment.effects) {
-        if (effect.type === 'image') {
-          const imageEffect = effect as any
-          expect(imageEffect.params.data).toBeInstanceOf(Uint8Array)
-          expect(imageEffect.params.data.length).toBeGreaterThan(0)
-        }
-      }
+    if (event.image) {
+      expect(event.image.data).toBeInstanceOf(Uint8Array)
+      expect(event.image.data.length).toBeGreaterThan(0)
     }
   }
 })
