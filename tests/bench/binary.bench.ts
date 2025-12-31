@@ -11,6 +11,7 @@ import {
   generateDocument,
   generateDVB,
   generatePGS,
+  generateVobSub,
   generateVobSubIdx,
   SIZES,
 } from './_utils.ts'
@@ -74,6 +75,10 @@ const dvb100k = generateDVB(SIZES.stress)
 const vobsubIdx1k = generateVobSubIdx(SIZES.medium)
 const vobsubIdx10k = generateVobSubIdx(SIZES.large)
 const vobsubIdx100k = generateVobSubIdx(SIZES.stress)
+
+const vobsub1k = generateVobSub(SIZES.medium)
+const vobsub10k = generateVobSub(SIZES.large)
+const vobsub100k = generateVobSub(SIZES.stress)
 
 // ============================================================================
 // PGS (Blu-ray) Parsing
@@ -157,6 +162,12 @@ if (vobsubIdx) {
     bench('100k events', () => parseIdx(vobsubIdx100k))
   })
 }
+
+group('VobSub parse (full)', () => {
+  bench('1k events', () => parseVobSub(vobsub1k.idx, vobsub1k.sub))
+  bench('10k events', () => parseVobSub(vobsub10k.idx, vobsub10k.sub))
+  bench('100k events', () => parseVobSub(vobsub100k.idx, vobsub100k.sub))
+})
 
 // ============================================================================
 // EBU-STL Parsing (Binary broadcast format)

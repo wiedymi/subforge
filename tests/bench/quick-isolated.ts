@@ -25,6 +25,7 @@ const formats = [
   'PGS',
   'DVB',
   'VobSub idx',
+  'VobSub',
 ]
 
 const args = Bun.argv.slice(2)

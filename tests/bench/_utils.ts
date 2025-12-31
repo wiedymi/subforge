@@ -3,7 +3,8 @@
  */
 
 import { createDocument, createEvent } from '../../src/core/document.ts'
-import type { SubtitleDocument, SubtitleEvent } from '../../src/core/types.ts'
+import type { SubtitleDocument, SubtitleEvent, ImageEffect, VobSubEffect } from '../../src/core/types.ts'
+import { toVobSub } from '../../src/formats/binary/vobsub/index.ts'
 
 // ============================================================================
 // Fixture Loading
@@ -367,6 +368,75 @@ export function generateVobSubIdx(count: number): string {
   }
 
   return lines.join('\n')
+}
+
+export function generateVobSub(count: number): { idx: string; sub: Uint8Array } {
+  const doc: SubtitleDocument = {
+    info: {
+      playResX: 720,
+      playResY: 480,
+      scaleBorderAndShadow: true,
+      wrapStyle: 0,
+    },
+    styles: new Map(),
+    events: [],
+    comments: [],
+  }
+
+  const width = 1
+  const height = 1
+  const bitmap = new Uint8Array(width * height).fill(1)
+  const palette = [
+    0x000000FF, 0xFFFFFFFF, 0x808080FF, 0xC0C0C0FF,
+    0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF,
+    0xFF00FFFF, 0x00FFFFFF, 0x800000FF, 0x008000FF,
+    0x000080FF, 0x808000FF, 0x800080FF, 0x008080FF,
+  ]
+
+  const imageEffect: ImageEffect = {
+    type: 'image',
+    params: {
+      format: 'indexed',
+      width,
+      height,
+      x: 0,
+      y: 0,
+      data: bitmap,
+      palette,
+    },
+  }
+
+  const vobsubEffect: VobSubEffect = {
+    type: 'vobsub',
+    params: { forced: false, originalIndex: 0 },
+  }
+
+  const segments = [{
+    text: '',
+    style: null,
+    effects: [imageEffect, vobsubEffect],
+  }]
+
+  for (let i = 0; i < count; i++) {
+    const start = i * 3000
+    doc.events[doc.events.length] = {
+      id: i,
+      start,
+      end: start + 2500,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments,
+      dirty: false,
+    }
+  }
+
+  return toVobSub(doc)
 }
 
 export function generateSAMI(count: number): string {

@@ -16,27 +16,29 @@ These numbers are from isolated runs (each format executed in its own process) u
 
 | Format | 100k parse (ms) |
 | --- | ---: |
-| DVB | 4.20 |
-| VobSub idx | 6.26 |
-| PAC | 6.48 |
-| Teletext | 7.70 |
-| SMPTE-TT | 9.51 |
-| SCC | 10.19 |
-| LRC | 11.29 |
-| Spruce STL | 11.67 |
-| SBV | 12.80 |
-| QT | 13.74 |
-| EBU-STL | 14.06 |
-| RealText | 14.14 |
-| TTML | 15.43 |
-| PGS | 15.84 |
-| ASS | 16.30 |
-| CAP | 16.49 |
-| DFXP | 16.71 |
-| SSA | 17.29 |
-| SAMI | 18.00 |
+| DVB | 5.29 |
+| PAC | 6.90 |
+| VobSub idx | 7.15 |
+| Teletext | 8.31 |
+| SCC | 11.58 |
+| SBV | 12.11 |
+| DFXP | 12.57 |
+| TTML | 12.64 |
+| SMPTE-TT | 12.73 |
+| RealText | 13.93 |
+| QT | 14.02 |
+| ASS | 14.14 |
+| LRC | 14.38 |
+| SSA | 14.89 |
+| PGS | 15.11 |
+| Spruce STL | 16.36 |
+| SAMI | 16.70 |
+| CAP | 17.06 |
+| EBU-STL | 17.13 |
+| VobSub | 64.93 |
 
 Results vary by hardware and Bun version. Re-run the command to refresh numbers.
+VobSub full parses include RLE image decode; use index-only parsing (`parseIdx`) when you only need timing metadata.
 
 Quick 100k parse matrix:
 

@@ -16,6 +16,7 @@ import {
   generateSCC,
   generateDVB,
   generatePGS,
+  generateVobSub,
   generateVobSubIdx,
   generateDocument,
   SIZES,
@@ -36,6 +37,7 @@ import { parseSpruceSTL, toSpruceSTL, parseEBUSTL, toEBUSTL } from '../../src/fo
 import { parsePGS } from '../../src/formats/binary/pgs/index.ts'
 import { parseDVB } from '../../src/formats/binary/dvb/index.ts'
 import { parseIdx } from '../../src/formats/binary/vobsub/parser.ts'
+import { parseVobSub } from '../../src/formats/binary/vobsub/index.ts'
 import { parsePAC, toPAC } from '../../src/formats/binary/pac/index.ts'
 
 type Result = { name: string; ms: number }
@@ -53,50 +55,54 @@ const bench = (name: string, fn: () => void): void => {
   results.push({ name, ms: performance.now() - t0 })
 }
 
-// Pre-generate inputs to keep timing focused on parsing
-const ass = generateASS(COUNT)
-const ssa = generateSSA(COUNT)
-const sbv = generateSBV(COUNT)
-const lrc = generateLRC(COUNT)
-const sami = generateSAMI(COUNT)
-const cap = generateCAP(COUNT)
-const qt = generateQT(COUNT)
-const real = generateRealText(COUNT)
-const ttml = generateTTML(COUNT)
-const scc = generateSCC(COUNT)
+const ass = shouldRun('ASS') ? generateASS(COUNT) : null
+const ssa = shouldRun('SSA') ? generateSSA(COUNT) : null
+const sbv = shouldRun('SBV') ? generateSBV(COUNT) : null
+const lrc = shouldRun('LRC') ? generateLRC(COUNT) : null
+const sami = shouldRun('SAMI') ? generateSAMI(COUNT) : null
+const cap = shouldRun('CAP') ? generateCAP(COUNT) : null
+const qt = shouldRun('QT') ? generateQT(COUNT) : null
+const real = shouldRun('RealText') ? generateRealText(COUNT) : null
+const scc = shouldRun('SCC') ? generateSCC(COUNT) : null
 
-const dvb = generateDVB(COUNT)
-const pgs = generatePGS(COUNT)
-const vobIdx = generateVobSubIdx(COUNT)
+const needsTTML = shouldRun('TTML') || shouldRun('DFXP') || shouldRun('SMPTE-TT')
+const ttml = needsTTML ? generateTTML(COUNT) : null
 
-const doc = generateDocument(COUNT)
-const tele = toTeletext(doc)
-const spruce = toSpruceSTL(doc)
-const ebu = toEBUSTL(doc)
-const pac = toPAC(doc)
+const dvb = shouldRun('DVB') ? generateDVB(COUNT) : null
+const pgs = shouldRun('PGS') ? generatePGS(COUNT) : null
+const vobIdx = shouldRun('VobSub idx') ? generateVobSubIdx(COUNT) : null
+const vob = shouldRun('VobSub') ? generateVobSub(COUNT) : null
+
+const needsDoc = shouldRun('Teletext') || shouldRun('Spruce STL') || shouldRun('EBU-STL') || shouldRun('PAC')
+const doc = needsDoc ? generateDocument(COUNT) : null
+const tele = doc && shouldRun('Teletext') ? toTeletext(doc) : null
+const spruce = doc && shouldRun('Spruce STL') ? toSpruceSTL(doc) : null
+const ebu = doc && shouldRun('EBU-STL') ? toEBUSTL(doc) : null
+const pac = doc && shouldRun('PAC') ? toPAC(doc) : null
 
 // Text/XML formats
-if (shouldRun('ASS')) bench('ASS', () => parseASS(ass))
-if (shouldRun('SSA')) bench('SSA', () => parseSSA(ssa))
-if (shouldRun('SBV')) bench('SBV', () => parseSBV(sbv))
-if (shouldRun('LRC')) bench('LRC', () => parseLRC(lrc))
-if (shouldRun('SAMI')) bench('SAMI', () => parseSAMI(sami))
-if (shouldRun('CAP')) bench('CAP', () => parseCAP(cap))
-if (shouldRun('QT')) bench('QT', () => parseQT(qt))
-if (shouldRun('RealText')) bench('RealText', () => parseRealText(real))
-if (shouldRun('TTML')) bench('TTML', () => parseTTML(ttml))
-if (shouldRun('DFXP')) bench('DFXP', () => parseDFXP(ttml))
-if (shouldRun('SMPTE-TT')) bench('SMPTE-TT', () => parseSMPTETT(ttml))
-if (shouldRun('SCC')) bench('SCC', () => parseSCC(scc))
+if (ass) bench('ASS', () => parseASS(ass))
+if (ssa) bench('SSA', () => parseSSA(ssa))
+if (sbv) bench('SBV', () => parseSBV(sbv))
+if (lrc) bench('LRC', () => parseLRC(lrc))
+if (sami) bench('SAMI', () => parseSAMI(sami))
+if (cap) bench('CAP', () => parseCAP(cap))
+if (qt) bench('QT', () => parseQT(qt))
+if (real) bench('RealText', () => parseRealText(real))
+if (ttml && shouldRun('TTML')) bench('TTML', () => parseTTML(ttml))
+if (ttml && shouldRun('DFXP')) bench('DFXP', () => parseDFXP(ttml))
+if (ttml && shouldRun('SMPTE-TT')) bench('SMPTE-TT', () => parseSMPTETT(ttml))
+if (scc) bench('SCC', () => parseSCC(scc))
 
 // Broadcast/Binary formats
-if (shouldRun('Teletext')) bench('Teletext', () => parseTeletext(tele))
-if (shouldRun('Spruce STL')) bench('Spruce STL', () => parseSpruceSTL(spruce))
-if (shouldRun('EBU-STL')) bench('EBU-STL', () => parseEBUSTL(ebu))
-if (shouldRun('PAC')) bench('PAC', () => parsePAC(pac))
-if (shouldRun('PGS')) bench('PGS', () => parsePGS(pgs))
-if (shouldRun('DVB')) bench('DVB', () => parseDVB(dvb))
-if (shouldRun('VobSub idx')) bench('VobSub idx', () => parseIdx(vobIdx))
+if (tele) bench('Teletext', () => parseTeletext(tele))
+if (spruce) bench('Spruce STL', () => parseSpruceSTL(spruce))
+if (ebu) bench('EBU-STL', () => parseEBUSTL(ebu))
+if (pac) bench('PAC', () => parsePAC(pac))
+if (pgs) bench('PGS', () => parsePGS(pgs))
+if (dvb) bench('DVB', () => parseDVB(dvb))
+if (vobIdx) bench('VobSub idx', () => parseIdx(vobIdx))
+if (vob) bench('VobSub', () => parseVobSub(vob.idx, vob.sub))
 
 results.sort((a, b) => a.ms - b.ms)
 

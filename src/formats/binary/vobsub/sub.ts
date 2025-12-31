@@ -35,11 +35,21 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   let pos = offset
 
   // Find MPEG-PS packet start code (00 00 01 BA)
-  while (pos < data.length - 4) {
-    if (data[pos] === 0x00 && data[pos + 1] === 0x00 && data[pos + 2] === 0x01 && data[pos + 3] === 0xBA) {
-      break
+  if (
+    pos + 3 < data.length &&
+    data[pos] === 0x00 &&
+    data[pos + 1] === 0x00 &&
+    data[pos + 2] === 0x01 &&
+    data[pos + 3] === 0xBA
+  ) {
+    // Already aligned
+  } else {
+    while (pos < data.length - 4) {
+      if (data[pos] === 0x00 && data[pos + 1] === 0x00 && data[pos + 2] === 0x01 && data[pos + 3] === 0xBA) {
+        break
+      }
+      pos++
     }
-    pos++
   }
 
   if (pos >= data.length - 14) {
@@ -114,13 +124,24 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   let controlSeqOffset = subPacketStart
   let controlInfo: ControlInfo | null = null
 
-  // Try to find control sequence by looking for common control commands
-  for (let searchPos = subPacketStart; searchPos < subPacketEnd - 10; searchPos++) {
-    const maybeInfo = parseControlSequence(data, searchPos, subPacketEnd)
+  const guessedOffset = findControlSequence(data, subPacketStart, subPacketEnd)
+  if (guessedOffset !== null) {
+    const maybeInfo = parseControlSequence(data, guessedOffset, subPacketEnd)
     if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
-      controlSeqOffset = searchPos
+      controlSeqOffset = guessedOffset
       controlInfo = maybeInfo
-      break
+    }
+  }
+
+  if (!controlInfo) {
+    // Fallback scan for control sequence by looking for common control commands
+    for (let searchPos = subPacketStart; searchPos < subPacketEnd - 10; searchPos++) {
+      const maybeInfo = parseControlSequence(data, searchPos, subPacketEnd)
+      if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
+        controlSeqOffset = searchPos
+        controlInfo = maybeInfo
+        break
+      }
     }
   }
 
@@ -159,16 +180,15 @@ interface ControlInfo {
  * Find control sequence in subtitle packet
  */
 function findControlSequence(data: Uint8Array, start: number, end: number): number | null {
-  // Control sequence typically starts after RLE data
-  // Look for control sequence start marker
-  for (let pos = start; pos < end - 2; pos++) {
+  // Control sequence typically starts after RLE data and near the end.
+  // Search backwards for an end-of-line marker close to the tail.
+  for (let pos = end - 2; pos >= start; pos--) {
     if (data[pos] === 0x00 && data[pos + 1] === 0x00) {
-      // Found potential control sequence
       return pos
     }
   }
 
-  // If not found with markers, use heuristic: control sequence is typically in last ~20 bytes
+  // If not found with markers, use heuristic: control sequence is typically in last ~20 bytes.
   if (end - start > 20) {
     return end - 20
   }
