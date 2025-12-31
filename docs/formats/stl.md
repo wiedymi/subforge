@@ -10,14 +10,27 @@ Subforge supports both the binary EBU-STL format and the text-based Spruce STL v
 
 - Binary format
 - Suitable for broadcast workflows
+- Inline styling control codes are currently ignored
 
 ## Spruce STL
 
 - Plain text format used in authoring tools
 - One subtitle per line
 
-## API
+## Parsing
 
 ```ts
-import { parseEBUSTL, toEBUSTL, parseSpruceSTL, toSpruceSTL } from 'subforge/stl'
+import { parseEBUSTL, parseEBUSTLResult, parseSpruceSTL, parseSpruceSTLResult } from 'subforge/stl'
+
+const ebu = parseEBUSTL(new Uint8Array(await fetch('/subs.stl').then(r => r.arrayBuffer())))
+const spruce = parseSpruceSTL(await fetch('/subs.spruce').then(r => r.text()))
+```
+
+## Serialization
+
+```ts
+import { toEBUSTL, toSpruceSTL } from 'subforge/stl'
+
+const ebu = toEBUSTL(doc, { frameRate: 25, cct: 0x00, languageCode: '0A' })
+const spruce = toSpruceSTL(doc, { frameRate: 25 })
 ```

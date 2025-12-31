@@ -11,8 +11,15 @@ SAMI is a legacy HTML-like subtitle format from Microsoft.
 - CSS classes in the `<STYLE>` block
 - `<P Class=...>` references
 
-## API
+## Parsing
 
 ```ts
-import { parseSAMI, toSAMI } from 'subforge/sami'
+import { parseSAMI, parseSAMIResult } from 'subforge/sami'
+```
+
+## Serialization
+
+```ts
+import { toSAMI } from 'subforge/sami'
+```
 ```

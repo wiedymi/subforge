@@ -10,8 +10,14 @@ SBV is a simple YouTube subtitle format.
 
 - No inline styling support
 
-## API
+## Parsing
 
 ```ts
-import { parseSBV, toSBV } from 'subforge/sbv'
+import { parseSBV, parseSBVResult } from 'subforge/sbv'
+```
+
+## Serialization
+
+```ts
+import { toSBV } from 'subforge/sbv'
 ```

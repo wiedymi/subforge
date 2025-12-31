@@ -9,21 +9,34 @@ Advanced SubStation Alpha is the richest text format supported by Subforge. It i
 
 ## Styling and tags
 
-ASS supports a large set of override tags and style definitions. Subforge parses common override tags and preserves styling in `segments`:
+Subforge parses a broad, practical subset of ASS override tags and stores them in `segments`.
+
+Commonly supported tags include:
 
 - Font: `\fn`, `\fs`
 - Styles: `\b`, `\i`, `\u`, `\s`
 - Colors: `\c`, `\1c` to `\4c`, alpha variants
-- Positioning: `\pos`, `\move`, `\an`
+- Alignment: `\an`
+- Positioning: `\pos`, `\move`
 - Karaoke: `\k`, `\kf`, `\ko`
-- Drawing: `\p` and vector drawing mode
+- Clipping: `\clip`, `\iclip`
 
-## API
+If you need the exact list, review `src/formats/text/ass/tags.ts`.
+
+## Parsing
 
 ```ts
-import { parseASS, toASS } from 'subforge/ass'
+import { parseASS, parseASSResult } from 'subforge/ass'
 
 const doc = parseASS(assText)
+const result = parseASSResult(assText, { onError: 'collect' })
+```
+
+## Serialization
+
+```ts
+import { toASS } from 'subforge/ass'
+
 const out = toASS(doc)
 ```
 

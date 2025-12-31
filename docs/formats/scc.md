@@ -8,10 +8,23 @@ Scenarist Closed Caption (SCC) encodes CEA-608 data with SMPTE timecodes.
 
 ## Styling
 
-- Limited CEA-608 styling and positioning
+- CEA-608 styling and positioning codes are not preserved; output is plain text with line breaks
 
-## API
+## Parsing
 
 ```ts
-import { parseSCC, toSCC } from 'subforge/scc'
+import { parseSCC, parseSCCResult } from 'subforge/scc'
+
+const text = await fetch('/subs.scc').then(r => r.text())
+const doc = parseSCC(text)
 ```
+
+## Serialization
+
+```ts
+import { toSCC } from 'subforge/scc'
+```
+
+## Notes
+
+- Mid-row styling and PAC positioning are ignored during parsing.

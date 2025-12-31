@@ -13,8 +13,14 @@ Supported HTML-like tags:
 - `<b>`, `<i>`, `<u>`, `<s>`
 - `<font color="#RRGGBB">`
 
-## API
+## Parsing
 
 ```ts
-import { parseSRT, toSRT } from 'subforge/srt'
+import { parseSRT, parseSRTResult } from 'subforge/srt'
+```
+
+## Serialization
+
+```ts
+import { toSRT } from 'subforge/srt'
 ```

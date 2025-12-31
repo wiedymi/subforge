@@ -15,12 +15,20 @@ Supported tags:
 - `<c>` (class)
 - `<lang>`
 
+Voice, class, and language tags are parsed, but only bold, italic, and underline are serialized.
+
 ## Regions
 
 VTT region blocks are parsed into `document.regions`.
 
-## API
+## Parsing
 
 ```ts
-import { parseVTT, toVTT } from 'subforge/vtt'
+import { parseVTT, parseVTTResult } from 'subforge/vtt'
+```
+
+## Serialization
+
+```ts
+import { toVTT } from 'subforge/vtt'
 ```

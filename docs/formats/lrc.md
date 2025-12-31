@@ -11,8 +11,20 @@ LRC is commonly used for lyrics with timestamps. Subforge supports both simple a
 
 Common metadata tags include `[ti:]`, `[ar:]`, `[al:]`, `[au:]`, `[offset:]`.
 
-## API
+## Parsing
 
 ```ts
-import { parseLRC, toLRC } from 'subforge/lrc'
+import { parseLRC, parseLRCResult } from 'subforge/lrc'
+```
+
+## Serialization
+
+```ts
+import { toLRC } from 'subforge/lrc'
+
+const lrc = toLRC(doc, {
+  includeMetadata: true,
+  useCentiseconds: true,
+  offset: 0
+})
 ```

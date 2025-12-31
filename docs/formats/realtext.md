@@ -11,8 +11,19 @@ RealText is an XML-like format used by RealNetworks.
 
 - Basic tags such as `<b>`, `<i>`, `<u>` may be preserved in text
 
-## API
+## Parsing
 
 ```ts
-import { parseRealText, toRealText } from 'subforge/realtext'
+import { parseRealText, parseRealTextResult } from 'subforge/realtext'
+```
+
+## Serialization
+
+```ts
+import { toRealText } from 'subforge/realtext'
+```
+
+## Notes
+
+- Serializer converts newlines to `<br/>`.
 ```

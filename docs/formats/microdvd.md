@@ -11,8 +11,18 @@ MicroDVD is a frame-based subtitle format with inline tags.
 
 Inline tags use `{y:...}` syntax and support basic formatting.
 
-## API
+## Parsing
 
 ```ts
-import { parseMicroDVD, toMicroDVD } from 'subforge/microdvd'
+import { parseMicroDVD, parseMicroDVDResult } from 'subforge/microdvd'
+
+const doc = parseMicroDVD(mdvdText, 23.976)
+```
+
+## Serialization
+
+```ts
+import { toMicroDVD } from 'subforge/microdvd'
+
+const out = toMicroDVD(doc, 25)
 ```

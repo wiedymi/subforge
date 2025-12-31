@@ -36,6 +36,8 @@ These numbers are from isolated runs (each format executed in its own process) u
 | CAP | 16.23 |
 | SSA | 17.35 |
 
+Results vary by hardware and Bun version. Re-run the command to refresh numbers.
+
 Quick 100k parse matrix:
 
 ```bash

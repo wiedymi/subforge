@@ -8,13 +8,19 @@ SubStation Alpha v4 is the predecessor of ASS. It uses a similar structure with 
 
 ## Styling
 
-- Basic style definitions and limited override tags
+- Basic style definitions and a subset of ASS override tags
 - Alignment and margins are supported
 
-## API
+## Parsing
 
 ```ts
-import { parseSSA, toSSA } from 'subforge/ssa'
+import { parseSSA, parseSSAResult } from 'subforge/ssa'
+```
+
+## Serialization
+
+```ts
+import { toSSA } from 'subforge/ssa'
 ```
 
 ## Notes
