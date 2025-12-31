@@ -120,7 +120,7 @@
       "default": "./dist/formats/broadcast/teletext/index.js"
     }
   },
-  "description": "High-performance TypeScript subtitle library. ASS-first format, others degrade gracefully.",
+  "description": "Ultra-fast subtitle toolkit for parsing, converting, and authoring.",
   "files": [
     "src",
     "dist"

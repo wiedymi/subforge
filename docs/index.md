@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Subforge"
-  text: "High-performance subtitle parsing and conversion"
-  tagline: "ASS-first, format-agnostic core, optimized for large subtitle sets"
+  text: "Ultra-fast subtitle parsing and conversion"
+  tagline: "A compact toolkit for modern subtitle workflows"
   actions:
     - theme: brand
       text: Getting Started

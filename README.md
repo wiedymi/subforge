@@ -1,6 +1,6 @@
 # Subforge
 
-High-performance TypeScript subtitle library with a unified ASS-first document model, fast parsers, and serializers for a wide range of formats.
+Ultra-fast subtitle toolkit for parsing, converting, and authoring across formats.
 
 ## Features
 
