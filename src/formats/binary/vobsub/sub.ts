@@ -32,11 +32,12 @@ export interface SubtitlePacket {
  * const packet = parseSubPacket(new Uint8Array(subData), 0x12345)
  */
 export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket | null {
+  const len = data.length
   let pos = offset
 
   // Find MPEG-PS packet start code (00 00 01 BA)
   if (
-    pos + 3 < data.length &&
+    pos + 3 < len &&
     data[pos] === 0x00 &&
     data[pos + 1] === 0x00 &&
     data[pos + 2] === 0x01 &&
@@ -44,7 +45,7 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   ) {
     // Already aligned
   } else {
-    while (pos < data.length - 4) {
+    while (pos < len - 4) {
       if (data[pos] === 0x00 && data[pos + 1] === 0x00 && data[pos + 2] === 0x01 && data[pos + 3] === 0xBA) {
         break
       }
@@ -52,7 +53,7 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
     }
   }
 
-  if (pos >= data.length - 14) {
+  if (pos >= len - 14) {
     return null
   }
 
@@ -60,21 +61,21 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   pos += 14
 
   // Look for PES packet start code (00 00 01 BD - private stream 1)
-  if (pos + 4 > data.length || data[pos] !== 0x00 || data[pos + 1] !== 0x00 || data[pos + 2] !== 0x01 || data[pos + 3] !== 0xBD) {
+  if (pos + 4 > len || data[pos] !== 0x00 || data[pos + 1] !== 0x00 || data[pos + 2] !== 0x01 || data[pos + 3] !== 0xBD) {
     return null
   }
 
   pos += 4
 
   // PES packet length (2 bytes)
-  if (pos + 2 > data.length) return null
+  if (pos + 2 > len) return null
   const pesLength = (data[pos] << 8) | data[pos + 1]
   pos += 2
 
   const pesStart = pos
   const pesEnd = pesStart + pesLength
 
-  if (pesEnd > data.length) {
+  if (pesEnd > len) {
     return null
   }
 
@@ -82,12 +83,12 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   pos += 2
 
   // PES header data length
-  if (pos >= data.length) return null
+  if (pos >= len) return null
   const pesHeaderDataLength = data[pos++]
 
   // Extract PTS if present
   let pts = 0
-  if (pesHeaderDataLength >= 5 && pos + 5 <= data.length) {
+  if (pesHeaderDataLength >= 5 && pos + 5 <= len) {
     const ptsBits = data[pos]
     if ((ptsBits & 0xF0) === 0x20 || (ptsBits & 0xF0) === 0x30) {
       // PTS present
@@ -103,18 +104,18 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   pos += pesHeaderDataLength
 
   // Subtitle stream ID (should be 0x20 for first subtitle stream)
-  if (pos >= data.length) return null
+  if (pos >= len) return null
   const streamId = data[pos++]
 
   // Subtitle packet size
-  if (pos + 2 > data.length) return null
+  if (pos + 2 > len) return null
   const subPacketSize = (data[pos] << 8) | data[pos + 1]
   pos += 2
 
   const subPacketStart = pos
   const subPacketEnd = Math.min(subPacketStart + subPacketSize, pesEnd)
 
-  if (subPacketEnd > data.length) {
+  if (subPacketEnd > len) {
     return null
   }
 
@@ -130,7 +131,8 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
     const offsetField = (data[subPacketStart + 2] << 8) | data[subPacketStart + 3]
     if (offsetField >= 4 && offsetField < packetLen && sizeField >= offsetField) {
       const candidate = subPacketStart + offsetField
-      const maybeInfo = parseControlSequence(data, candidate, subPacketEnd)
+      const maybeInfo = parseControlSequenceFast(data, candidate, subPacketEnd)
+        ?? parseControlSequence(data, candidate, subPacketEnd)
       if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
         controlSeqOffset = candidate
         controlInfo = maybeInfo
@@ -141,7 +143,8 @@ export function parseSubPacket(data: Uint8Array, offset: number): SubtitlePacket
   if (!controlInfo) {
     const guessedOffset = findControlSequence(data, subPacketStart, subPacketEnd)
     if (guessedOffset !== null) {
-      const maybeInfo = parseControlSequence(data, guessedOffset, subPacketEnd)
+      const maybeInfo = parseControlSequenceFast(data, guessedOffset, subPacketEnd)
+        ?? parseControlSequence(data, guessedOffset, subPacketEnd)
       if (maybeInfo && (maybeInfo.width > 0 || maybeInfo.height > 0)) {
         controlSeqOffset = guessedOffset
         controlInfo = maybeInfo
@@ -194,6 +197,44 @@ interface ControlInfo {
   forced: boolean
 }
 
+function parseControlSequenceFast(data: Uint8Array, offset: number, end: number): ControlInfo | null {
+  const remaining = end - offset
+  if (remaining < 11) return null
+  if (data[offset] !== 0x05) return null
+
+  const pos = offset + 1
+  if (pos + 9 >= end) return null
+
+  const x1 = (data[pos] << 4) | (data[pos + 1] >> 4)
+  const x2 = ((data[pos + 1] & 0x0F) << 8) | data[pos + 2]
+  const y1 = (data[pos + 3] << 4) | (data[pos + 4] >> 4)
+  const y2 = ((data[pos + 4] & 0x0F) << 8) | data[pos + 5]
+
+  if (data[pos + 6] !== 0x02) return null
+  const stopTime = (data[pos + 7] << 8) | data[pos + 8]
+  const duration = Math.floor(stopTime / 90 * 1024)
+
+  const tail = data[pos + 9]
+  let forced = false
+  if (tail === 0xFF) {
+    forced = false
+  } else if (tail === 0x00) {
+    if (pos + 10 >= end || data[pos + 10] !== 0xFF) return null
+    forced = true
+  } else {
+    return null
+  }
+
+  return {
+    duration,
+    x: x1,
+    y: y1,
+    width: x2 - x1 + 1,
+    height: y2 - y1 + 1,
+    forced,
+  }
+}
+
 /**
  * Find control sequence in subtitle packet
  */
@@ -219,77 +260,69 @@ function findControlSequence(data: Uint8Array, start: number, end: number): numb
  */
 function parseControlSequence(data: Uint8Array, offset: number, end: number): ControlInfo | null {
   let pos = offset
-  const info: ControlInfo = {
-    duration: 0,
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    forced: false,
-  }
+  let duration = 0
+  let x = 0
+  let y = 0
+  let width = 0
+  let height = 0
+  let forced = false
 
   while (pos < end) {
-    if (pos >= data.length) break
-
     const cmd = data[pos++]
 
-    switch (cmd) {
-      case 0x00: // Force display
-        info.forced = true
-        break
+    if (cmd === 0x00) {
+      forced = true
+      continue
+    }
+    if (cmd === 0x01) {
+      if (pos + 2 > end) break
+      pos += 2
+      continue
+    }
+    if (cmd === 0x02) {
+      if (pos + 2 > end) break
+      const stopTime = (data[pos] << 8) | data[pos + 1]
+      duration = Math.floor(stopTime / 90 * 1024)
+      pos += 2
+      continue
+    }
+    if (cmd === 0x03 || cmd === 0x04) {
+      if (pos + 2 > end) break
+      pos += 2
+      continue
+    }
+    if (cmd === 0x05) {
+      if (pos + 6 > end) break
+      const x1 = (data[pos] << 4) | (data[pos + 1] >> 4)
+      const x2 = ((data[pos + 1] & 0x0F) << 8) | data[pos + 2]
+      const y1 = (data[pos + 3] << 4) | (data[pos + 4] >> 4)
+      const y2 = ((data[pos + 4] & 0x0F) << 8) | data[pos + 5]
 
-      case 0x01: // Start display
-        if (pos + 2 > end) return info
-        // Skip timestamp (we use PTS instead)
-        pos += 2
-        break
-
-      case 0x02: // Stop display
-        if (pos + 2 > end) return info
-        const stopTime = (data[pos] << 8) | data[pos + 1]
-        info.duration = Math.floor(stopTime / 90 * 1024)  // Convert to ms
-        pos += 2
-        break
-
-      case 0x03: // Palette info
-        if (pos + 2 > end) return info
-        pos += 2
-        break
-
-      case 0x04: // Alpha info
-        if (pos + 2 > end) return info
-        pos += 2
-        break
-
-      case 0x05: // Coordinates
-        if (pos + 6 > end) return info
-        const x1 = ((data[pos] << 4) | (data[pos + 1] >> 4))
-        const x2 = (((data[pos + 1] & 0x0F) << 8) | data[pos + 2])
-        const y1 = ((data[pos + 3] << 4) | (data[pos + 4] >> 4))
-        const y2 = (((data[pos + 4] & 0x0F) << 8) | data[pos + 5])
-
-        info.x = x1
-        info.y = y1
-        info.width = x2 - x1 + 1
-        info.height = y2 - y1 + 1
-        pos += 6
-        break
-
-      case 0x06: // RLE offsets
-        if (pos + 4 > end) return info
-        pos += 4
-        break
-
-      case 0xFF: // End of control sequence
-        return info
-
-      default:
-        // Unknown command, skip
-        break
+      x = x1
+      y = y1
+      width = x2 - x1 + 1
+      height = y2 - y1 + 1
+      pos += 6
+      continue
+    }
+    if (cmd === 0x06) {
+      if (pos + 4 > end) break
+      pos += 4
+      continue
+    }
+    if (cmd === 0xFF) {
+      break
     }
   }
 
-  return info
+  return {
+    duration,
+    x,
+    y,
+    width,
+    height,
+    forced,
+  }
 }
 
 /**
