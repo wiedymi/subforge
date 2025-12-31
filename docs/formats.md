@@ -1,33 +1,41 @@
 # Formats
 
-Subforge supports text, XML, binary, and broadcast subtitle formats through a consistent API.
+Subforge supports text, XML, binary, and broadcast subtitle formats through a consistent API. Each format has its own documentation page with specifics on timing syntax, styling, and options.
 
-## Supported formats
+## Format matrix
 
-| Format | Parse | Serialize | Notes |
-| --- | --- | --- | --- |
-| ASS | yes | yes | Full-featured reference format |
-| SSA | yes | yes | Legacy ASS predecessor |
-| SRT | yes | yes | Popular simple format |
-| VTT | yes | yes | WebVTT with region support |
-| SBV | yes | yes | YouTube SBV |
-| LRC | yes | yes | Lyric timestamps |
-| MicroDVD | yes | yes | Frame-based timing |
-| TTML | yes | yes | W3C standard |
-| DFXP | yes | yes | TTML profile |
-| SMPTE-TT | yes | yes | TTML profile |
-| SAMI | yes | yes | Microsoft SAMI |
-| RealText | yes | yes | RealNetworks |
-| QuickTime Text | yes | yes | QT text |
-| EBU-STL | yes | yes | Binary STL |
-| Spruce STL | yes | yes | Text STL |
-| PGS | yes | yes | Blu-ray bitmap |
-| DVB | yes | yes | DVB subtitles |
-| VobSub | yes | yes | Requires .idx + .sub |
-| PAC | yes | yes | Cavena/Screen Electronics |
-| SCC | yes | yes | CEA-608 |
-| CAP | yes | yes | CaptionMAX |
-| Teletext | yes | yes | Broadcast teletext |
+See [Format Support Matrix](/format-support) for a concise overview of feature coverage.
+
+## Text formats
+
+- [ASS](/formats/ass)
+- [SSA](/formats/ssa)
+- [SRT](/formats/srt)
+- [VTT](/formats/vtt)
+- [SBV](/formats/sbv)
+- [LRC](/formats/lrc)
+- [MicroDVD](/formats/microdvd)
+
+## XML formats
+
+- [TTML](/formats/ttml)
+- [SAMI](/formats/sami)
+- [RealText](/formats/realtext)
+- [QuickTime Text](/formats/qt)
+
+## Binary formats
+
+- [EBU-STL and Spruce STL](/formats/stl)
+- [PGS](/formats/pgs)
+- [DVB](/formats/dvb)
+- [VobSub](/formats/vobsub)
+- [PAC](/formats/pac)
+
+## Broadcast formats
+
+- [SCC](/formats/scc)
+- [CAP](/formats/cap)
+- [Teletext](/formats/teletext)
 
 ## Subpath entry points
 

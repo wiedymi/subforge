@@ -10,6 +10,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/getting-started' },
       { text: 'Formats', link: '/formats' },
+      { text: 'Matrix', link: '/format-support' },
       { text: 'Performance', link: '/performance' },
       { text: 'Browser', link: '/browser' }
     ],
@@ -30,7 +31,32 @@ export default defineConfig({
         text: 'API',
         items: [
           { text: 'Operations', link: '/operations' },
-          { text: 'Formats', link: '/formats' }
+          { text: 'Formats Overview', link: '/formats' },
+          { text: 'Format Support Matrix', link: '/format-support' }
+        ]
+      },
+      {
+        text: 'Formats',
+        items: [
+          { text: 'ASS', link: '/formats/ass' },
+          { text: 'SSA', link: '/formats/ssa' },
+          { text: 'SRT', link: '/formats/srt' },
+          { text: 'VTT', link: '/formats/vtt' },
+          { text: 'SBV', link: '/formats/sbv' },
+          { text: 'LRC', link: '/formats/lrc' },
+          { text: 'MicroDVD', link: '/formats/microdvd' },
+          { text: 'TTML', link: '/formats/ttml' },
+          { text: 'SAMI', link: '/formats/sami' },
+          { text: 'RealText', link: '/formats/realtext' },
+          { text: 'QuickTime Text', link: '/formats/qt' },
+          { text: 'STL (EBU/Spruce)', link: '/formats/stl' },
+          { text: 'PGS', link: '/formats/pgs' },
+          { text: 'DVB', link: '/formats/dvb' },
+          { text: 'VobSub', link: '/formats/vobsub' },
+          { text: 'PAC', link: '/formats/pac' },
+          { text: 'SCC', link: '/formats/scc' },
+          { text: 'CAP', link: '/formats/cap' },
+          { text: 'Teletext', link: '/formats/teletext' }
         ]
       },
       {
