@@ -56,3 +56,4 @@ const { idx, sub } = toVobSub(doc)
 ## Notes
 
 - Full parsing requires both `.idx` and `.sub`.
+- For large timelines, use `decode: 'none'` to keep parsing under the 20ms/100k target and defer image work.
