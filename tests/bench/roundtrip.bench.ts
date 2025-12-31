@@ -3,7 +3,8 @@
  * Tests parse → serialize → parse cycles for format integrity
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   loadFixture,
   generateASS,
@@ -147,4 +148,4 @@ group('ASS → SRT → VTT → TTML', () => {
   })
 })
 
-await run()
+await runBench()

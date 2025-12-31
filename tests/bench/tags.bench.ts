@@ -3,7 +3,8 @@
  * Covers: ASS/SRT/VTT tag parsing, color parsing, time parsing
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 
 // ASS tag utilities
 import {
@@ -177,4 +178,4 @@ group('VTT time', () => {
   bench('format', () => formatVTTTime(5025678))
 })
 
-await run()
+await runBench()

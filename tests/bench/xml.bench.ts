@@ -3,7 +3,8 @@
  * Covers: TTML, DFXP, SMPTE-TT
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   loadFixture,
   generateDocument,
@@ -82,4 +83,4 @@ group('SMPTE-TT serialize', () => {
   bench('100k events', () => toSMPTETT(doc100k))
 })
 
-await run()
+await runBench()

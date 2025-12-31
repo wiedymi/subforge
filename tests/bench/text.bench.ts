@@ -3,7 +3,8 @@
  * Covers: ASS, SSA, SRT, VTT, SBV, LRC, MicroDVD, QT, SAMI, RealText, CAP
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   loadFixture,
   generateDocument,
@@ -290,4 +291,4 @@ group('RealText serialize', () => {
   bench('100k events', () => toRealText(doc100k))
 })
 
-await run()
+await runBench()

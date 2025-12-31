@@ -3,7 +3,8 @@
  * Covers: SCC (CEA-608), Teletext
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   loadBinaryFixture,
   loadFixture,
@@ -94,4 +95,4 @@ group('Teletext serialize', () => {
   bench('100k events', () => toTeletext(doc100k))
 })
 
-await run()
+await runBench()

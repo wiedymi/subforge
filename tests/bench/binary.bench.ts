@@ -3,7 +3,8 @@
  * Covers: EBU-STL, Spruce STL, PGS, DVB, VobSub, PAC
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   loadFixture,
   loadBinaryFixture,
@@ -198,4 +199,4 @@ group('Spruce STL serialize', () => {
   bench('100k events', () => toSpruceSTL(doc100k))
 })
 
-await run()
+await runBench()

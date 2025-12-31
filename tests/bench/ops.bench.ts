@@ -3,7 +3,8 @@
  * Covers: shifting, scaling, sorting, querying, search/replace
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import { generateRandomEvents, SIZES } from './_utils.ts'
 import {
   shiftEvents,
@@ -196,4 +197,4 @@ group('searchReplace (regex)', () => {
   })
 })
 
-await run()
+await runBench()

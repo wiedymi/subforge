@@ -16,25 +16,25 @@ These numbers are from isolated runs (each format executed in its own process) u
 
 | Format | 100k parse (ms) |
 | --- | ---: |
-| DVB | 4.27 |
-| VobSub idx | 6.01 |
-| PAC | 8.18 |
-| Teletext | 9.65 |
-| SCC | 10.31 |
-| LRC | 10.77 |
-| SBV | 12.68 |
-| QT | 13.52 |
-| Spruce STL | 14.19 |
-| TTML | 14.28 |
-| SMPTE-TT | 14.28 |
-| RealText | 14.61 |
-| SAMI | 14.62 |
-| EBU-STL | 14.81 |
-| PGS | 14.82 |
-| DFXP | 15.24 |
-| ASS | 15.75 |
-| CAP | 16.23 |
-| SSA | 17.35 |
+| DVB | 4.20 |
+| VobSub idx | 6.26 |
+| PAC | 6.48 |
+| Teletext | 7.70 |
+| SMPTE-TT | 9.51 |
+| SCC | 10.19 |
+| LRC | 11.29 |
+| Spruce STL | 11.67 |
+| SBV | 12.80 |
+| QT | 13.74 |
+| EBU-STL | 14.06 |
+| RealText | 14.14 |
+| TTML | 15.43 |
+| PGS | 15.84 |
+| ASS | 16.30 |
+| CAP | 16.49 |
+| DFXP | 16.71 |
+| SSA | 17.29 |
+| SAMI | 18.00 |
 
 Results vary by hardware and Bun version. Re-run the command to refresh numbers.
 

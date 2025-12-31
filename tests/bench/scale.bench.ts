@@ -3,7 +3,8 @@
  * Tests all major formats at 1k, 10k, and 100k event counts
  */
 
-import { bench, group, run } from 'mitata'
+import { bench, group } from 'mitata'
+import { runBench } from './_run.ts'
 import {
   generateDocument,
   generateASS,
@@ -169,4 +170,4 @@ group('Serialize 100k events', () => {
   bench('VTT', () => toVTT(doc100k))
 })
 
-await run()
+await runBench()
