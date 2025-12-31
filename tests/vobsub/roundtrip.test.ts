@@ -94,6 +94,59 @@ test('toVobSub creates valid VobSub files', () => {
   expect(sub.length).toBeGreaterThan(0)
 })
 
+test('parseVobSub supports timing-only mode', () => {
+  const doc: SubtitleDocument = {
+    info: {
+      playResX: 720,
+      playResY: 480,
+      scaleBorderAndShadow: true,
+      wrapStyle: 0,
+    },
+    styles: new Map(),
+    events: [{
+      id: 0,
+      start: 1000,
+      end: 3000,
+      layer: 0,
+      style: 'Default',
+      actor: '',
+      marginL: 0,
+      marginR: 0,
+      marginV: 0,
+      effect: '',
+      text: '',
+      segments: [{
+        text: '',
+        style: null,
+        effects: [
+          {
+            type: 'image',
+            params: {
+              format: 'indexed',
+              width: 2,
+              height: 2,
+              x: 0,
+              y: 0,
+              data: new Uint8Array([1, 1, 1, 1]),
+              palette: [0x000000FF, 0xFFFFFFFF],
+            },
+          } as ImageEffect,
+        ],
+      }],
+      dirty: false,
+    }],
+    comments: [],
+  }
+
+  const { idx, sub } = toVobSub(doc)
+  const parsed = unwrap(parseVobSub(idx, sub, { decode: 'none' }))
+
+  expect(parsed.events).toHaveLength(1)
+  expect(parsed.events[0].start).toBe(1000)
+  expect(parsed.events[0].end).toBeGreaterThan(1000)
+  expect(parsed.events[0].segments).toHaveLength(0)
+})
+
 test('roundtrip preserves basic structure', () => {
   const originalDoc: SubtitleDocument = {
     info: {
