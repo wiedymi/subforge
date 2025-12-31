@@ -92,79 +92,9 @@ export function parseVobSub(
       for (let i = 0; i < track.timestamps.length; i++) {
         const ts = track.timestamps[i]
 
-        try {
-          if (decodeMode === 'none') {
-            const next = i + 1 < track.timestamps.length ? track.timestamps[i + 1]!.time : ts.time + 2000
-            const endTime = next > ts.time ? next : ts.time + 2000
-            const id = eventId++
-            const event: SubtitleEvent = {
-              id,
-              start: ts.time,
-              end: endTime,
-              layer: 0,
-              style: 'Default',
-              actor: '',
-              marginL: 0,
-              marginR: 0,
-              marginV: 0,
-              effect: '',
-              text: '',
-              segments: EMPTY_SEGMENTS,
-              dirty: false,
-            }
-            doc.events[id] = event
-            continue
-          }
-
-          const packet = parseSubPacket(data, ts.filepos)
-          if (!packet) {
-            errors.push(`Failed to parse packet at filepos ${ts.filepos.toString(16)}`)
-            continue
-          }
-
-          // Determine end time (use next timestamp or add duration)
-          let endTime = ts.time + packet.duration
-          if (packet.duration === 0 && i + 1 < track.timestamps.length) {
-            endTime = track.timestamps[i + 1].time
-          }
-          if (endTime <= ts.time) {
-            endTime = ts.time + 2000  // Default 2 second duration
-          }
-
-          const imageEffect: ImageEffect = decodeMode === 'rle'
-            ? {
-              type: 'image',
-              params: {
-                format: 'rle',
-                width: packet.width,
-                height: packet.height,
-                x: packet.x,
-                y: packet.y,
-                data: packet.rleData,
-                palette: index.palette,
-              },
-            }
-            : {
-              type: 'image',
-              params: {
-                format: 'indexed',
-                width: packet.width,
-                height: packet.height,
-                x: packet.x,
-                y: packet.y,
-                data: decodeRLE(packet.rleData, packet.width, packet.height).data,
-                palette: index.palette,
-              },
-            }
-
-          const vobsubEffect: VobSubEffect = {
-            type: 'vobsub',
-            params: {
-              forced: packet.forced,
-              originalIndex: track.index,
-            },
-          }
-
+        if (decodeMode === 'none') {
+          const next = i + 1 < track.timestamps.length ? track.timestamps[i + 1]!.time : ts.time + 2000
+          const endTime = next > ts.time ? next : ts.time + 2000
           const id = eventId++
           const event: SubtitleEvent = {
             id,
@@ -178,18 +108,84 @@ export function parseVobSub(
             marginV: 0,
             effect: '',
             text: '',
-            segments: [{
-              text: '',
-              style: null,
-              effects: [imageEffect, vobsubEffect],
-            }],
+            segments: EMPTY_SEGMENTS,
             dirty: false,
           }
-
           doc.events[id] = event
-        } catch (err) {
-          errors.push(`Error parsing packet at ${ts.filepos.toString(16)}: ${err}`)
+          continue
         }
+
+        const packet = parseSubPacket(data, ts.filepos)
+        if (!packet) {
+          errors.push(`Failed to parse packet at filepos ${ts.filepos.toString(16)}`)
+          continue
+        }
+
+        // Determine end time (use next timestamp or add duration)
+        let endTime = ts.time + packet.duration
+        if (packet.duration === 0 && i + 1 < track.timestamps.length) {
+          endTime = track.timestamps[i + 1].time
+        }
+        if (endTime <= ts.time) {
+          endTime = ts.time + 2000  // Default 2 second duration
+        }
+
+        const imageEffect: ImageEffect = decodeMode === 'rle'
+          ? {
+            type: 'image',
+            params: {
+              format: 'rle',
+              width: packet.width,
+              height: packet.height,
+              x: packet.x,
+              y: packet.y,
+              data: packet.rleData,
+              palette: index.palette,
+            },
+          }
+          : {
+            type: 'image',
+            params: {
+              format: 'indexed',
+              width: packet.width,
+              height: packet.height,
+              x: packet.x,
+              y: packet.y,
+              data: decodeRLE(packet.rleData, packet.width, packet.height).data,
+              palette: index.palette,
+            },
+          }
+
+        const vobsubEffect: VobSubEffect = {
+          type: 'vobsub',
+          params: {
+            forced: packet.forced,
+            originalIndex: track.index,
+          },
+        }
+
+        const id = eventId++
+        const event: SubtitleEvent = {
+          id,
+          start: ts.time,
+          end: endTime,
+          layer: 0,
+          style: 'Default',
+          actor: '',
+          marginL: 0,
+          marginR: 0,
+          marginV: 0,
+          effect: '',
+          text: '',
+          segments: [{
+            text: '',
+            style: null,
+            effects: [imageEffect, vobsubEffect],
+          }],
+          dirty: false,
+        }
+
+        doc.events[id] = event
       }
     }
 
