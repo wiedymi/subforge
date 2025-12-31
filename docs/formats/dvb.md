@@ -8,7 +8,7 @@ DVB subtitles are bitmap-based and commonly used in broadcast streams.
 
 ## Images
 
-- Parsed into image effects in event segments
+- Parsed into `event.image` bitmap payloads
 
 ## Parsing
 

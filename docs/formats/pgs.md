@@ -8,8 +8,8 @@ Presentation Graphic Stream (PGS) is a bitmap subtitle format used by Blu-ray.
 
 ## Images
 
-- Subforge converts PGS segments into image effects attached to events.
-- Events contain `segments` with `image` effects.
+- Subforge exposes bitmap data on `event.image` and PGS metadata on `event.pgs`.
+- `segments` can be empty for image-based events.
 
 ## Parsing
 

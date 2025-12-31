@@ -29,6 +29,6 @@ This matrix summarizes core support per format. "Limited" means partial coverage
 
 ## Notes
 
-- For bitmap formats (PGS, DVB, VobSub), Subforge emits image effects in `segments`.
+- For bitmap formats (PGS, DVB, VobSub), Subforge stores bitmap payloads on `event.image` with metadata on `event.pgs` or `event.vobsub`.
 - "Positioning" indicates explicit placement or region support.
 - Teletext parsing currently assigns a default duration when no PTS is available.
