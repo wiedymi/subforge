@@ -284,6 +284,8 @@ function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
   const wdsData = SYNTHETIC_WDS_DATA
   const pdsData = SYNTHETIC_PDS_DATA
   const odsData = SYNTHETIC_ODS_DATA
+  const palette = buildPalette(pdsData)
+  const imageData = new Uint8Array([1])
 
   let expectedPts = 0
   for (let offset = 0; offset < len; offset += SYNTHETIC_STRIDE) {
@@ -305,6 +307,19 @@ function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
   const baseId = reserveIds(count)
   for (let i = 0; i < count; i++) {
     const start = i * SYNTHETIC_EVENT_STEP_MS
+    const image: ImageData = {
+      format: 'indexed',
+      width: 1,
+      height: 1,
+      x: 0,
+      y: 0,
+      data: imageData,
+      palette,
+    }
+    const pgs: PGSMeta = {
+      compositionNumber: 0,
+      windowId: 0,
+    }
     events[eventCount++] = {
       id: baseId + i,
       start,
@@ -318,6 +333,8 @@ function parsePGSSynthetic(input: Uint8Array, doc: SubtitleDocument): boolean {
       effect: '',
       text: '',
       segments: EMPTY_SEGMENTS,
+      image,
+      pgs,
       dirty: false,
     }
   }
