@@ -4,7 +4,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/bun": "latest",
-    "mitata": "^1.0.34"
+    "mitata": "^1.0.34",
+    "vitepress": "^2.0.0-alpha.15"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -127,7 +128,10 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "test": "bun test --force-exit",
-    "bench": "bun run tests/bench/text.bench.ts && bun run tests/bench/xml.bench.ts && bun run tests/bench/binary.bench.ts && bun run tests/bench/broadcast.bench.ts && bun run tests/bench/roundtrip.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts && bun run tests/bench/scale.bench.ts"
+    "bench": "bun run tests/bench/text.bench.ts && bun run tests/bench/xml.bench.ts && bun run tests/bench/binary.bench.ts && bun run tests/bench/broadcast.bench.ts && bun run tests/bench/roundtrip.bench.ts && bun run tests/bench/tags.bench.ts && bun run tests/bench/ops.bench.ts && bun run tests/bench/scale.bench.ts",
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
   },
   "sideEffects": false,
   "type": "module"
