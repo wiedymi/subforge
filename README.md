@@ -5,7 +5,7 @@ High-performance subtitle toolkit for parsing, converting, and authoring across 
 [![Version](https://img.shields.io/npm/v/subforge)](https://www.npmjs.com/package/subforge)
 [![Size](https://img.shields.io/npm/unpacked-size/subforge)](https://www.npmjs.com/package/subforge)
 [![License](https://img.shields.io/github/license/wiedymi/subforge)](https://github.com/wiedymi/subforge/blob/main/LICENSE)
-[![Docs](https://img.shields.io/badge/docs-vitepress-blue)](https://github.com/wiedymi/subforge/tree/main/docs)
+[![Docs](https://img.shields.io/badge/docs-vitepress-blue)](https://subforge.pages.dev/)
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-brightgreen)](https://github.com/sponsors/vivy-company)
 
 ## Highlights
@@ -124,7 +124,9 @@ bun run bench
 
 ## Documentation
 
-VitePress docs are in `docs/`:
+Live docs: [subforge.pages.dev](https://subforge.pages.dev/)
+
+VitePress source is in `docs/`:
 
 ```bash
 bun run docs:dev

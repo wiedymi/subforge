@@ -14,6 +14,10 @@ export default defineConfig({
       { text: 'Performance', link: '/performance' },
       { text: 'Browser', link: '/browser' }
     ],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/wiedymi/subforge' },
+      { icon: 'npm', link: 'https://www.npmjs.com/package/subforge' }
+    ],
 
     sidebar: [
       {
