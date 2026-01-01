@@ -1,12 +1,14 @@
 # Subforge
 
-Ultra-fast subtitle toolkit for parsing, converting, and authoring across formats.
+High-performance subtitle toolkit for parsing, converting, and authoring across 20+ formats.
 
-## Features
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-brightgreen)](https://github.com/sponsors/vivy-company)
 
-- Parse and serialize text, XML, binary, and broadcast subtitle formats
-- ASS-first internal model with explicit feature loss handling
-- High-throughput parsing paths tuned for large subtitle sets
+## Highlights
+
+- Unified document model with explicit feature loss tracking
+- Parsers and serializers for text, XML, binary, and broadcast formats
+- Fast paths for large subtitle collections
 - Universal ESM build for browsers, Node, and Bun
 
 ## Installation
@@ -41,6 +43,50 @@ import { parseSRT } from 'subforge/srt'
 import { SubtitleDocument } from 'subforge/core'
 ```
 
+## Parsing
+
+All parsers return a `ParseResult` so you can choose strict or best-effort flows:
+
+```ts
+import { parseSRT } from 'subforge/srt'
+import { unwrap } from 'subforge/core'
+
+const result = parseSRT(srtText)
+const doc = unwrap(result)
+```
+
+## Conversion
+
+```ts
+import { convert } from 'subforge/core'
+
+const result = convert(doc, {
+  to: 'vtt',
+  karaoke: 'strip',
+  positioning: 'strip',
+  reportLoss: true
+})
+
+console.log(result.lostFeatures)
+```
+
+## Bitmap formats
+
+PGS, DVB, and VobSub store image payloads on `event.image` and metadata on `event.pgs` or `event.vobsub`:
+
+```ts
+import { parseVobSub, parseIdx } from 'subforge/vobsub'
+import { unwrap } from 'subforge/core'
+
+const idx = await fetch('/subs.idx').then(r => r.text())
+const sub = new Uint8Array(await fetch('/subs.sub').then(r => r.arrayBuffer()))
+const index = parseIdx(idx)
+const doc = unwrap(parseVobSub(index, sub))
+
+const first = doc.events[0]
+console.log(first.image?.width, first.image?.height)
+```
+
 ## Browser usage
 
 Build the universal ESM bundle:
@@ -59,6 +105,11 @@ Then import from `dist/`:
 </script>
 ```
 
+## Formats
+
+Subpath entry points:
+`core`, `ass`, `ssa`, `srt`, `vtt`, `sbv`, `lrc`, `microdvd`, `ttml`, `sami`, `realtext`, `qt`, `stl`, `pgs`, `dvb`, `vobsub`, `pac`, `scc`, `cap`, `teletext`.
+
 ## Commands
 
 ```bash
@@ -76,11 +127,6 @@ bun run docs:dev
 bun run docs:build
 bun run docs:preview
 ```
-
-## Formats
-
-Subpath entry points:
-`core`, `ass`, `ssa`, `srt`, `vtt`, `sbv`, `lrc`, `microdvd`, `ttml`, `sami`, `realtext`, `qt`, `stl`, `pgs`, `dvb`, `vobsub`, `pac`, `scc`, `cap`, `teletext`.
 
 ## License
 
