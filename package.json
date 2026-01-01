@@ -120,7 +120,38 @@
       "default": "./dist/formats/broadcast/teletext/index.js"
     }
   },
-  "description": "Ultra-fast subtitle toolkit for parsing, converting, and authoring.",
+  "description": "High-performance subtitle toolkit for parsing, converting, and authoring across 20+ formats.",
+  "keywords": [
+    "subtitles",
+    "subtitle",
+    "captions",
+    "closed-captions",
+    "ass",
+    "ssa",
+    "srt",
+    "vtt",
+    "ttml",
+    "dfxp",
+    "sami",
+    "vobsub",
+    "pgs",
+    "dvb",
+    "teletext",
+    "scc",
+    "caption",
+    "parser",
+    "serializer",
+    "conversion",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wiedymi/subforge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wiedymi/subforge/issues"
+  },
+  "homepage": "https://github.com/wiedymi/subforge#readme",
   "files": [
     "src",
     "dist"
