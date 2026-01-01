@@ -4,6 +4,7 @@ High-performance subtitle toolkit for parsing, converting, and authoring across 
 
 [![Version](https://img.shields.io/npm/v/subforge)](https://www.npmjs.com/package/subforge)
 [![Size](https://img.shields.io/npm/unpacked-size/subforge)](https://www.npmjs.com/package/subforge)
+[![Gzip Size](https://img.shields.io/bundlephobia/minzip/subforge)](https://bundlephobia.com/package/subforge)
 [![License](https://img.shields.io/github/license/wiedymi/subforge)](https://github.com/wiedymi/subforge/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-vitepress-blue)](https://subforge.pages.dev/)
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-brightgreen)](https://github.com/sponsors/vivy-company)
