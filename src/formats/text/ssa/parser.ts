@@ -219,8 +219,16 @@ class SSAParser {
         case 'bold': style.bold = val === '-1' || val === '1'; break
         case 'italic': style.italic = val === '-1' || val === '1'; break
         case 'borderstyle': style.borderStyle = (parseInt(val) === 3 ? 3 : 1); break
-        case 'outline': style.outline = parseFloat(val) || 2; break
-        case 'shadow': style.shadow = parseFloat(val) || 2; break
+        case 'outline': {
+          const parsed = parseFloat(val)
+          style.outline = Number.isNaN(parsed) ? 2 : parsed
+          break
+        }
+        case 'shadow': {
+          const parsed = parseFloat(val)
+          style.shadow = Number.isNaN(parsed) ? 2 : parsed
+          break
+        }
         case 'alignment':
           // SSA v4 uses old alignment (1=left, 2=center, 3=right, 9=top-left, 10=top-center, 11=top-right)
           // Convert to ASS numpad alignment

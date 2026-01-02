@@ -227,8 +227,16 @@ class ASSParser {
         case 'spacing': style.spacing = parseFloat(val) || 0; break
         case 'angle': style.angle = parseFloat(val) || 0; break
         case 'borderstyle': style.borderStyle = (parseInt(val) === 3 ? 3 : 1); break
-        case 'outline': style.outline = parseFloat(val) || 2; break
-        case 'shadow': style.shadow = parseFloat(val) || 2; break
+        case 'outline': {
+          const parsed = parseFloat(val)
+          style.outline = Number.isNaN(parsed) ? 2 : parsed
+          break
+        }
+        case 'shadow': {
+          const parsed = parseFloat(val)
+          style.shadow = Number.isNaN(parsed) ? 2 : parsed
+          break
+        }
         case 'alignment': style.alignment = (parseInt(val) || 2) as Alignment; break
         case 'marginl': style.marginL = parseInt(val) || 10; break
         case 'marginr': style.marginR = parseInt(val) || 10; break
